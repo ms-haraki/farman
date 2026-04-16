@@ -1,10 +1,12 @@
 #include "MainWindow.h"
 #include "model/FileListModel.h"
+#include "core/FileItem.h"
 #include <QTableView>
 #include <QHeaderView>
 #include <QVBoxLayout>
 #include <QWidget>
 #include <QDir>
+#include <QKeyEvent>
 
 namespace Farman {
 
@@ -57,6 +59,43 @@ void MainWindow::loadInitialPath() {
   m_model->setPath(homePath);
 
   setWindowTitle(QString("farman - %1").arg(homePath));
+}
+
+void MainWindow::keyPressEvent(QKeyEvent* event) {
+  switch (event->key()) {
+    case Qt::Key_Return:
+    case Qt::Key_Enter:
+      handleEnterKey();
+      event->accept();
+      return;
+
+    default:
+      QMainWindow::keyPressEvent(event);
+      break;
+  }
+}
+
+void MainWindow::handleEnterKey() {
+  QModelIndex currentIndex = m_tableView->currentIndex();
+  if (!currentIndex.isValid()) {
+    return;
+  }
+
+  const FileItem* item = m_model->itemAt(currentIndex);
+  if (!item) {
+    return;
+  }
+
+  if (item->isDir()) {
+    // ディレクトリに入る
+    QString newPath = item->absolutePath();
+    if (m_model->setPath(newPath)) {
+      setWindowTitle(QString("farman - %1").arg(newPath));
+    }
+  } else {
+    // ファイルの場合は将来ビュアーで開く
+    // TODO: ViewerDispatcher を使ってファイルを開く
+  }
 }
 
 } // namespace Farman

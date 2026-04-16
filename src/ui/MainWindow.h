@@ -15,9 +15,13 @@ public:
   explicit MainWindow(QWidget* parent = nullptr);
   ~MainWindow() override;
 
+protected:
+  void keyPressEvent(QKeyEvent* event) override;
+
 private:
   void setupUi();
   void loadInitialPath();
+  void handleEnterKey();
 
   QTableView* m_tableView;
   FileListModel* m_model;
