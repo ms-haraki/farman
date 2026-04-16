@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "FileListDelegate.h"
 #include "model/FileListModel.h"
 #include "core/FileItem.h"
 #include <QTableView>
@@ -46,6 +47,10 @@ void MainWindow::setupUi() {
   // Model
   m_model = new FileListModel(this);
   m_tableView->setModel(m_model);
+
+  // Delegate（カーソル表示のカスタマイズ）
+  m_delegate = new FileListDelegate(this);
+  m_tableView->setItemDelegate(m_delegate);
 
   // イベントフィルターをインストール（キー操作をキャッチするため）
   m_tableView->installEventFilter(this);

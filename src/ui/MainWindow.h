@@ -7,6 +7,7 @@ class QTableView;
 namespace Farman {
 
 class FileListModel;
+class FileListDelegate;
 
 class MainWindow : public QMainWindow {
   Q_OBJECT
@@ -31,6 +32,7 @@ private:
 
   QTableView* m_tableView;
   FileListModel* m_model;
+  FileListDelegate* m_delegate;
 };
 
 } // namespace Farman
