@@ -1,4 +1,5 @@
 #include "FileItem.h"
+#include <QMimeDatabase>
 
 namespace Farman {
 
@@ -18,8 +19,12 @@ QString FileItem::suffix() const {
 }
 
 QString FileItem::mimeType() const {
-  // TODO: 実装
-  return QString();
+  if (m_mimeType.isEmpty() && m_info.exists()) {
+    QMimeDatabase db;
+    QMimeType type = db.mimeTypeForFile(m_info);
+    m_mimeType = type.name();
+  }
+  return m_mimeType;
 }
 
 qint64 FileItem::size() const {

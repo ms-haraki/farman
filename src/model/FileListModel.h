@@ -80,6 +80,7 @@ signals:
 
 private:
   void applyFilterAndSort();
+  int compareItems(const FileItem* a, const FileItem* b, SortKey key) const;
 
   QString                          m_currentPath;
   QList<std::shared_ptr<FileItem>> m_entries;

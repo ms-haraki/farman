@@ -1,9 +1,14 @@
 #include <QApplication>
-#include <QLabel>
+#include "ui/MainWindow.h"
 
 int main(int argc, char *argv[]) {
   QApplication app(argc, argv);
-  QLabel label("farman 起動確認");
-  label.show();
+
+  app.setOrganizationName("Farman");
+  app.setApplicationName("farman");
+
+  Farman::MainWindow window;
+  window.show();
+
   return app.exec();
 }

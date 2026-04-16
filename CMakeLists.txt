@@ -11,6 +11,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
 qt_add_executable(farman
   src/main.cpp
+  src/ui/MainWindow.cpp
   src/core/FileItem.cpp
   src/core/workers/WorkerBase.cpp
   src/core/workers/CopyWorker.cpp
