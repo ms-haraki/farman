@@ -74,6 +74,11 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
       event->accept();
       return;
 
+    case Qt::Key_Space:
+      handleSpaceKey();
+      event->accept();
+      return;
+
     default:
       QMainWindow::keyPressEvent(event);
       break;
@@ -118,6 +123,23 @@ void MainWindow::handleBackspaceKey() {
   QString parentPath = dir.absolutePath();
   if (m_model->setPath(parentPath)) {
     setWindowTitle(QString("farman - %1").arg(parentPath));
+  }
+}
+
+void MainWindow::handleSpaceKey() {
+  QModelIndex currentIndex = m_tableView->currentIndex();
+  if (!currentIndex.isValid()) {
+    return;
+  }
+
+  int row = currentIndex.row();
+  m_model->toggleSelected(row);
+
+  // カーソルを次の行に移動
+  int nextRow = row + 1;
+  if (nextRow < m_model->rowCount()) {
+    QModelIndex nextIndex = m_model->index(nextRow, 0);
+    m_tableView->setCurrentIndex(nextIndex);
   }
 }
 

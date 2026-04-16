@@ -223,6 +223,9 @@ QVariant FileListModel::data(const QModelIndex& index, int role) const {
   if (role == Qt::DisplayRole) {
     switch (index.column()) {
       case Name:
+        if (item->isSelected()) {
+          return QString("\u2713 ") + item->name();  // ✓ + 名前
+        }
         return item->name();
       case Size:
         if (item->isDir()) {
