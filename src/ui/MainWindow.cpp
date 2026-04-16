@@ -7,6 +7,7 @@
 #include <QWidget>
 #include <QDir>
 #include <QKeyEvent>
+#include <QEvent>
 
 namespace Farman {
 
@@ -46,6 +47,9 @@ void MainWindow::setupUi() {
   m_model = new FileListModel(this);
   m_tableView->setModel(m_model);
 
+  // イベントフィルターをインストール（キー操作をキャッチするため）
+  m_tableView->installEventFilter(this);
+
   // カラム幅の調整
   m_tableView->setColumnWidth(FileListModel::Name, 300);
   m_tableView->setColumnWidth(FileListModel::Size, 100);
@@ -59,47 +63,58 @@ void MainWindow::loadInitialPath() {
   m_model->setPath(homePath);
 
   setWindowTitle(QString("farman - %1").arg(homePath));
+
+  // 初期カーソル位置を設定してフォーカス
+  if (m_model->rowCount() > 0) {
+    m_tableView->setCurrentIndex(m_model->index(0, 0));
+  }
+  m_tableView->setFocus();
+}
+
+bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
+  if (obj == m_tableView && event->type() == QEvent::KeyPress) {
+    QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+
+    // Ctrl+A for select all
+    if (keyEvent->modifiers() & Qt::ControlModifier && keyEvent->key() == Qt::Key_A) {
+      handleSelectAllKey();
+      return true;
+    }
+
+    switch (keyEvent->key()) {
+      case Qt::Key_Return:
+      case Qt::Key_Enter:
+        handleEnterKey();
+        return true;
+
+      case Qt::Key_Backspace:
+        handleBackspaceKey();
+        return true;
+
+      case Qt::Key_Space:
+        handleSpaceKey();
+        return true;
+
+      case Qt::Key_Insert:
+        handleInsertKey();
+        return true;
+
+      case Qt::Key_Asterisk:
+        handleAsteriskKey();
+        return true;
+
+      default:
+        break;
+    }
+  }
+
+  return QMainWindow::eventFilter(obj, event);
 }
 
 void MainWindow::keyPressEvent(QKeyEvent* event) {
-  // Ctrl+A for select all
-  if (event->modifiers() & Qt::ControlModifier && event->key() == Qt::Key_A) {
-    handleSelectAllKey();
-    event->accept();
-    return;
-  }
-
-  switch (event->key()) {
-    case Qt::Key_Return:
-    case Qt::Key_Enter:
-      handleEnterKey();
-      event->accept();
-      return;
-
-    case Qt::Key_Backspace:
-      handleBackspaceKey();
-      event->accept();
-      return;
-
-    case Qt::Key_Space:
-      handleSpaceKey();
-      event->accept();
-      return;
-
-    case Qt::Key_Insert:
-      handleInsertKey();
-      event->accept();
-      return;
-
-    case Qt::Key_Asterisk:
-      handleAsteriskKey();
-      event->accept();
-      return;
-
-    default:
-      QMainWindow::keyPressEvent(event);
-      break;
-  }
+  // このメソッドはMainWindowがフォーカスを持つ場合のみ
+  // 通常はeventFilterで処理される
+  QMainWindow::keyPressEvent(event);
 }
 
 void MainWindow::handleEnterKey() {
@@ -118,6 +133,10 @@ void MainWindow::handleEnterKey() {
     QString newPath = item->absolutePath();
     if (m_model->setPath(newPath)) {
       setWindowTitle(QString("farman - %1").arg(newPath));
+      // カーソルを先頭に移動
+      if (m_model->rowCount() > 0) {
+        m_tableView->setCurrentIndex(m_model->index(0, 0));
+      }
     }
   } else {
     // ファイルの場合は将来ビュアーで開く
@@ -140,6 +159,10 @@ void MainWindow::handleBackspaceKey() {
   QString parentPath = dir.absolutePath();
   if (m_model->setPath(parentPath)) {
     setWindowTitle(QString("farman - %1").arg(parentPath));
+    // カーソルを先頭に移動
+    if (m_model->rowCount() > 0) {
+      m_tableView->setCurrentIndex(m_model->index(0, 0));
+    }
   }
 }
 
