@@ -37,7 +37,7 @@ void MainWindow::setupUi() {
   // Table view
   m_tableView = new QTableView(this);
   m_tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-  m_tableView->setSelectionMode(QAbstractItemView::SingleSelection);
+  m_tableView->setSelectionMode(QAbstractItemView::NoSelection);  // QTableView自体の選択機能を無効化
   m_tableView->setAlternatingRowColors(true);
   m_tableView->horizontalHeader()->setStretchLastSection(true);
   m_tableView->verticalHeader()->setVisible(false);
