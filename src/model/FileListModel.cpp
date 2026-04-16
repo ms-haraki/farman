@@ -1,6 +1,7 @@
 #include "FileListModel.h"
 #include <QDir>
 #include <QFileInfo>
+#include <QColor>
 #include <algorithm>
 
 namespace Farman {
@@ -232,9 +233,6 @@ QVariant FileListModel::data(const QModelIndex& index, int role) const {
   if (role == Qt::DisplayRole) {
     switch (index.column()) {
       case Name:
-        if (item->isSelected()) {
-          return QString("\u2713 ") + item->name();  // ✓ + 名前
-        }
         return item->name();
       case Size:
         if (item->isDir()) {
@@ -255,6 +253,18 @@ QVariant FileListModel::data(const QModelIndex& index, int role) const {
         return item->suffix().isEmpty() ? QString("") : item->suffix();
       case LastModified:
         return item->lastModified().toString("yyyy/MM/dd HH:mm:ss");
+    }
+  }
+  else if (role == Qt::BackgroundRole) {
+    if (item->isSelected()) {
+      // 選択中の背景色（青系）
+      return QColor(0, 120, 215);  // Windows 10 の選択色に近い
+    }
+  }
+  else if (role == Qt::ForegroundRole) {
+    if (item->isSelected()) {
+      // 選択中の文字色（白）
+      return QColor(Qt::white);
     }
   }
   else if (role == FileItemRole) {
