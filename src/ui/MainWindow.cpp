@@ -88,6 +88,37 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
     }
 
     switch (keyEvent->key()) {
+      case Qt::Key_Up: {
+        QModelIndex current = m_tableView->currentIndex();
+        if (current.isValid() && current.row() > 0) {
+          m_tableView->setCurrentIndex(m_model->index(current.row() - 1, 0));
+        }
+        return true;
+      }
+
+      case Qt::Key_Down: {
+        QModelIndex current = m_tableView->currentIndex();
+        if (current.isValid() && current.row() < m_model->rowCount() - 1) {
+          m_tableView->setCurrentIndex(m_model->index(current.row() + 1, 0));
+        }
+        return true;
+      }
+
+      case Qt::Key_Home: {
+        if (m_model->rowCount() > 0) {
+          m_tableView->setCurrentIndex(m_model->index(0, 0));
+        }
+        return true;
+      }
+
+      case Qt::Key_End: {
+        int lastRow = m_model->rowCount() - 1;
+        if (lastRow >= 0) {
+          m_tableView->setCurrentIndex(m_model->index(lastRow, 0));
+        }
+        return true;
+      }
+
       case Qt::Key_Return:
       case Qt::Key_Enter:
         handleEnterKey();
