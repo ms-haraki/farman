@@ -62,6 +62,13 @@ void MainWindow::loadInitialPath() {
 }
 
 void MainWindow::keyPressEvent(QKeyEvent* event) {
+  // Ctrl+A for select all
+  if (event->modifiers() & Qt::ControlModifier && event->key() == Qt::Key_A) {
+    handleSelectAllKey();
+    event->accept();
+    return;
+  }
+
   switch (event->key()) {
     case Qt::Key_Return:
     case Qt::Key_Enter:
@@ -76,6 +83,16 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
 
     case Qt::Key_Space:
       handleSpaceKey();
+      event->accept();
+      return;
+
+    case Qt::Key_Insert:
+      handleInsertKey();
+      event->accept();
+      return;
+
+    case Qt::Key_Asterisk:
+      handleAsteriskKey();
       event->accept();
       return;
 
@@ -141,6 +158,28 @@ void MainWindow::handleSpaceKey() {
     QModelIndex nextIndex = m_model->index(nextRow, 0);
     m_tableView->setCurrentIndex(nextIndex);
   }
+}
+
+void MainWindow::handleInsertKey() {
+  QModelIndex currentIndex = m_tableView->currentIndex();
+  if (!currentIndex.isValid()) {
+    return;
+  }
+
+  int row = currentIndex.row();
+  m_model->toggleSelected(row);
+
+  // カーソルは移動しない（Space との違い）
+}
+
+void MainWindow::handleAsteriskKey() {
+  // 選択を反転
+  m_model->invertSelection();
+}
+
+void MainWindow::handleSelectAllKey() {
+  // 全選択
+  m_model->setSelectedAll(true);
 }
 
 } // namespace Farman

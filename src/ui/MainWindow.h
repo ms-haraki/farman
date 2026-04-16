@@ -24,6 +24,9 @@ private:
   void handleEnterKey();
   void handleBackspaceKey();
   void handleSpaceKey();
+  void handleInsertKey();
+  void handleAsteriskKey();
+  void handleSelectAllKey();
 
   QTableView* m_tableView;
   FileListModel* m_model;
