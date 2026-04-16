@@ -69,6 +69,11 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
       event->accept();
       return;
 
+    case Qt::Key_Backspace:
+      handleBackspaceKey();
+      event->accept();
+      return;
+
     default:
       QMainWindow::keyPressEvent(event);
       break;
@@ -95,6 +100,24 @@ void MainWindow::handleEnterKey() {
   } else {
     // ファイルの場合は将来ビュアーで開く
     // TODO: ViewerDispatcher を使ってファイルを開く
+  }
+}
+
+void MainWindow::handleBackspaceKey() {
+  QString currentPath = m_model->currentPath();
+  if (currentPath.isEmpty()) {
+    return;
+  }
+
+  QDir dir(currentPath);
+  if (!dir.cdUp()) {
+    // ルートディレクトリにいる場合は何もしない
+    return;
+  }
+
+  QString parentPath = dir.absolutePath();
+  if (m_model->setPath(parentPath)) {
+    setWindowTitle(QString("farman - %1").arg(parentPath));
   }
 }
 

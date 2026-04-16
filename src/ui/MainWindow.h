@@ -22,6 +22,7 @@ private:
   void setupUi();
   void loadInitialPath();
   void handleEnterKey();
+  void handleBackspaceKey();
 
   QTableView* m_tableView;
   FileListModel* m_model;
