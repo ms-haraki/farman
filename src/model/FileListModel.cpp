@@ -199,6 +199,15 @@ void FileListModel::invertSelection() {
   }
 }
 
+bool FileListModel::isAllSelected() const {
+  for (const auto& entry : m_entries) {
+    if (!entry->isDotDot() && !entry->isSelected()) {
+      return false;
+    }
+  }
+  return !m_entries.isEmpty();
+}
+
 QModelIndex FileListModel::index(int row, int col, const QModelIndex& parent) const {
   if (parent.isValid() || row < 0 || row >= m_entries.size() ||
       col < 0 || col >= ColumnCount) {

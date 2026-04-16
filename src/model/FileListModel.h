@@ -64,6 +64,7 @@ public:
   void setSelectedAll(bool selected);
   void toggleSelected(int row);
   void invertSelection();
+  bool isAllSelected() const;  // 全て選択されているか（".." 除く）
 
   // ── QAbstractItemModel 必須実装 ───────────
   QModelIndex index(int row, int col,

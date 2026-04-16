@@ -75,8 +75,9 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
   if (obj == m_tableView && event->type() == QEvent::KeyPress) {
     QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
 
-    // Ctrl+A for select all
-    if (keyEvent->modifiers() & Qt::ControlModifier && keyEvent->key() == Qt::Key_A) {
+    // Ctrl+A (Windows/Linux) or Cmd+A (Mac) for select all
+    if ((keyEvent->modifiers() & Qt::ControlModifier || keyEvent->modifiers() & Qt::MetaModifier)
+        && keyEvent->key() == Qt::Key_A) {
       handleSelectAllKey();
       return true;
     }
@@ -201,8 +202,12 @@ void MainWindow::handleAsteriskKey() {
 }
 
 void MainWindow::handleSelectAllKey() {
-  // 全選択
-  m_model->setSelectedAll(true);
+  // 全て選択されている場合は全解除、それ以外は全選択
+  if (m_model->isAllSelected()) {
+    m_model->setSelectedAll(false);
+  } else {
+    m_model->setSelectedAll(true);
+  }
 }
 
 } // namespace Farman
