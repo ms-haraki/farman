@@ -255,6 +255,12 @@ QVariant FileListModel::data(const QModelIndex& index, int role) const {
         return item->lastModified().toString("yyyy/MM/dd HH:mm:ss");
     }
   }
+  else if (role == Qt::DecorationRole) {
+    // Name列にファイルアイコンを表示
+    if (index.column() == Name) {
+      return m_iconProvider.icon(item->fileInfo());
+    }
+  }
   else if (role == Qt::BackgroundRole) {
     if (item->isSelected()) {
       // 選択中の背景色（青系）

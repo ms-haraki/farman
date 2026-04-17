@@ -4,6 +4,7 @@
 #include "core/FileItem.h"
 #include <QAbstractItemModel>
 #include <QFileSystemWatcher>
+#include <QFileIconProvider>
 #include <memory>
 
 namespace Farman {
@@ -86,6 +87,7 @@ private:
   QString                          m_currentPath;
   QList<std::shared_ptr<FileItem>> m_entries;
   QFileSystemWatcher               m_watcher;
+  QFileIconProvider                m_iconProvider;
 
   // ソート設定
   SortKey             m_sortKey    = SortKey::Name;
