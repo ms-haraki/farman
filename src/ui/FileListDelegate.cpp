@@ -6,7 +6,12 @@
 namespace Farman {
 
 FileListDelegate::FileListDelegate(QObject* parent)
-  : QStyledItemDelegate(parent) {
+  : QStyledItemDelegate(parent)
+  , m_active(true) {
+}
+
+void FileListDelegate::setActive(bool active) {
+  m_active = active;
 }
 
 void FileListDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option,
@@ -30,8 +35,9 @@ void FileListDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
     if (currentIndex.isValid() && currentIndex.row() == index.row()) {
       painter->save();
 
-      // 下線の色（黒）
-      QPen pen(Qt::black);
+      // 下線の色（アクティブなら黒、非アクティブなら薄いグレー）
+      QColor underlineColor = m_active ? Qt::black : Qt::lightGray;
+      QPen pen(underlineColor);
       pen.setWidth(2);
       painter->setPen(pen);
 

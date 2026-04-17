@@ -132,6 +132,16 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
       return true;
     }
 
+    // 左ペインで→キー、または右ペインで←キーでペイン切り替え
+    if (keyEvent->key() == Qt::Key_Right && m_activePane == PaneType::Left) {
+      setActivePane(PaneType::Right);
+      return true;
+    }
+    if (keyEvent->key() == Qt::Key_Left && m_activePane == PaneType::Right) {
+      setActivePane(PaneType::Left);
+      return true;
+    }
+
     // Ctrl+A (Windows/Linux) or Cmd+A (Mac) for select all
     if ((keyEvent->modifiers() & Qt::ControlModifier || keyEvent->modifiers() & Qt::MetaModifier)
         && keyEvent->key() == Qt::Key_A) {
@@ -360,12 +370,22 @@ FileListDelegate* MainWindow::activeDelegate() const {
 void MainWindow::setActivePane(PaneType pane) {
   m_activePane = pane;
 
+  // デリゲートのアクティブ状態を更新
+  if (pane == PaneType::Left) {
+    m_leftDelegate->setActive(true);
+    m_rightDelegate->setActive(false);
+  } else {
+    m_leftDelegate->setActive(false);
+    m_rightDelegate->setActive(true);
+  }
+
+  // 両方のビューを再描画してカーソル色を更新
+  m_leftView->viewport()->update();
+  m_rightView->viewport()->update();
+
   // アクティブペインにフォーカスを設定
   QTableView* view = activeView();
   view->setFocus();
-
-  // 視覚的なフィードバック（将来的に追加予定）
-  // 例: アクティブでないペインを少し暗くするなど
 }
 
 } // namespace Farman
