@@ -16,7 +16,11 @@ MainWindow::MainWindow(QWidget* parent)
   , m_viewerPanel(nullptr) {
 
   setupUi();
-  showFileManager();
+
+  // Show file manager and load initial path
+  m_stack->setCurrentWidget(m_fileManagerPanel);
+  m_fileManagerPanel->loadInitialPath();
+  m_fileManagerPanel->activePane()->view()->setFocus();
 }
 
 MainWindow::~MainWindow() = default;
@@ -60,8 +64,6 @@ void MainWindow::showFileManager() {
     // フォーカスをアクティブペインに戻す
     m_fileManagerPanel->activePane()->view()->setFocus();
   }
-
-  m_fileManagerPanel->loadInitialPath();
 }
 
 void MainWindow::showViewer(const QString& filePath) {
