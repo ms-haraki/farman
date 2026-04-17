@@ -1,6 +1,7 @@
 #include "FileListPane.h"
 #include "FileListDelegate.h"
 #include "model/FileListModel.h"
+#include "types.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -54,6 +55,8 @@ void FileListPane::setupUi() {
   m_view->setSelectionMode(QAbstractItemView::NoSelection);
   m_view->setAlternatingRowColors(true);
   m_view->horizontalHeader()->setStretchLastSection(true);
+  m_view->horizontalHeader()->setSectionsClickable(true);
+  m_view->horizontalHeader()->setSortIndicatorShown(true);
   m_view->verticalHeader()->setVisible(false);
 
   m_model = new FileListModel(this);
@@ -64,6 +67,9 @@ void FileListPane::setupUi() {
 
   connect(m_view->selectionModel(), &QItemSelectionModel::currentChanged,
           this, &FileListPane::onCurrentChanged);
+
+  connect(m_view->horizontalHeader(), &QHeaderView::sectionClicked,
+          this, &FileListPane::onHeaderClicked);
 
   m_view->setColumnWidth(FileListModel::Name, 250);
   m_view->setColumnWidth(FileListModel::Size, 100);
@@ -85,6 +91,26 @@ bool FileListPane::setPath(const QString& path) {
     if (m_model->rowCount() > 0) {
       m_view->setCurrentIndex(m_model->index(0, 0));
     }
+
+    // 現在のソート状態をヘッダーに反映
+    int section = -1;
+    switch (m_model->sortKey()) {
+      case SortKey::Name:
+        section = FileListModel::Name;
+        break;
+      case SortKey::Size:
+        section = FileListModel::Size;
+        break;
+      case SortKey::Type:
+        section = FileListModel::Type;
+        break;
+      case SortKey::LastModified:
+        section = FileListModel::LastModified;
+        break;
+    }
+    if (section >= 0) {
+      m_view->horizontalHeader()->setSortIndicator(section, m_model->sortOrder());
+    }
   }
   return result;
 }
@@ -100,6 +126,39 @@ void FileListPane::onFolderButtonClicked() {
 
 void FileListPane::onCurrentChanged(const QModelIndex& current, const QModelIndex& previous) {
   emit currentChanged(current, previous);
+}
+
+void FileListPane::onHeaderClicked(int section) {
+  // 列番号をSortKeyに変換
+  SortKey sortKey;
+  switch (section) {
+    case FileListModel::Name:
+      sortKey = SortKey::Name;
+      break;
+    case FileListModel::Size:
+      sortKey = SortKey::Size;
+      break;
+    case FileListModel::Type:
+      sortKey = SortKey::Type;
+      break;
+    case FileListModel::LastModified:
+      sortKey = SortKey::LastModified;
+      break;
+    default:
+      return;  // 無効な列
+  }
+
+  // 同じ列がクリックされた場合はソート順を反転
+  Qt::SortOrder newOrder = Qt::AscendingOrder;
+  if (m_model->sortKey() == sortKey && m_model->sortOrder() == Qt::AscendingOrder) {
+    newOrder = Qt::DescendingOrder;
+  }
+
+  // ソート設定を更新
+  m_model->setSortSettings(sortKey, newOrder);
+
+  // ヘッダーにソートインジケーターを表示
+  m_view->horizontalHeader()->setSortIndicator(section, newOrder);
 }
 
 } // namespace Farman

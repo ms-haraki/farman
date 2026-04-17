@@ -51,6 +51,12 @@ public:
   // ── フィルタ ──────────────────────────────
   void setNameFilters(const QStringList& patterns);  // glob: {"*.cpp","*.h"}
   void setAttrFilter(AttrFilterFlags flags);
+  void toggleHiddenFiles();  // 隠しファイルの表示/非表示をトグル
+
+  // ── 状態取得 ──────────────────────────────
+  SortKey       sortKey() const { return m_sortKey; }
+  Qt::SortOrder sortOrder() const { return m_sortOrder; }
+  AttrFilterFlags attrFilter() const { return m_attrFilter; }
 
   // ── アイテムアクセス ──────────────────────
   const FileItem* itemAt(const QModelIndex& index) const;
@@ -61,6 +67,7 @@ public:
   // ── 選択操作 ──────────────────────────────
   QList<int>             selectedRows() const;
   QList<const FileItem*> selectedItems() const;
+  QStringList            selectedFilePaths() const;
   void setSelected(int row, bool selected);
   void setSelectedAll(bool selected);
   void toggleSelected(int row);

@@ -38,6 +38,11 @@ public:
   // キーイベント処理
   bool handleKeyEvent(QKeyEvent* event);
 
+  // ファイル操作
+  void copySelectedFiles();
+  void moveSelectedFiles();
+  void deleteSelectedFiles();
+
 signals:
   void pathChanged(const QString& leftPath, const QString& rightPath);
   void fileActivated(const QString& filePath);

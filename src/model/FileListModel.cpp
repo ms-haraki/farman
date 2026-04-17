@@ -100,6 +100,20 @@ void FileListModel::setAttrFilter(AttrFilterFlags flags) {
   }
 }
 
+void FileListModel::toggleHiddenFiles() {
+  if (m_attrFilter.testFlag(AttrFilter::ShowHidden)) {
+    m_attrFilter.setFlag(AttrFilter::ShowHidden, false);
+  } else {
+    m_attrFilter.setFlag(AttrFilter::ShowHidden, true);
+  }
+
+  if (!m_entries.isEmpty()) {
+    beginResetModel();
+    applyFilterAndSort();
+    endResetModel();
+  }
+}
+
 const FileItem* FileListModel::itemAt(const QModelIndex& index) const {
   if (!index.isValid() || index.row() >= m_entries.size()) {
     return nullptr;
@@ -144,6 +158,16 @@ QList<const FileItem*> FileListModel::selectedItems() const {
     }
   }
   return items;
+}
+
+QStringList FileListModel::selectedFilePaths() const {
+  QStringList paths;
+  for (const auto& entry : m_entries) {
+    if (entry->isSelected() && !entry->isDotDot()) {
+      paths.append(entry->absolutePath());
+    }
+  }
+  return paths;
 }
 
 void FileListModel::setSelected(int row, bool selected) {
@@ -308,8 +332,51 @@ void FileListModel::applyFilterAndSort() {
     return;
   }
 
-  // フィルタリング（今は実装をシンプルにするためスキップ）
-  // TODO: 名前フィルタと属性フィルタの実装
+  // フィルタリング: 条件に合わないアイテムを削除
+  auto it = m_entries.begin();
+  while (it != m_entries.end()) {
+    const FileItem* item = it->get();
+    bool shouldRemove = false;
+
+    // ".." は常に保持
+    if (item->isDotDot()) {
+      ++it;
+      continue;
+    }
+
+    // 隠しファイルフィルタ
+    if (!m_attrFilter.testFlag(AttrFilter::ShowHidden) && item->isHidden()) {
+      shouldRemove = true;
+    }
+
+    // ディレクトリ/ファイルのみフィルタ
+    if (m_attrFilter.testFlag(AttrFilter::DirsOnly) && !item->isDir()) {
+      shouldRemove = true;
+    }
+    if (m_attrFilter.testFlag(AttrFilter::FilesOnly) && item->isDir()) {
+      shouldRemove = true;
+    }
+
+    // 名前フィルタ（拡張子パターン）
+    if (!m_nameFilters.isEmpty() && !item->isDir()) {
+      bool matches = false;
+      for (const QString& pattern : m_nameFilters) {
+        if (QDir::match(pattern, item->name())) {
+          matches = true;
+          break;
+        }
+      }
+      if (!matches) {
+        shouldRemove = true;
+      }
+    }
+
+    if (shouldRemove) {
+      it = m_entries.erase(it);
+    } else {
+      ++it;
+    }
+  }
 
   // ソート
   std::stable_sort(m_entries.begin(), m_entries.end(),

@@ -1,10 +1,15 @@
 #include "FileManagerPanel.h"
 #include "FileListPane.h"
+#include "ProgressDialog.h"
 #include "model/FileListModel.h"
 #include "core/FileItem.h"
+#include "core/workers/CopyWorker.h"
+#include "core/workers/MoveWorker.h"
+#include "core/workers/RemoveWorker.h"
 #include <QVBoxLayout>
 #include <QSplitter>
 #include <QFileDialog>
+#include <QMessageBox>
 #include <QDir>
 #include <QKeyEvent>
 #include <QTableView>
@@ -174,6 +179,19 @@ bool FileManagerPanel::handleKeyEvent(QKeyEvent* event) {
 
     case Qt::Key_Asterisk:
       handleAsteriskKey();
+      return true;
+
+    case Qt::Key_F5:
+      copySelectedFiles();
+      return true;
+
+    case Qt::Key_F6:
+      moveSelectedFiles();
+      return true;
+
+    case Qt::Key_F8:
+    case Qt::Key_Delete:
+      deleteSelectedFiles();
       return true;
 
     default:
@@ -393,6 +411,284 @@ QString FileManagerPanel::rightPath() const {
 
 void FileManagerPanel::updatePathSignal() {
   emit pathChanged(m_leftPane->currentPath(), m_rightPane->currentPath());
+}
+
+void FileManagerPanel::copySelectedFiles() {
+  FileListPane* srcPane = activePane();
+  FileListPane* destPane = (m_activePane == PaneType::Left) ? m_rightPane : m_leftPane;
+
+  FileListModel* srcModel = srcPane->model();
+  QString destDir = destPane->currentPath();
+
+  // Get selected files, or current item if no selection
+  QStringList selectedFiles = srcModel->selectedFilePaths();
+  if (selectedFiles.isEmpty()) {
+    QModelIndex currentIndex = srcPane->view()->currentIndex();
+    if (currentIndex.isValid()) {
+      const FileItem* item = srcModel->itemAt(currentIndex);
+      if (item && !item->isDotDot()) {
+        selectedFiles.append(item->absolutePath());
+      }
+    }
+  }
+
+  if (selectedFiles.isEmpty()) {
+    return;
+  }
+
+  // Create worker and dialog
+  CopyWorker* worker = new CopyWorker(selectedFiles, destDir, this);
+  ProgressDialog* dialog = new ProgressDialog(tr("Copying files..."), this);
+  dialog->setWorker(worker);
+
+  connect(worker, &WorkerBase::finished, this, [this, dialog, srcPane, destPane](bool success) {
+    dialog->accept();
+
+    // Save cursor positions
+    QModelIndex srcCurrentIndex = srcPane->view()->currentIndex();
+    QModelIndex destCurrentIndex = destPane->view()->currentIndex();
+    QString srcCurrentFile;
+    QString destCurrentFile;
+    int srcCurrentRow = srcCurrentIndex.row();
+    int destCurrentRow = destCurrentIndex.row();
+
+    if (srcCurrentIndex.isValid()) {
+      const FileItem* item = srcPane->model()->itemAt(srcCurrentIndex);
+      if (item) srcCurrentFile = item->name();
+    }
+    if (destCurrentIndex.isValid()) {
+      const FileItem* item = destPane->model()->itemAt(destCurrentIndex);
+      if (item) destCurrentFile = item->name();
+    }
+
+    // Refresh both panes
+    QString srcPath = srcPane->currentPath();
+    QString destPath = destPane->currentPath();
+    srcPane->setPath(srcPath);
+    destPane->setPath(destPath);
+
+    // Restore cursor positions
+    auto restoreCursor = [](FileListPane* pane, const QString& fileName, int fallbackRow) {
+      FileListModel* model = pane->model();
+
+      // Try to find the file by name
+      if (!fileName.isEmpty()) {
+        for (int i = 0; i < model->rowCount(); ++i) {
+          const FileItem* item = model->itemAt(i);
+          if (item && item->name() == fileName) {
+            pane->view()->setCurrentIndex(model->index(i, 0));
+            return;
+          }
+        }
+      }
+
+      // Fallback to row number (clamped to valid range)
+      if (model->rowCount() > 0) {
+        int row = qMin(fallbackRow, model->rowCount() - 1);
+        pane->view()->setCurrentIndex(model->index(row, 0));
+      }
+    };
+
+    restoreCursor(srcPane, srcCurrentFile, srcCurrentRow);
+    restoreCursor(destPane, destCurrentFile, destCurrentRow);
+
+    // Clear selections
+    srcPane->model()->setSelectedAll(false);
+
+    // Restore focus to active pane
+    activePane()->view()->setFocus();
+  });
+
+  worker->start();
+  dialog->exec();
+}
+
+void FileManagerPanel::moveSelectedFiles() {
+  FileListPane* srcPane = activePane();
+  FileListPane* destPane = (m_activePane == PaneType::Left) ? m_rightPane : m_leftPane;
+
+  FileListModel* srcModel = srcPane->model();
+  QString destDir = destPane->currentPath();
+
+  // Get selected files, or current item if no selection
+  QStringList selectedFiles = srcModel->selectedFilePaths();
+  if (selectedFiles.isEmpty()) {
+    QModelIndex currentIndex = srcPane->view()->currentIndex();
+    if (currentIndex.isValid()) {
+      const FileItem* item = srcModel->itemAt(currentIndex);
+      if (item && !item->isDotDot()) {
+        selectedFiles.append(item->absolutePath());
+      }
+    }
+  }
+
+  if (selectedFiles.isEmpty()) {
+    return;
+  }
+
+  // Create worker and dialog
+  MoveWorker* worker = new MoveWorker(selectedFiles, destDir, this);
+  ProgressDialog* dialog = new ProgressDialog(tr("Moving files..."), this);
+  dialog->setWorker(worker);
+
+  connect(worker, &WorkerBase::finished, this, [this, dialog, srcPane, destPane](bool success) {
+    dialog->accept();
+
+    // Save cursor positions
+    QModelIndex srcCurrentIndex = srcPane->view()->currentIndex();
+    QModelIndex destCurrentIndex = destPane->view()->currentIndex();
+    QString srcCurrentFile;
+    QString destCurrentFile;
+    int srcCurrentRow = srcCurrentIndex.row();
+    int destCurrentRow = destCurrentIndex.row();
+
+    if (srcCurrentIndex.isValid()) {
+      const FileItem* item = srcPane->model()->itemAt(srcCurrentIndex);
+      if (item) srcCurrentFile = item->name();
+    }
+    if (destCurrentIndex.isValid()) {
+      const FileItem* item = destPane->model()->itemAt(destCurrentIndex);
+      if (item) destCurrentFile = item->name();
+    }
+
+    // Refresh both panes
+    QString srcPath = srcPane->currentPath();
+    QString destPath = destPane->currentPath();
+    srcPane->setPath(srcPath);
+    destPane->setPath(destPath);
+
+    // Restore cursor positions
+    auto restoreCursor = [](FileListPane* pane, const QString& fileName, int fallbackRow) {
+      FileListModel* model = pane->model();
+
+      // Try to find the file by name
+      if (!fileName.isEmpty()) {
+        for (int i = 0; i < model->rowCount(); ++i) {
+          const FileItem* item = model->itemAt(i);
+          if (item && item->name() == fileName) {
+            pane->view()->setCurrentIndex(model->index(i, 0));
+            return;
+          }
+        }
+      }
+
+      // Fallback to row number (clamped to valid range)
+      if (model->rowCount() > 0) {
+        int row = qMin(fallbackRow, model->rowCount() - 1);
+        pane->view()->setCurrentIndex(model->index(row, 0));
+      }
+    };
+
+    restoreCursor(srcPane, srcCurrentFile, srcCurrentRow);
+    restoreCursor(destPane, destCurrentFile, destCurrentRow);
+
+    // Clear selections
+    srcPane->model()->setSelectedAll(false);
+
+    // Restore focus to active pane
+    activePane()->view()->setFocus();
+  });
+
+  worker->start();
+  dialog->exec();
+}
+
+void FileManagerPanel::deleteSelectedFiles() {
+  FileListPane* srcPane = activePane();
+  FileListModel* srcModel = srcPane->model();
+
+  // Get selected files, or current item if no selection
+  QStringList selectedFiles = srcModel->selectedFilePaths();
+  if (selectedFiles.isEmpty()) {
+    QModelIndex currentIndex = srcPane->view()->currentIndex();
+    if (currentIndex.isValid()) {
+      const FileItem* item = srcModel->itemAt(currentIndex);
+      if (item && !item->isDotDot()) {
+        selectedFiles.append(item->absolutePath());
+      }
+    }
+  }
+
+  if (selectedFiles.isEmpty()) {
+    return;
+  }
+
+  // Ask for confirmation
+  QString message;
+  if (selectedFiles.size() == 1) {
+    QFileInfo info(selectedFiles[0]);
+    message = tr("Are you sure you want to delete '%1'?").arg(info.fileName());
+  } else {
+    message = tr("Are you sure you want to delete %1 items?").arg(selectedFiles.size());
+  }
+
+  QMessageBox::StandardButton reply = QMessageBox::question(
+    this,
+    tr("Confirm Delete"),
+    message,
+    QMessageBox::Yes | QMessageBox::No,
+    QMessageBox::No
+  );
+
+  if (reply != QMessageBox::Yes) {
+    return;
+  }
+
+  // Create worker and dialog
+  RemoveWorker* worker = new RemoveWorker(selectedFiles, true, this);  // true = to trash
+  ProgressDialog* dialog = new ProgressDialog(tr("Deleting files..."), this);
+  dialog->setWorker(worker);
+
+  connect(worker, &WorkerBase::finished, this, [this, dialog, srcPane](bool success) {
+    dialog->accept();
+
+    // Save cursor position
+    QModelIndex srcCurrentIndex = srcPane->view()->currentIndex();
+    QString srcCurrentFile;
+    int srcCurrentRow = srcCurrentIndex.row();
+
+    if (srcCurrentIndex.isValid()) {
+      const FileItem* item = srcPane->model()->itemAt(srcCurrentIndex);
+      if (item) srcCurrentFile = item->name();
+    }
+
+    // Refresh the pane
+    QString srcPath = srcPane->currentPath();
+    srcPane->setPath(srcPath);
+
+    // Restore cursor position
+    auto restoreCursor = [](FileListPane* pane, const QString& fileName, int fallbackRow) {
+      FileListModel* model = pane->model();
+
+      // Try to find the file by name
+      if (!fileName.isEmpty()) {
+        for (int i = 0; i < model->rowCount(); ++i) {
+          const FileItem* item = model->itemAt(i);
+          if (item && item->name() == fileName) {
+            pane->view()->setCurrentIndex(model->index(i, 0));
+            return;
+          }
+        }
+      }
+
+      // Fallback to row number (clamped to valid range)
+      if (model->rowCount() > 0) {
+        int row = qMin(fallbackRow, model->rowCount() - 1);
+        pane->view()->setCurrentIndex(model->index(row, 0));
+      }
+    };
+
+    restoreCursor(srcPane, srcCurrentFile, srcCurrentRow);
+
+    // Clear selections
+    srcPane->model()->setSelectedAll(false);
+
+    // Restore focus to active pane
+    activePane()->view()->setFocus();
+  });
+
+  worker->start();
+  dialog->exec();
 }
 
 } // namespace Farman

@@ -37,6 +37,7 @@ signals:
 private slots:
   void onFolderButtonClicked();
   void onCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
+  void onHeaderClicked(int section);
 
 private:
   void setupUi();
