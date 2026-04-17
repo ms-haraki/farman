@@ -42,6 +42,8 @@ public:
   void copySelectedFiles();
   void moveSelectedFiles();
   void deleteSelectedFiles();
+  void createDirectory();
+  void renameItem();
 
 signals:
   void pathChanged(const QString& leftPath, const QString& rightPath);

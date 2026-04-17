@@ -10,9 +10,11 @@
 #include <QSplitter>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QInputDialog>
 #include <QDir>
 #include <QKeyEvent>
 #include <QTableView>
+#include <QFile>
 
 namespace Farman {
 
@@ -181,12 +183,20 @@ bool FileManagerPanel::handleKeyEvent(QKeyEvent* event) {
       handleAsteriskKey();
       return true;
 
+    case Qt::Key_F2:
+      renameItem();
+      return true;
+
     case Qt::Key_F5:
       copySelectedFiles();
       return true;
 
     case Qt::Key_F6:
       moveSelectedFiles();
+      return true;
+
+    case Qt::Key_F7:
+      createDirectory();
       return true;
 
     case Qt::Key_F8:
@@ -689,6 +699,133 @@ void FileManagerPanel::deleteSelectedFiles() {
 
   worker->start();
   dialog->exec();
+}
+
+void FileManagerPanel::createDirectory() {
+  FileListPane* srcPane = activePane();
+  QString currentPath = srcPane->currentPath();
+
+  // Ask for directory name
+  bool ok;
+  QString dirName = QInputDialog::getText(
+    this,
+    tr("Create Directory"),
+    tr("Enter directory name:"),
+    QLineEdit::Normal,
+    QString(),
+    &ok
+  );
+
+  if (!ok || dirName.isEmpty()) {
+    return;
+  }
+
+  // Create directory
+  QString newDirPath = currentPath + "/" + dirName;
+  QDir dir;
+  if (!dir.mkpath(newDirPath)) {
+    QMessageBox::critical(
+      this,
+      tr("Error"),
+      tr("Failed to create directory: %1").arg(dirName)
+    );
+    return;
+  }
+
+  // Refresh and move cursor to new directory
+  srcPane->setPath(currentPath);
+
+  // Find and select the new directory
+  FileListModel* model = srcPane->model();
+  for (int i = 0; i < model->rowCount(); ++i) {
+    const FileItem* item = model->itemAt(i);
+    if (item && item->name() == dirName) {
+      srcPane->view()->setCurrentIndex(model->index(i, 0));
+      break;
+    }
+  }
+
+  srcPane->view()->setFocus();
+}
+
+void FileManagerPanel::renameItem() {
+  FileListPane* srcPane = activePane();
+  FileListModel* srcModel = srcPane->model();
+
+  QModelIndex currentIndex = srcPane->view()->currentIndex();
+  if (!currentIndex.isValid()) {
+    return;
+  }
+
+  const FileItem* item = srcModel->itemAt(currentIndex);
+  if (!item || item->isDotDot()) {
+    return;
+  }
+
+  QString oldName = item->name();
+  QString oldPath = item->absolutePath();
+
+  // Ask for new name
+  bool ok;
+  QString newName = QInputDialog::getText(
+    this,
+    tr("Rename"),
+    tr("Enter new name:"),
+    QLineEdit::Normal,
+    oldName,
+    &ok
+  );
+
+  if (!ok || newName.isEmpty() || newName == oldName) {
+    return;
+  }
+
+  // Check if new name already exists
+  QString parentPath = QFileInfo(oldPath).path();
+  QString newPath = parentPath + "/" + newName;
+
+  if (QFileInfo::exists(newPath)) {
+    QMessageBox::critical(
+      this,
+      tr("Error"),
+      tr("A file or directory with the name '%1' already exists.").arg(newName)
+    );
+    return;
+  }
+
+  // Rename
+  bool success = false;
+  if (item->isDir()) {
+    QDir dir;
+    success = dir.rename(oldPath, newPath);
+  } else {
+    QFile file;
+    success = file.rename(oldPath, newPath);
+  }
+
+  if (!success) {
+    QMessageBox::critical(
+      this,
+      tr("Error"),
+      tr("Failed to rename '%1' to '%2'.").arg(oldName, newName)
+    );
+    return;
+  }
+
+  // Refresh and move cursor to renamed item
+  QString currentPath = srcPane->currentPath();
+  srcPane->setPath(currentPath);
+
+  // Find and select the renamed item
+  for (int i = 0; i < srcModel->rowCount(); ++i) {
+    const FileItem* renamedItem = srcModel->itemAt(i);
+    if (renamedItem && renamedItem->name() == newName) {
+      srcPane->view()->setCurrentIndex(srcModel->index(i, 0));
+      break;
+    }
+  }
+
+  srcPane->view()->setFocus();
 }
 
 } // namespace Farman
