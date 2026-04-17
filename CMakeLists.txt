@@ -14,6 +14,8 @@ qt_add_executable(farman
   src/ui/MainWindow.cpp
   src/ui/FileListPane.cpp
   src/ui/FileListDelegate.cpp
+  src/ui/FileManagerPanel.cpp
+  src/ui/ViewerPanel.cpp
   src/ui/ProgressDialog.cpp
   src/core/FileItem.cpp
   src/core/workers/WorkerBase.cpp
@@ -43,6 +45,24 @@ target_include_directories(farman PRIVATE
 )
 
 target_link_libraries(farman PRIVATE
+  Qt6::Core
+  Qt6::Widgets
+)
+
+# Test executable for Worker functionality
+qt_add_executable(test_worker
+  src/test_worker.cpp
+  src/core/workers/WorkerBase.cpp
+  src/core/workers/CopyWorker.cpp
+  src/core/workers/MoveWorker.cpp
+  src/ui/ProgressDialog.cpp
+)
+
+target_include_directories(test_worker PRIVATE
+  ${CMAKE_SOURCE_DIR}/src
+)
+
+target_link_libraries(test_worker PRIVATE
   Qt6::Core
   Qt6::Widgets
 )

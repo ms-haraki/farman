@@ -3,11 +3,12 @@
 #include <QMainWindow>
 #include "types.h"
 
-class QSplitter;
+class QStackedWidget;
 
 namespace Farman {
 
-class FileListPane;
+class FileManagerPanel;
+class ViewerPanel;
 
 class MainWindow : public QMainWindow {
   Q_OBJECT
@@ -21,33 +22,17 @@ protected:
   bool eventFilter(QObject* obj, QEvent* event) override;
 
 private slots:
-  void onLeftPaneCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
-  void onRightPaneCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
-  void onLeftFolderButtonClicked();
-  void onRightFolderButtonClicked();
+  void onFileActivated(const QString& filePath);
+  void onPathChanged(const QString& leftPath, const QString& rightPath);
 
 private:
   void setupUi();
-  void loadInitialPath();
-  void handleEnterKey();
-  void handleBackspaceKey();
-  void handleSpaceKey();
-  void handleInsertKey();
-  void handleAsteriskKey();
-  void handleSelectAllKey();
-  void handleTabKey();
-  void togglePaneMode();
+  void showFileManager();
+  void showViewer(const QString& filePath);
 
-  FileListPane* activePane() const;
-  void setActivePane(PaneType pane);
-  void setSinglePaneMode(bool single);
-
-  QSplitter* m_splitter;
-  FileListPane* m_leftPane;
-  FileListPane* m_rightPane;
-
-  PaneType m_activePane;
-  bool m_singlePaneMode;
+  QStackedWidget* m_stack;
+  FileManagerPanel* m_fileManagerPanel;
+  ViewerPanel* m_viewerPanel;
 };
 
 } // namespace Farman
