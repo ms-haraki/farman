@@ -1,8 +1,10 @@
 #pragma once
 
 #include <QMainWindow>
+#include "types.h"
 
 class QTableView;
+class QSplitter;
 
 namespace Farman {
 
@@ -32,10 +34,28 @@ private:
   void handleInsertKey();
   void handleAsteriskKey();
   void handleSelectAllKey();
+  void handleTabKey();
 
-  QTableView* m_tableView;
-  FileListModel* m_model;
-  FileListDelegate* m_delegate;
+  // アクティブペインのビュー/モデル/デリゲートを取得
+  QTableView* activeView() const;
+  FileListModel* activeModel() const;
+  FileListDelegate* activeDelegate() const;
+
+  void setActivePane(PaneType pane);
+
+  QSplitter* m_splitter;
+
+  // 左ペイン
+  QTableView* m_leftView;
+  FileListModel* m_leftModel;
+  FileListDelegate* m_leftDelegate;
+
+  // 右ペイン
+  QTableView* m_rightView;
+  FileListModel* m_rightModel;
+  FileListDelegate* m_rightDelegate;
+
+  PaneType m_activePane;
 };
 
 } // namespace Farman

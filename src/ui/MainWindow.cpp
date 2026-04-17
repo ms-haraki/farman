@@ -5,6 +5,8 @@
 #include <QTableView>
 #include <QHeaderView>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QSplitter>
 #include <QWidget>
 #include <QDir>
 #include <QKeyEvent>
@@ -14,8 +16,14 @@ namespace Farman {
 
 MainWindow::MainWindow(QWidget* parent)
   : QMainWindow(parent)
-  , m_tableView(nullptr)
-  , m_model(nullptr) {
+  , m_splitter(nullptr)
+  , m_leftView(nullptr)
+  , m_leftModel(nullptr)
+  , m_leftDelegate(nullptr)
+  , m_rightView(nullptr)
+  , m_rightModel(nullptr)
+  , m_rightDelegate(nullptr)
+  , m_activePane(PaneType::Left) {
 
   setupUi();
   loadInitialPath();
@@ -25,7 +33,7 @@ MainWindow::~MainWindow() = default;
 
 void MainWindow::setupUi() {
   setWindowTitle("farman - File Manager");
-  resize(800, 600);
+  resize(1200, 600);
 
   // Central widget
   QWidget* central = new QWidget(this);
@@ -34,55 +42,95 @@ void MainWindow::setupUi() {
   QVBoxLayout* layout = new QVBoxLayout(central);
   layout->setContentsMargins(0, 0, 0, 0);
 
-  // Table view
-  m_tableView = new QTableView(this);
-  m_tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-  m_tableView->setSelectionMode(QAbstractItemView::NoSelection);  // QTableView自体の選択機能を無効化
-  m_tableView->setAlternatingRowColors(true);
-  m_tableView->horizontalHeader()->setStretchLastSection(true);
-  m_tableView->verticalHeader()->setVisible(false);
+  // Splitter for two panes
+  m_splitter = new QSplitter(Qt::Horizontal, this);
+  layout->addWidget(m_splitter);
 
-  layout->addWidget(m_tableView);
+  // ===== Left Pane =====
+  m_leftView = new QTableView(this);
+  m_leftView->setSelectionBehavior(QAbstractItemView::SelectRows);
+  m_leftView->setSelectionMode(QAbstractItemView::NoSelection);
+  m_leftView->setAlternatingRowColors(true);
+  m_leftView->horizontalHeader()->setStretchLastSection(true);
+  m_leftView->verticalHeader()->setVisible(false);
 
-  // Model
-  m_model = new FileListModel(this);
-  m_tableView->setModel(m_model);
+  m_leftModel = new FileListModel(this);
+  m_leftView->setModel(m_leftModel);
 
-  // Delegate（カーソル表示のカスタマイズ）
-  m_delegate = new FileListDelegate(this);
-  m_tableView->setItemDelegate(m_delegate);
+  m_leftDelegate = new FileListDelegate(this);
+  m_leftView->setItemDelegate(m_leftDelegate);
 
-  // イベントフィルターをインストール（キー操作をキャッチするため）
-  m_tableView->installEventFilter(this);
+  m_leftView->installEventFilter(this);
 
-  // currentChanged シグナルを接続（カーソル移動時に行全体を再描画）
-  connect(m_tableView->selectionModel(), &QItemSelectionModel::currentChanged,
+  connect(m_leftView->selectionModel(), &QItemSelectionModel::currentChanged,
           this, &MainWindow::onCurrentChanged);
 
-  // カラム幅の調整
-  m_tableView->setColumnWidth(FileListModel::Name, 300);
-  m_tableView->setColumnWidth(FileListModel::Size, 100);
-  m_tableView->setColumnWidth(FileListModel::Type, 80);
-  m_tableView->setColumnWidth(FileListModel::LastModified, 150);
+  m_leftView->setColumnWidth(FileListModel::Name, 250);
+  m_leftView->setColumnWidth(FileListModel::Size, 100);
+  m_leftView->setColumnWidth(FileListModel::Type, 80);
+  m_leftView->setColumnWidth(FileListModel::LastModified, 150);
+
+  m_splitter->addWidget(m_leftView);
+
+  // ===== Right Pane =====
+  m_rightView = new QTableView(this);
+  m_rightView->setSelectionBehavior(QAbstractItemView::SelectRows);
+  m_rightView->setSelectionMode(QAbstractItemView::NoSelection);
+  m_rightView->setAlternatingRowColors(true);
+  m_rightView->horizontalHeader()->setStretchLastSection(true);
+  m_rightView->verticalHeader()->setVisible(false);
+
+  m_rightModel = new FileListModel(this);
+  m_rightView->setModel(m_rightModel);
+
+  m_rightDelegate = new FileListDelegate(this);
+  m_rightView->setItemDelegate(m_rightDelegate);
+
+  m_rightView->installEventFilter(this);
+
+  connect(m_rightView->selectionModel(), &QItemSelectionModel::currentChanged,
+          this, &MainWindow::onCurrentChanged);
+
+  m_rightView->setColumnWidth(FileListModel::Name, 250);
+  m_rightView->setColumnWidth(FileListModel::Size, 100);
+  m_rightView->setColumnWidth(FileListModel::Type, 80);
+  m_rightView->setColumnWidth(FileListModel::LastModified, 150);
+
+  m_splitter->addWidget(m_rightView);
+
+  // Splitterのサイズを均等に
+  m_splitter->setSizes(QList<int>() << 600 << 600);
 }
 
 void MainWindow::loadInitialPath() {
-  // ホームディレクトリから開始
+  // 左ペイン: ホームディレクトリから開始
   QString homePath = QDir::homePath();
-  m_model->setPath(homePath);
-
-  setWindowTitle(QString("farman - %1").arg(homePath));
-
-  // 初期カーソル位置を設定してフォーカス
-  if (m_model->rowCount() > 0) {
-    m_tableView->setCurrentIndex(m_model->index(0, 0));
+  m_leftModel->setPath(homePath);
+  if (m_leftModel->rowCount() > 0) {
+    m_leftView->setCurrentIndex(m_leftModel->index(0, 0));
   }
-  m_tableView->setFocus();
+
+  // 右ペイン: ホームディレクトリから開始
+  m_rightModel->setPath(homePath);
+  if (m_rightModel->rowCount() > 0) {
+    m_rightView->setCurrentIndex(m_rightModel->index(0, 0));
+  }
+
+  // 左ペインをアクティブに
+  setActivePane(PaneType::Left);
+
+  setWindowTitle(QString("farman - L:%1 | R:%2").arg(homePath).arg(homePath));
 }
 
 bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
-  if (obj == m_tableView && event->type() == QEvent::KeyPress) {
+  if ((obj == m_leftView || obj == m_rightView) && event->type() == QEvent::KeyPress) {
     QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+
+    // Tabキーでペイン切り替え
+    if (keyEvent->key() == Qt::Key_Tab) {
+      handleTabKey();
+      return true;
+    }
 
     // Ctrl+A (Windows/Linux) or Cmd+A (Mac) for select all
     if ((keyEvent->modifiers() & Qt::ControlModifier || keyEvent->modifiers() & Qt::MetaModifier)
@@ -91,34 +139,37 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
       return true;
     }
 
+    QTableView* view = activeView();
+    FileListModel* model = activeModel();
+
     switch (keyEvent->key()) {
       case Qt::Key_Up: {
-        QModelIndex current = m_tableView->currentIndex();
+        QModelIndex current = view->currentIndex();
         if (current.isValid() && current.row() > 0) {
-          m_tableView->setCurrentIndex(m_model->index(current.row() - 1, 0));
+          view->setCurrentIndex(model->index(current.row() - 1, 0));
         }
         return true;
       }
 
       case Qt::Key_Down: {
-        QModelIndex current = m_tableView->currentIndex();
-        if (current.isValid() && current.row() < m_model->rowCount() - 1) {
-          m_tableView->setCurrentIndex(m_model->index(current.row() + 1, 0));
+        QModelIndex current = view->currentIndex();
+        if (current.isValid() && current.row() < model->rowCount() - 1) {
+          view->setCurrentIndex(model->index(current.row() + 1, 0));
         }
         return true;
       }
 
       case Qt::Key_Home: {
-        if (m_model->rowCount() > 0) {
-          m_tableView->setCurrentIndex(m_model->index(0, 0));
+        if (model->rowCount() > 0) {
+          view->setCurrentIndex(model->index(0, 0));
         }
         return true;
       }
 
       case Qt::Key_End: {
-        int lastRow = m_model->rowCount() - 1;
+        int lastRow = model->rowCount() - 1;
         if (lastRow >= 0) {
-          m_tableView->setCurrentIndex(m_model->index(lastRow, 0));
+          view->setCurrentIndex(model->index(lastRow, 0));
         }
         return true;
       }
@@ -163,16 +214,26 @@ void MainWindow::onCurrentChanged(const QModelIndex& current, const QModelIndex&
   // これにより下線が全カラムで正しく更新される
   Q_UNUSED(current);
   Q_UNUSED(previous);
-  m_tableView->viewport()->update();
+
+  // どちらのビューからのシグナルかを判定して、そのビューを再描画
+  QObject* senderObj = sender();
+  if (senderObj == m_leftView->selectionModel()) {
+    m_leftView->viewport()->update();
+  } else if (senderObj == m_rightView->selectionModel()) {
+    m_rightView->viewport()->update();
+  }
 }
 
 void MainWindow::handleEnterKey() {
-  QModelIndex currentIndex = m_tableView->currentIndex();
+  QTableView* view = activeView();
+  FileListModel* model = activeModel();
+
+  QModelIndex currentIndex = view->currentIndex();
   if (!currentIndex.isValid()) {
     return;
   }
 
-  const FileItem* item = m_model->itemAt(currentIndex);
+  const FileItem* item = model->itemAt(currentIndex);
   if (!item) {
     return;
   }
@@ -180,12 +241,15 @@ void MainWindow::handleEnterKey() {
   if (item->isDir()) {
     // ディレクトリに入る
     QString newPath = item->absolutePath();
-    if (m_model->setPath(newPath)) {
-      setWindowTitle(QString("farman - %1").arg(newPath));
+    if (model->setPath(newPath)) {
       // カーソルを先頭に移動
-      if (m_model->rowCount() > 0) {
-        m_tableView->setCurrentIndex(m_model->index(0, 0));
+      if (model->rowCount() > 0) {
+        view->setCurrentIndex(model->index(0, 0));
       }
+      // ウィンドウタイトルを更新
+      setWindowTitle(QString("farman - L:%1 | R:%2")
+        .arg(m_leftModel->currentPath())
+        .arg(m_rightModel->currentPath()));
     }
   } else {
     // ファイルの場合は将来ビュアーで開く
@@ -194,7 +258,10 @@ void MainWindow::handleEnterKey() {
 }
 
 void MainWindow::handleBackspaceKey() {
-  QString currentPath = m_model->currentPath();
+  QTableView* view = activeView();
+  FileListModel* model = activeModel();
+
+  QString currentPath = model->currentPath();
   if (currentPath.isEmpty()) {
     return;
   }
@@ -206,56 +273,99 @@ void MainWindow::handleBackspaceKey() {
   }
 
   QString parentPath = dir.absolutePath();
-  if (m_model->setPath(parentPath)) {
-    setWindowTitle(QString("farman - %1").arg(parentPath));
+  if (model->setPath(parentPath)) {
     // カーソルを先頭に移動
-    if (m_model->rowCount() > 0) {
-      m_tableView->setCurrentIndex(m_model->index(0, 0));
+    if (model->rowCount() > 0) {
+      view->setCurrentIndex(model->index(0, 0));
     }
+    // ウィンドウタイトルを更新
+    setWindowTitle(QString("farman - L:%1 | R:%2")
+      .arg(m_leftModel->currentPath())
+      .arg(m_rightModel->currentPath()));
   }
 }
 
 void MainWindow::handleSpaceKey() {
-  QModelIndex currentIndex = m_tableView->currentIndex();
+  QTableView* view = activeView();
+  FileListModel* model = activeModel();
+
+  QModelIndex currentIndex = view->currentIndex();
   if (!currentIndex.isValid()) {
     return;
   }
 
   int row = currentIndex.row();
-  m_model->toggleSelected(row);
+  model->toggleSelected(row);
 
   // カーソルを次の行に移動
   int nextRow = row + 1;
-  if (nextRow < m_model->rowCount()) {
-    QModelIndex nextIndex = m_model->index(nextRow, 0);
-    m_tableView->setCurrentIndex(nextIndex);
+  if (nextRow < model->rowCount()) {
+    QModelIndex nextIndex = model->index(nextRow, 0);
+    view->setCurrentIndex(nextIndex);
   }
 }
 
 void MainWindow::handleInsertKey() {
-  QModelIndex currentIndex = m_tableView->currentIndex();
+  QTableView* view = activeView();
+  FileListModel* model = activeModel();
+
+  QModelIndex currentIndex = view->currentIndex();
   if (!currentIndex.isValid()) {
     return;
   }
 
   int row = currentIndex.row();
-  m_model->toggleSelected(row);
+  model->toggleSelected(row);
 
   // カーソルは移動しない（Space との違い）
 }
 
 void MainWindow::handleAsteriskKey() {
+  FileListModel* model = activeModel();
   // 選択を反転
-  m_model->invertSelection();
+  model->invertSelection();
 }
 
 void MainWindow::handleSelectAllKey() {
+  FileListModel* model = activeModel();
   // 全て選択されている場合は全解除、それ以外は全選択
-  if (m_model->isAllSelected()) {
-    m_model->setSelectedAll(false);
+  if (model->isAllSelected()) {
+    model->setSelectedAll(false);
   } else {
-    m_model->setSelectedAll(true);
+    model->setSelectedAll(true);
   }
+}
+
+void MainWindow::handleTabKey() {
+  // アクティブペインを切り替え
+  if (m_activePane == PaneType::Left) {
+    setActivePane(PaneType::Right);
+  } else {
+    setActivePane(PaneType::Left);
+  }
+}
+
+QTableView* MainWindow::activeView() const {
+  return (m_activePane == PaneType::Left) ? m_leftView : m_rightView;
+}
+
+FileListModel* MainWindow::activeModel() const {
+  return (m_activePane == PaneType::Left) ? m_leftModel : m_rightModel;
+}
+
+FileListDelegate* MainWindow::activeDelegate() const {
+  return (m_activePane == PaneType::Left) ? m_leftDelegate : m_rightDelegate;
+}
+
+void MainWindow::setActivePane(PaneType pane) {
+  m_activePane = pane;
+
+  // アクティブペインにフォーカスを設定
+  QTableView* view = activeView();
+  view->setFocus();
+
+  // 視覚的なフィードバック（将来的に追加予定）
+  // 例: アクティブでないペインを少し暗くするなど
 }
 
 } // namespace Farman
