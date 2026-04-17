@@ -14,6 +14,7 @@ qt_add_executable(farman
   src/ui/MainWindow.cpp
   src/ui/FileListPane.cpp
   src/ui/FileListDelegate.cpp
+  src/ui/ProgressDialog.cpp
   src/core/FileItem.cpp
   src/core/workers/WorkerBase.cpp
   src/core/workers/CopyWorker.cpp
@@ -21,9 +22,19 @@ qt_add_executable(farman
   src/core/workers/RemoveWorker.cpp
   src/model/FileListModel.cpp
   src/viewer/ViewerDispatcher.cpp
+  src/viewer/TextViewerWindow.cpp
+  src/viewer/ImageViewerWindow.cpp
+  src/viewer/TextViewerPlugin.cpp
+  src/viewer/ImageViewerPlugin.cpp
   src/keybinding/ICommand.cpp
   src/keybinding/CommandRegistry.cpp
   src/keybinding/KeyBindingManager.cpp
+  src/keybinding/commands/BaseCommand.cpp
+  src/keybinding/commands/NavigationCommands.cpp
+  src/keybinding/commands/SelectionCommands.cpp
+  src/keybinding/commands/PaneCommands.cpp
+  src/keybinding/commands/FileOperationCommands.cpp
+  src/keybinding/commands/ApplicationCommands.cpp
   src/settings/Settings.cpp
 )
 

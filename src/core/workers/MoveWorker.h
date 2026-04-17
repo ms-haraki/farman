@@ -18,6 +18,10 @@ protected:
   void run() override;
 
 private:
+  bool moveEntry(const QString& src, const QString& dst);
+  bool copyDirectory(const QString& src, const QString& dst);
+  bool removeDirectory(const QString& path);
+
   QStringList m_srcPaths;
   QString     m_dstDir;
 };

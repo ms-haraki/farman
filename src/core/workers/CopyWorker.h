@@ -19,6 +19,8 @@ protected:
 
 private:
   bool copyEntry(const QString& src, const QString& dst);
+  bool copyFile(const QString& src, const QString& dst);
+  bool copyDirectory(const QString& src, const QString& dst);
 
   QStringList m_srcPaths;
   QString     m_dstDir;

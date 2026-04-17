@@ -18,6 +18,9 @@ protected:
   void run() override;
 
 private:
+  bool removeEntry(const QString& path);
+  bool removeDirectory(const QString& path);
+
   QStringList m_paths;
   bool        m_toTrash;
 };

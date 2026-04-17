@@ -2,6 +2,7 @@
 #include "FileListPane.h"
 #include "model/FileListModel.h"
 #include "core/FileItem.h"
+#include "viewer/ViewerDispatcher.h"
 #include <QTableView>
 #include <QVBoxLayout>
 #include <QSplitter>
@@ -242,8 +243,9 @@ void MainWindow::handleEnterKey() {
         .arg(m_rightPane->currentPath()));
     }
   } else {
-    // ファイルの場合は将来ビュアーで開く
-    // TODO: ViewerDispatcher を使ってファイルを開く
+    // ファイルの場合はビュアーで開く
+    QString filePath = item->absolutePath();
+    ViewerDispatcher::instance().createViewer(filePath, this);
   }
 }
 
