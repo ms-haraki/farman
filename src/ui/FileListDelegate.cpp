@@ -23,9 +23,9 @@ void FileListDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
   QStyledItemDelegate::paint(painter, opt, index);
 
   // カレントアイテム（カーソル）の場合は下線を描画
-  // 最初のカラムでのみ描画して、行全体の幅で線を引く
+  // 全てのカラムで、各カラムの範囲内に下線を描画
   const QAbstractItemView* view = qobject_cast<const QAbstractItemView*>(option.widget);
-  if (view && index.column() == 0) {
+  if (view) {
     QModelIndex currentIndex = view->currentIndex();
     if (currentIndex.isValid() && currentIndex.row() == index.row()) {
       painter->save();
@@ -35,10 +35,10 @@ void FileListDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
       pen.setWidth(2);
       painter->setPen(pen);
 
-      // 行の下部に、ビューポート全体の幅で線を描画
+      // このカラムの範囲で下線を描画
       int y = option.rect.bottom();
-      int left = 0;
-      int right = view->width();
+      int left = option.rect.left();
+      int right = option.rect.right();
       painter->drawLine(left, y, right, y);
 
       painter->restore();
