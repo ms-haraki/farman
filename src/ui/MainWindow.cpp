@@ -9,6 +9,9 @@
 #include <QSplitter>
 #include <QWidget>
 #include <QLabel>
+#include <QToolButton>
+#include <QFileDialog>
+#include <QStyle>
 #include <QDir>
 #include <QKeyEvent>
 #include <QEvent>
@@ -19,10 +22,12 @@ MainWindow::MainWindow(QWidget* parent)
   : QMainWindow(parent)
   , m_splitter(nullptr)
   , m_leftPathLabel(nullptr)
+  , m_leftFolderButton(nullptr)
   , m_leftView(nullptr)
   , m_leftModel(nullptr)
   , m_leftDelegate(nullptr)
   , m_rightPathLabel(nullptr)
+  , m_rightFolderButton(nullptr)
   , m_rightView(nullptr)
   , m_rightModel(nullptr)
   , m_rightDelegate(nullptr)
@@ -56,9 +61,24 @@ void MainWindow::setupUi() {
   leftLayout->setContentsMargins(0, 0, 0, 0);
   leftLayout->setSpacing(2);
 
+  // パスラベルとフォルダボタンを横並びに配置
+  QWidget* leftPathWidget = new QWidget(this);
+  QHBoxLayout* leftPathLayout = new QHBoxLayout(leftPathWidget);
+  leftPathLayout->setContentsMargins(0, 0, 0, 0);
+  leftPathLayout->setSpacing(0);
+
   m_leftPathLabel = new QLabel(this);
   m_leftPathLabel->setStyleSheet("QLabel { background-color: #e0e0e0; padding: 2px 5px; }");
-  leftLayout->addWidget(m_leftPathLabel);
+  leftPathLayout->addWidget(m_leftPathLabel, 1);  // stretch factor 1
+
+  m_leftFolderButton = new QToolButton(this);
+  m_leftFolderButton->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
+  m_leftFolderButton->setToolTip(tr("Browse folder..."));
+  m_leftFolderButton->setStyleSheet("QToolButton { background-color: #e0e0e0; border: none; padding: 2px; }");
+  connect(m_leftFolderButton, &QToolButton::clicked, this, &MainWindow::onLeftFolderButtonClicked);
+  leftPathLayout->addWidget(m_leftFolderButton);
+
+  leftLayout->addWidget(leftPathWidget);
 
   m_leftView = new QTableView(this);
   m_leftView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -92,9 +112,24 @@ void MainWindow::setupUi() {
   rightLayout->setContentsMargins(0, 0, 0, 0);
   rightLayout->setSpacing(2);
 
+  // パスラベルとフォルダボタンを横並びに配置
+  QWidget* rightPathWidget = new QWidget(this);
+  QHBoxLayout* rightPathLayout = new QHBoxLayout(rightPathWidget);
+  rightPathLayout->setContentsMargins(0, 0, 0, 0);
+  rightPathLayout->setSpacing(0);
+
   m_rightPathLabel = new QLabel(this);
   m_rightPathLabel->setStyleSheet("QLabel { background-color: #e0e0e0; padding: 2px 5px; }");
-  rightLayout->addWidget(m_rightPathLabel);
+  rightPathLayout->addWidget(m_rightPathLabel, 1);  // stretch factor 1
+
+  m_rightFolderButton = new QToolButton(this);
+  m_rightFolderButton->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
+  m_rightFolderButton->setToolTip(tr("Browse folder..."));
+  m_rightFolderButton->setStyleSheet("QToolButton { background-color: #e0e0e0; border: none; padding: 2px; }");
+  connect(m_rightFolderButton, &QToolButton::clicked, this, &MainWindow::onRightFolderButtonClicked);
+  rightPathLayout->addWidget(m_rightFolderButton);
+
+  rightLayout->addWidget(rightPathWidget);
 
   m_rightView = new QTableView(this);
   m_rightView->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -454,6 +489,54 @@ void MainWindow::setActivePane(PaneType pane) {
 void MainWindow::updatePathLabels() {
   m_leftPathLabel->setText(m_leftModel->currentPath());
   m_rightPathLabel->setText(m_rightModel->currentPath());
+}
+
+void MainWindow::onLeftFolderButtonClicked() {
+  QString currentPath = m_leftModel->currentPath();
+  QString selectedPath = QFileDialog::getExistingDirectory(
+    this,
+    tr("Select Folder"),
+    currentPath,
+    QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
+  );
+
+  if (!selectedPath.isEmpty() && selectedPath != currentPath) {
+    if (m_leftModel->setPath(selectedPath)) {
+      // カーソルを先頭に移動
+      if (m_leftModel->rowCount() > 0) {
+        m_leftView->setCurrentIndex(m_leftModel->index(0, 0));
+      }
+      // パスラベルとウィンドウタイトルを更新
+      updatePathLabels();
+      setWindowTitle(QString("farman - L:%1 | R:%2")
+        .arg(m_leftModel->currentPath())
+        .arg(m_rightModel->currentPath()));
+    }
+  }
+}
+
+void MainWindow::onRightFolderButtonClicked() {
+  QString currentPath = m_rightModel->currentPath();
+  QString selectedPath = QFileDialog::getExistingDirectory(
+    this,
+    tr("Select Folder"),
+    currentPath,
+    QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
+  );
+
+  if (!selectedPath.isEmpty() && selectedPath != currentPath) {
+    if (m_rightModel->setPath(selectedPath)) {
+      // カーソルを先頭に移動
+      if (m_rightModel->rowCount() > 0) {
+        m_rightView->setCurrentIndex(m_rightModel->index(0, 0));
+      }
+      // パスラベルとウィンドウタイトルを更新
+      updatePathLabels();
+      setWindowTitle(QString("farman - L:%1 | R:%2")
+        .arg(m_leftModel->currentPath())
+        .arg(m_rightModel->currentPath()));
+    }
+  }
 }
 
 } // namespace Farman

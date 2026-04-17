@@ -6,6 +6,7 @@
 class QTableView;
 class QSplitter;
 class QLabel;
+class QToolButton;
 
 namespace Farman {
 
@@ -25,6 +26,8 @@ protected:
 
 private slots:
   void onCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
+  void onLeftFolderButtonClicked();
+  void onRightFolderButtonClicked();
 
 private:
   void setupUi();
@@ -50,12 +53,14 @@ private:
 
   // 左ペイン
   QLabel* m_leftPathLabel;
+  QToolButton* m_leftFolderButton;
   QTableView* m_leftView;
   FileListModel* m_leftModel;
   FileListDelegate* m_leftDelegate;
 
   // 右ペイン
   QLabel* m_rightPathLabel;
+  QToolButton* m_rightFolderButton;
   QTableView* m_rightView;
   FileListModel* m_rightModel;
   FileListDelegate* m_rightDelegate;
