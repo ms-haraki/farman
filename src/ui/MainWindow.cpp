@@ -8,6 +8,7 @@
 #include <QHBoxLayout>
 #include <QSplitter>
 #include <QWidget>
+#include <QLabel>
 #include <QDir>
 #include <QKeyEvent>
 #include <QEvent>
@@ -17,9 +18,11 @@ namespace Farman {
 MainWindow::MainWindow(QWidget* parent)
   : QMainWindow(parent)
   , m_splitter(nullptr)
+  , m_leftPathLabel(nullptr)
   , m_leftView(nullptr)
   , m_leftModel(nullptr)
   , m_leftDelegate(nullptr)
+  , m_rightPathLabel(nullptr)
   , m_rightView(nullptr)
   , m_rightModel(nullptr)
   , m_rightDelegate(nullptr)
@@ -48,6 +51,15 @@ void MainWindow::setupUi() {
   layout->addWidget(m_splitter);
 
   // ===== Left Pane =====
+  QWidget* leftPane = new QWidget(this);
+  QVBoxLayout* leftLayout = new QVBoxLayout(leftPane);
+  leftLayout->setContentsMargins(0, 0, 0, 0);
+  leftLayout->setSpacing(2);
+
+  m_leftPathLabel = new QLabel(this);
+  m_leftPathLabel->setStyleSheet("QLabel { background-color: #e0e0e0; padding: 2px 5px; }");
+  leftLayout->addWidget(m_leftPathLabel);
+
   m_leftView = new QTableView(this);
   m_leftView->setSelectionBehavior(QAbstractItemView::SelectRows);
   m_leftView->setSelectionMode(QAbstractItemView::NoSelection);
@@ -71,9 +83,19 @@ void MainWindow::setupUi() {
   m_leftView->setColumnWidth(FileListModel::Type, 80);
   m_leftView->setColumnWidth(FileListModel::LastModified, 150);
 
-  m_splitter->addWidget(m_leftView);
+  leftLayout->addWidget(m_leftView);
+  m_splitter->addWidget(leftPane);
 
   // ===== Right Pane =====
+  QWidget* rightPane = new QWidget(this);
+  QVBoxLayout* rightLayout = new QVBoxLayout(rightPane);
+  rightLayout->setContentsMargins(0, 0, 0, 0);
+  rightLayout->setSpacing(2);
+
+  m_rightPathLabel = new QLabel(this);
+  m_rightPathLabel->setStyleSheet("QLabel { background-color: #e0e0e0; padding: 2px 5px; }");
+  rightLayout->addWidget(m_rightPathLabel);
+
   m_rightView = new QTableView(this);
   m_rightView->setSelectionBehavior(QAbstractItemView::SelectRows);
   m_rightView->setSelectionMode(QAbstractItemView::NoSelection);
@@ -97,7 +119,8 @@ void MainWindow::setupUi() {
   m_rightView->setColumnWidth(FileListModel::Type, 80);
   m_rightView->setColumnWidth(FileListModel::LastModified, 150);
 
-  m_splitter->addWidget(m_rightView);
+  rightLayout->addWidget(m_rightView);
+  m_splitter->addWidget(rightPane);
 
   // Splitterのサイズを均等に
   m_splitter->setSizes(QList<int>() << 600 << 600);
@@ -119,6 +142,9 @@ void MainWindow::loadInitialPath() {
 
   // 左ペインをアクティブに
   setActivePane(PaneType::Left);
+
+  // パスラベルを更新
+  updatePathLabels();
 
   setWindowTitle(QString("farman - L:%1 | R:%2").arg(homePath).arg(homePath));
 }
@@ -266,7 +292,8 @@ void MainWindow::handleEnterKey() {
       if (model->rowCount() > 0) {
         view->setCurrentIndex(model->index(0, 0));
       }
-      // ウィンドウタイトルを更新
+      // パスラベルとウィンドウタイトルを更新
+      updatePathLabels();
       setWindowTitle(QString("farman - L:%1 | R:%2")
         .arg(m_leftModel->currentPath())
         .arg(m_rightModel->currentPath()));
@@ -298,7 +325,8 @@ void MainWindow::handleBackspaceKey() {
     if (model->rowCount() > 0) {
       view->setCurrentIndex(model->index(0, 0));
     }
-    // ウィンドウタイトルを更新
+    // パスラベルとウィンドウタイトルを更新
+    updatePathLabels();
     setWindowTitle(QString("farman - L:%1 | R:%2")
       .arg(m_leftModel->currentPath())
       .arg(m_rightModel->currentPath()));
@@ -421,6 +449,11 @@ void MainWindow::setActivePane(PaneType pane) {
   // アクティブペインにフォーカスを設定
   QTableView* view = activeView();
   view->setFocus();
+}
+
+void MainWindow::updatePathLabels() {
+  m_leftPathLabel->setText(m_leftModel->currentPath());
+  m_rightPathLabel->setText(m_rightModel->currentPath());
 }
 
 } // namespace Farman

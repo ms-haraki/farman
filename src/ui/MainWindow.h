@@ -5,6 +5,7 @@
 
 class QTableView;
 class QSplitter;
+class QLabel;
 
 namespace Farman {
 
@@ -48,17 +49,21 @@ private:
   QSplitter* m_splitter;
 
   // 左ペイン
+  QLabel* m_leftPathLabel;
   QTableView* m_leftView;
   FileListModel* m_leftModel;
   FileListDelegate* m_leftDelegate;
 
   // 右ペイン
+  QLabel* m_rightPathLabel;
   QTableView* m_rightView;
   FileListModel* m_rightModel;
   FileListDelegate* m_rightDelegate;
 
   PaneType m_activePane;
   bool m_singlePaneMode;
+
+  void updatePathLabels();
 };
 
 } // namespace Farman
