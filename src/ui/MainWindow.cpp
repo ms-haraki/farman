@@ -23,7 +23,8 @@ MainWindow::MainWindow(QWidget* parent)
   , m_rightView(nullptr)
   , m_rightModel(nullptr)
   , m_rightDelegate(nullptr)
-  , m_activePane(PaneType::Left) {
+  , m_activePane(PaneType::Left)
+  , m_singlePaneMode(false) {
 
   setupUi();
   loadInitialPath();
@@ -126,20 +127,29 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
   if ((obj == m_leftView || obj == m_rightView) && event->type() == QEvent::KeyPress) {
     QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
 
-    // Tabキーでペイン切り替え
-    if (keyEvent->key() == Qt::Key_Tab) {
+    // Ctrl+U (Windows/Linux) or Cmd+U (Mac) で1ペイン/2ペイン切り替え
+    if ((keyEvent->modifiers() & Qt::ControlModifier || keyEvent->modifiers() & Qt::MetaModifier)
+        && keyEvent->key() == Qt::Key_U) {
+      togglePaneMode();
+      return true;
+    }
+
+    // Tabキーでペイン切り替え（2ペイン表示時のみ）
+    if (keyEvent->key() == Qt::Key_Tab && !m_singlePaneMode) {
       handleTabKey();
       return true;
     }
 
-    // 左ペインで→キー、または右ペインで←キーでペイン切り替え
-    if (keyEvent->key() == Qt::Key_Right && m_activePane == PaneType::Left) {
-      setActivePane(PaneType::Right);
-      return true;
-    }
-    if (keyEvent->key() == Qt::Key_Left && m_activePane == PaneType::Right) {
-      setActivePane(PaneType::Left);
-      return true;
+    // 左ペインで→キー、または右ペインで←キーでペイン切り替え（2ペイン表示時のみ）
+    if (!m_singlePaneMode) {
+      if (keyEvent->key() == Qt::Key_Right && m_activePane == PaneType::Left) {
+        setActivePane(PaneType::Right);
+        return true;
+      }
+      if (keyEvent->key() == Qt::Key_Left && m_activePane == PaneType::Right) {
+        setActivePane(PaneType::Left);
+        return true;
+      }
     }
 
     // Ctrl+A (Windows/Linux) or Cmd+A (Mac) for select all
@@ -347,11 +357,36 @@ void MainWindow::handleSelectAllKey() {
 }
 
 void MainWindow::handleTabKey() {
-  // アクティブペインを切り替え
-  if (m_activePane == PaneType::Left) {
-    setActivePane(PaneType::Right);
+  // アクティブペインを切り替え（2ペイン表示時のみ）
+  if (!m_singlePaneMode) {
+    if (m_activePane == PaneType::Left) {
+      setActivePane(PaneType::Right);
+    } else {
+      setActivePane(PaneType::Left);
+    }
+  }
+}
+
+void MainWindow::togglePaneMode() {
+  setSinglePaneMode(!m_singlePaneMode);
+}
+
+void MainWindow::setSinglePaneMode(bool single) {
+  m_singlePaneMode = single;
+
+  if (single) {
+    // 1ペインモード: 非アクティブなペインを非表示
+    if (m_activePane == PaneType::Left) {
+      m_rightView->hide();
+      m_leftView->show();
+    } else {
+      m_leftView->hide();
+      m_rightView->show();
+    }
   } else {
-    setActivePane(PaneType::Left);
+    // 2ペインモード: 両方のペインを表示
+    m_leftView->show();
+    m_rightView->show();
   }
 }
 

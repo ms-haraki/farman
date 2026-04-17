@@ -35,6 +35,7 @@ private:
   void handleAsteriskKey();
   void handleSelectAllKey();
   void handleTabKey();
+  void togglePaneMode();
 
   // アクティブペインのビュー/モデル/デリゲートを取得
   QTableView* activeView() const;
@@ -42,6 +43,7 @@ private:
   FileListDelegate* activeDelegate() const;
 
   void setActivePane(PaneType pane);
+  void setSinglePaneMode(bool single);
 
   QSplitter* m_splitter;
 
@@ -56,6 +58,7 @@ private:
   FileListDelegate* m_rightDelegate;
 
   PaneType m_activePane;
+  bool m_singlePaneMode;
 };
 
 } // namespace Farman
