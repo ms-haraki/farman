@@ -159,22 +159,11 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
 }
 
 void MainWindow::onCurrentChanged(const QModelIndex& current, const QModelIndex& previous) {
-  // カーソル位置が変わったので、旧行と新行の両方を再描画
+  // カーソル位置が変わったので、ビューポート全体を再描画
   // これにより下線が全カラムで正しく更新される
-  if (previous.isValid()) {
-    // 旧行の全カラムを更新
-    for (int col = 0; col < m_model->columnCount(); ++col) {
-      QModelIndex idx = m_model->index(previous.row(), col);
-      m_tableView->update(m_tableView->visualRect(idx));
-    }
-  }
-  if (current.isValid()) {
-    // 新行の全カラムを更新
-    for (int col = 0; col < m_model->columnCount(); ++col) {
-      QModelIndex idx = m_model->index(current.row(), col);
-      m_tableView->update(m_tableView->visualRect(idx));
-    }
-  }
+  Q_UNUSED(current);
+  Q_UNUSED(previous);
+  m_tableView->viewport()->update();
 }
 
 void MainWindow::handleEnterKey() {
