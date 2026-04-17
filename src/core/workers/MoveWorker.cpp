@@ -114,8 +114,7 @@ bool MoveWorker::moveEntry(const QString& src, const QString& dst) {
       return false;
     }
   } else {
-    if (!QFile::copy(src, dst)) {
-      emit errorOccurred(src, "Failed to copy file");
+    if (!copyFile(src, dst)) {
       return false;
     }
     if (!QFile::remove(src)) {
@@ -123,6 +122,74 @@ bool MoveWorker::moveEntry(const QString& src, const QString& dst) {
       return false;
     }
   }
+
+  return true;
+}
+
+bool MoveWorker::copyFile(const QString& src, const QString& dst) {
+  if (isCancelled()) {
+    return false;
+  }
+
+  // Open source file
+  QFile srcFile(src);
+  if (!srcFile.open(QIODevice::ReadOnly)) {
+    emit errorOccurred(src, "Failed to open source file");
+    return false;
+  }
+
+  // Open destination file
+  QFile dstFile(dst);
+  if (!dstFile.open(QIODevice::WriteOnly)) {
+    emit errorOccurred(dst, "Failed to create destination file");
+    srcFile.close();
+    return false;
+  }
+
+  // Copy in chunks for cancelability and progress reporting
+  const qint64 CHUNK_SIZE = 1024 * 1024; // 1MB chunks
+  qint64 totalSize = srcFile.size();
+  qint64 bytesCopied = 0;
+
+  while (!srcFile.atEnd()) {
+    if (isCancelled()) {
+      srcFile.close();
+      dstFile.close();
+      QFile::remove(dst); // Remove incomplete file
+      return false;
+    }
+
+    QByteArray chunk = srcFile.read(CHUNK_SIZE);
+    if (chunk.isEmpty()) {
+      break;
+    }
+
+    qint64 bytesWritten = dstFile.write(chunk);
+    if (bytesWritten != chunk.size()) {
+      emit errorOccurred(dst, "Failed to write to destination file");
+      srcFile.close();
+      dstFile.close();
+      QFile::remove(dst);
+      return false;
+    }
+
+    bytesCopied += bytesWritten;
+
+    // Report byte-level progress
+    WorkerProgress progress;
+    progress.currentFile = src;
+    progress.processed = bytesCopied;
+    progress.total = totalSize;
+    progress.filesDone = 0;
+    progress.filesTotal = 0;
+    emit progressUpdated(progress);
+  }
+
+  srcFile.close();
+  dstFile.close();
+
+  // Preserve file permissions
+  QFile::setPermissions(dst, QFile::permissions(src));
 
   return true;
 }
@@ -170,8 +237,7 @@ bool MoveWorker::copyDirectory(const QString& src, const QString& dst) {
         success = false;
       }
     } else {
-      if (!QFile::copy(srcPath, dstPath)) {
-        emit errorOccurred(srcPath, "Failed to copy file");
+      if (!copyFile(srcPath, dstPath)) {
         success = false;
       }
     }

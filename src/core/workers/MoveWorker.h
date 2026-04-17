@@ -19,6 +19,7 @@ protected:
 
 private:
   bool moveEntry(const QString& src, const QString& dst);
+  bool copyFile(const QString& src, const QString& dst);
   bool copyDirectory(const QString& src, const QString& dst);
   bool removeDirectory(const QString& path);
 
