@@ -55,6 +55,10 @@ void MainWindow::setupUi() {
   // イベントフィルターをインストール（キー操作をキャッチするため）
   m_tableView->installEventFilter(this);
 
+  // currentChanged シグナルを接続（カーソル移動時に行全体を再描画）
+  connect(m_tableView->selectionModel(), &QItemSelectionModel::currentChanged,
+          this, &MainWindow::onCurrentChanged);
+
   // カラム幅の調整
   m_tableView->setColumnWidth(FileListModel::Name, 300);
   m_tableView->setColumnWidth(FileListModel::Size, 100);
@@ -152,6 +156,25 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
   // このメソッドはMainWindowがフォーカスを持つ場合のみ
   // 通常はeventFilterで処理される
   QMainWindow::keyPressEvent(event);
+}
+
+void MainWindow::onCurrentChanged(const QModelIndex& current, const QModelIndex& previous) {
+  // カーソル位置が変わったので、旧行と新行の両方を再描画
+  // これにより下線が全カラムで正しく更新される
+  if (previous.isValid()) {
+    // 旧行の全カラムを更新
+    for (int col = 0; col < m_model->columnCount(); ++col) {
+      QModelIndex idx = m_model->index(previous.row(), col);
+      m_tableView->update(m_tableView->visualRect(idx));
+    }
+  }
+  if (current.isValid()) {
+    // 新行の全カラムを更新
+    for (int col = 0; col < m_model->columnCount(); ++col) {
+      QModelIndex idx = m_model->index(current.row(), col);
+      m_tableView->update(m_tableView->visualRect(idx));
+    }
+  }
 }
 
 void MainWindow::handleEnterKey() {
