@@ -3,15 +3,11 @@
 #include <QMainWindow>
 #include "types.h"
 
-class QTableView;
 class QSplitter;
-class QLabel;
-class QToolButton;
 
 namespace Farman {
 
-class FileListModel;
-class FileListDelegate;
+class FileListPane;
 
 class MainWindow : public QMainWindow {
   Q_OBJECT
@@ -25,7 +21,8 @@ protected:
   bool eventFilter(QObject* obj, QEvent* event) override;
 
 private slots:
-  void onCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
+  void onLeftPaneCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
+  void onRightPaneCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
   void onLeftFolderButtonClicked();
   void onRightFolderButtonClicked();
 
@@ -41,34 +38,16 @@ private:
   void handleTabKey();
   void togglePaneMode();
 
-  // アクティブペインのビュー/モデル/デリゲートを取得
-  QTableView* activeView() const;
-  FileListModel* activeModel() const;
-  FileListDelegate* activeDelegate() const;
-
+  FileListPane* activePane() const;
   void setActivePane(PaneType pane);
   void setSinglePaneMode(bool single);
 
   QSplitter* m_splitter;
-
-  // 左ペイン
-  QLabel* m_leftPathLabel;
-  QToolButton* m_leftFolderButton;
-  QTableView* m_leftView;
-  FileListModel* m_leftModel;
-  FileListDelegate* m_leftDelegate;
-
-  // 右ペイン
-  QLabel* m_rightPathLabel;
-  QToolButton* m_rightFolderButton;
-  QTableView* m_rightView;
-  FileListModel* m_rightModel;
-  FileListDelegate* m_rightDelegate;
+  FileListPane* m_leftPane;
+  FileListPane* m_rightPane;
 
   PaneType m_activePane;
   bool m_singlePaneMode;
-
-  void updatePathLabels();
 };
 
 } // namespace Farman
