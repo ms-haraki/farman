@@ -2,6 +2,9 @@
 
 #include <QMainWindow>
 #include "types.h"
+#include "../settings/Settings.h"
+#include "../keybinding/CommandRegistry.h"
+#include "../keybinding/KeyBindingManager.h"
 
 class QStackedWidget;
 
@@ -29,6 +32,7 @@ private:
   void setupUi();
   void showFileManager();
   void showViewer(const QString& filePath);
+  void registerCommands();
 
   QStackedWidget* m_stack;
   FileManagerPanel* m_fileManagerPanel;

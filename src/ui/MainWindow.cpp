@@ -2,10 +2,12 @@
 #include "FileManagerPanel.h"
 #include "FileListPane.h"
 #include "ViewerPanel.h"
+#include "../keybinding/ICommand.h"
 #include <QStackedWidget>
 #include <QVBoxLayout>
 #include <QKeyEvent>
 #include <QTableView>
+#include <QApplication>
 
 namespace Farman {
 
@@ -16,6 +18,15 @@ MainWindow::MainWindow(QWidget* parent)
   , m_viewerPanel(nullptr) {
 
   setupUi();
+
+  // Load settings
+  Settings::instance().load();
+
+  // Register commands
+  registerCommands();
+
+  // Load keybindings
+  KeyBindingManager::instance().loadFromSettings();
 
   // Show file manager and load initial path
   m_stack->setCurrentWidget(m_fileManagerPanel);
@@ -81,6 +92,18 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
     if (m_stack->currentWidget() == m_fileManagerPanel) {
       if (obj == m_fileManagerPanel->leftPane()->view() ||
           obj == m_fileManagerPanel->rightPane()->view()) {
+        // Try to route through KeyBindingManager first
+        QKeySequence keySeq(keyEvent->key() | keyEvent->modifiers());
+        QString commandId = KeyBindingManager::instance().commandFor(keySeq);
+
+        if (!commandId.isEmpty()) {
+          // Execute the command through the registry
+          if (CommandRegistry::instance().execute(commandId)) {
+            return true;
+          }
+        }
+
+        // Fall back to FileManagerPanel's handleKeyEvent for unbound keys
         return m_fileManagerPanel->handleKeyEvent(keyEvent);
       }
     }
@@ -119,6 +142,229 @@ void MainWindow::onPathChanged(const QString& leftPath, const QString& rightPath
   setWindowTitle(QString("farman - L:%1 | R:%2")
     .arg(leftPath)
     .arg(rightPath));
+}
+
+void MainWindow::registerCommands() {
+  auto& registry = CommandRegistry::instance();
+
+  // Navigation commands
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "navigate.up",
+    "Navigate Up",
+    [this]() {
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_Up, Qt::NoModifier);
+      m_fileManagerPanel->handleKeyEvent(&event);
+    },
+    "navigation"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "navigate.down",
+    "Navigate Down",
+    [this]() {
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_Down, Qt::NoModifier);
+      m_fileManagerPanel->handleKeyEvent(&event);
+    },
+    "navigation"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "navigate.left",
+    "Navigate Left",
+    [this]() {
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_Left, Qt::NoModifier);
+      m_fileManagerPanel->handleKeyEvent(&event);
+    },
+    "navigation"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "navigate.right",
+    "Navigate Right",
+    [this]() {
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_Right, Qt::NoModifier);
+      m_fileManagerPanel->handleKeyEvent(&event);
+    },
+    "navigation"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "navigate.home",
+    "Navigate Home",
+    [this]() {
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_Home, Qt::NoModifier);
+      m_fileManagerPanel->handleKeyEvent(&event);
+    },
+    "navigation"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "navigate.end",
+    "Navigate End",
+    [this]() {
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_End, Qt::NoModifier);
+      m_fileManagerPanel->handleKeyEvent(&event);
+    },
+    "navigation"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "navigate.pageup",
+    "Navigate Page Up",
+    [this]() {
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_PageUp, Qt::NoModifier);
+      m_fileManagerPanel->handleKeyEvent(&event);
+    },
+    "navigation"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "navigate.pagedown",
+    "Navigate Page Down",
+    [this]() {
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_PageDown, Qt::NoModifier);
+      m_fileManagerPanel->handleKeyEvent(&event);
+    },
+    "navigation"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "navigate.enter",
+    "Enter Directory or Open File",
+    [this]() {
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+      m_fileManagerPanel->handleKeyEvent(&event);
+    },
+    "navigation"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "navigate.parent",
+    "Navigate to Parent Directory",
+    [this]() {
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_Backspace, Qt::NoModifier);
+      m_fileManagerPanel->handleKeyEvent(&event);
+    },
+    "navigation"
+  ));
+
+  // Selection commands
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "select.toggle",
+    "Toggle Selection",
+    [this]() {
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_Space, Qt::NoModifier);
+      m_fileManagerPanel->handleKeyEvent(&event);
+    },
+    "selection"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "select.toggle_and_down",
+    "Toggle Selection and Move Down",
+    [this]() {
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_Insert, Qt::NoModifier);
+      m_fileManagerPanel->handleKeyEvent(&event);
+    },
+    "selection"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "select.invert",
+    "Invert Selection",
+    [this]() {
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_Asterisk, Qt::NoModifier);
+      m_fileManagerPanel->handleKeyEvent(&event);
+    },
+    "selection"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "select.all",
+    "Select All",
+    [this]() {
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_A, Qt::ControlModifier);
+      m_fileManagerPanel->handleKeyEvent(&event);
+    },
+    "selection"
+  ));
+
+  // Pane commands
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "pane.switch",
+    "Switch Pane",
+    [this]() {
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_Tab, Qt::NoModifier);
+      m_fileManagerPanel->handleKeyEvent(&event);
+    },
+    "pane"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "pane.toggle_single",
+    "Toggle Single Pane Mode",
+    [this]() {
+      m_fileManagerPanel->togglePaneMode();
+    },
+    "pane"
+  ));
+
+  // File operation commands
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "file.copy",
+    "Copy",
+    [this]() {
+      m_fileManagerPanel->copySelectedFiles();
+    },
+    "file"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "file.move",
+    "Move",
+    [this]() {
+      m_fileManagerPanel->moveSelectedFiles();
+    },
+    "file"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "file.delete",
+    "Delete",
+    [this]() {
+      m_fileManagerPanel->deleteSelectedFiles();
+    },
+    "file"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "file.mkdir",
+    "Make Directory",
+    [this]() {
+      m_fileManagerPanel->createDirectory();
+    },
+    "file"
+  ));
+
+  // Application commands
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "app.quit",
+    "Quit",
+    [this]() {
+      QApplication::quit();
+    },
+    "application"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "view.file",
+    "View File",
+    [this]() {
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+      m_fileManagerPanel->handleKeyEvent(&event);
+    },
+    "view"
+  ));
 }
 
 } // namespace Farman
