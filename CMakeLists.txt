@@ -17,6 +17,10 @@ qt_add_executable(farman
   src/ui/FileManagerPanel.cpp
   src/ui/ViewerPanel.cpp
   src/ui/ProgressDialog.cpp
+  src/ui/SettingsDialog.cpp
+  src/ui/KeybindingTab.cpp
+  src/ui/AppearanceTab.cpp
+  src/ui/BehaviorTab.cpp
   src/core/FileItem.cpp
   src/core/workers/WorkerBase.cpp
   src/core/workers/CopyWorker.cpp

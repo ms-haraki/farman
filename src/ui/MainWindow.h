@@ -27,11 +27,13 @@ protected:
 private slots:
   void onFileActivated(const QString& filePath);
   void onPathChanged(const QString& leftPath, const QString& rightPath);
+  void onSettingsChanged();
 
 private:
   void setupUi();
   void showFileManager();
   void showViewer(const QString& filePath);
+  void showSettingsDialog();
   void registerCommands();
 
   QStackedWidget* m_stack;

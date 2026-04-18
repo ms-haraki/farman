@@ -99,6 +99,7 @@ void KeyBindingManager::loadDefaults() {
   bind(QKeySequence(Qt::Key_F3),        "view.file");
 
   // Application
+  bind(QKeySequence(Qt::Key_F9),        "app.settings");
   bind(QKeySequence(Qt::Key_F10),       "app.quit");
   bind(QKeySequence(Qt::CTRL | Qt::Key_Q), "app.quit");
 

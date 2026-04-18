@@ -2,6 +2,7 @@
 #include "FileManagerPanel.h"
 #include "FileListPane.h"
 #include "ViewerPanel.h"
+#include "SettingsDialog.h"
 #include "../keybinding/ICommand.h"
 #include <QStackedWidget>
 #include <QVBoxLayout>
@@ -357,6 +358,15 @@ void MainWindow::registerCommands() {
   ));
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
+    "app.settings",
+    "Settings",
+    [this]() {
+      showSettingsDialog();
+    },
+    "application"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
     "view.file",
     "View File",
     [this]() {
@@ -365,6 +375,19 @@ void MainWindow::registerCommands() {
     },
     "view"
   ));
+}
+
+void MainWindow::showSettingsDialog() {
+  SettingsDialog* dialog = new SettingsDialog(this);
+  connect(dialog, &SettingsDialog::settingsChanged, this, &MainWindow::onSettingsChanged);
+  dialog->exec();
+  delete dialog;
+}
+
+void MainWindow::onSettingsChanged() {
+  // Settings have been changed and saved
+  // The Settings singleton will emit its own settingsChanged signal
+  // which can be connected to by other components if needed
 }
 
 } // namespace Farman
