@@ -61,4 +61,18 @@ enum class OverwriteResult {
   Cancel
 };
 
+// ウィンドウサイズの復元モード
+enum class WindowSizeMode {
+  Default,      // デフォルトサイズ (1200x600)
+  LastSession,  // 前回終了時のサイズ
+  Custom        // ユーザー指定のサイズ
+};
+
+// ウィンドウ位置の復元モード
+enum class WindowPositionMode {
+  Default,      // デフォルト位置 (画面中央)
+  LastSession,  // 前回終了時の位置
+  Custom        // ユーザー指定の位置
+};
+
 } // namespace Farman

@@ -5,6 +5,8 @@
 #include <QFont>
 #include <QColor>
 #include <QMap>
+#include <QSize>
+#include <QPoint>
 
 namespace Farman {
 
@@ -57,6 +59,21 @@ public:
   bool restoreLastPath()                const;
   void setRestoreLastPath(bool restore);
 
+  // ── ウィンドウ設定 ──────────────────────
+  WindowSizeMode     windowSizeMode()     const;
+  void               setWindowSizeMode(WindowSizeMode mode);
+  QSize              customWindowSize()   const;
+  void               setCustomWindowSize(const QSize& size);
+  QSize              lastWindowSize()     const;
+  void               setLastWindowSize(const QSize& size);
+
+  WindowPositionMode windowPositionMode() const;
+  void               setWindowPositionMode(WindowPositionMode mode);
+  QPoint             customWindowPosition() const;
+  void               setCustomWindowPosition(const QPoint& pos);
+  QPoint             lastWindowPosition() const;
+  void               setLastWindowPosition(const QPoint& pos);
+
   // ── 読み書き ───────────────────────────
   void load();
   void save() const;
@@ -73,6 +90,14 @@ private:
   QString          m_dateTimeFormat  = "yyyy/MM/dd HH:mm:ss";
   QList<ColorRule> m_colorRules;
   bool             m_restoreLastPath = true;
+
+  // Window settings
+  WindowSizeMode     m_windowSizeMode     = WindowSizeMode::Default;
+  QSize              m_customWindowSize   = QSize(1200, 600);
+  QSize              m_lastWindowSize     = QSize(1200, 600);
+  WindowPositionMode m_windowPositionMode = WindowPositionMode::Default;
+  QPoint             m_customWindowPosition;
+  QPoint             m_lastWindowPosition;
 };
 
 } // namespace Farman

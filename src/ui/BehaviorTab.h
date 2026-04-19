@@ -4,6 +4,7 @@
 
 class QComboBox;
 class QCheckBox;
+class QSpinBox;
 
 namespace Farman {
 
@@ -15,6 +16,10 @@ public:
   ~BehaviorTab() override = default;
 
   void save();
+
+private slots:
+  void onWindowSizeModeChanged(int index);
+  void onWindowPositionModeChanged(int index);
 
 private:
   void setupUi();
@@ -32,6 +37,14 @@ private:
 
   // Behavior settings
   QCheckBox*  m_restoreLastPathCheck;
+
+  // Window settings
+  QComboBox*  m_windowSizeModeCombo;
+  QSpinBox*   m_windowWidthSpin;
+  QSpinBox*   m_windowHeightSpin;
+  QComboBox*  m_windowPositionModeCombo;
+  QSpinBox*   m_windowXSpin;
+  QSpinBox*   m_windowYSpin;
 };
 
 } // namespace Farman

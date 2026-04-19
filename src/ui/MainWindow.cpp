@@ -7,6 +7,7 @@
 #include <QStackedWidget>
 #include <QVBoxLayout>
 #include <QKeyEvent>
+#include <QCloseEvent>
 #include <QTableView>
 #include <QApplication>
 
@@ -18,10 +19,10 @@ MainWindow::MainWindow(QWidget* parent)
   , m_fileManagerPanel(nullptr)
   , m_viewerPanel(nullptr) {
 
-  setupUi();
-
-  // Load settings
+  // Load settings first (before setupUi to apply window size/position)
   Settings::instance().load();
+
+  setupUi();
 
   // Register commands
   registerCommands();
@@ -39,7 +40,37 @@ MainWindow::~MainWindow() = default;
 
 void MainWindow::setupUi() {
   setWindowTitle("farman - File Manager");
-  resize(1200, 600);
+
+  // Apply window size settings
+  auto& settings = Settings::instance();
+  QSize windowSize(1200, 600);  // Default size
+
+  switch (settings.windowSizeMode()) {
+    case WindowSizeMode::Default:
+      windowSize = QSize(1200, 600);
+      break;
+    case WindowSizeMode::LastSession:
+      windowSize = settings.lastWindowSize();
+      break;
+    case WindowSizeMode::Custom:
+      windowSize = settings.customWindowSize();
+      break;
+  }
+
+  resize(windowSize);
+
+  // Apply window position settings
+  switch (settings.windowPositionMode()) {
+    case WindowPositionMode::Default:
+      // Center window on screen (Qt default behavior)
+      break;
+    case WindowPositionMode::LastSession:
+      move(settings.lastWindowPosition());
+      break;
+    case WindowPositionMode::Custom:
+      move(settings.customWindowPosition());
+      break;
+  }
 
   // Central widget with stack
   QWidget* central = new QWidget(this);
@@ -388,6 +419,16 @@ void MainWindow::onSettingsChanged() {
   // Settings have been changed and saved
   // The Settings singleton will emit its own settingsChanged signal
   // which can be connected to by other components if needed
+}
+
+void MainWindow::closeEvent(QCloseEvent* event) {
+  // Save last window size and position
+  auto& settings = Settings::instance();
+  settings.setLastWindowSize(size());
+  settings.setLastWindowPosition(pos());
+  settings.save();
+
+  QMainWindow::closeEvent(event);
 }
 
 } // namespace Farman

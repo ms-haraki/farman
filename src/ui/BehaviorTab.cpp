@@ -1,10 +1,12 @@
 #include "BehaviorTab.h"
 #include "settings/Settings.h"
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QComboBox>
 #include <QCheckBox>
+#include <QSpinBox>
 #include <QLabel>
 
 namespace Farman {
@@ -17,7 +19,13 @@ BehaviorTab::BehaviorTab(QWidget* parent)
   , m_sortDotFirstCheck(nullptr)
   , m_sortCaseSensitiveCheck(nullptr)
   , m_showHiddenCheck(nullptr)
-  , m_restoreLastPathCheck(nullptr) {
+  , m_restoreLastPathCheck(nullptr)
+  , m_windowSizeModeCombo(nullptr)
+  , m_windowWidthSpin(nullptr)
+  , m_windowHeightSpin(nullptr)
+  , m_windowPositionModeCombo(nullptr)
+  , m_windowXSpin(nullptr)
+  , m_windowYSpin(nullptr) {
   setupUi();
   loadSettings();
 }
@@ -88,6 +96,68 @@ void BehaviorTab::setupUi() {
 
   mainLayout->addWidget(startupGroup);
 
+  // Window settings
+  QGroupBox* windowGroup = new QGroupBox(tr("Window Settings"), this);
+  QFormLayout* windowLayout = new QFormLayout(windowGroup);
+
+  // Window size
+  m_windowSizeModeCombo = new QComboBox(this);
+  m_windowSizeModeCombo->addItem(tr("Default (1200x600)"), static_cast<int>(WindowSizeMode::Default));
+  m_windowSizeModeCombo->addItem(tr("Last Session"), static_cast<int>(WindowSizeMode::LastSession));
+  m_windowSizeModeCombo->addItem(tr("Custom"), static_cast<int>(WindowSizeMode::Custom));
+  connect(m_windowSizeModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, &BehaviorTab::onWindowSizeModeChanged);
+  windowLayout->addRow(tr("Window Size:"), m_windowSizeModeCombo);
+
+  QWidget* sizeWidget = new QWidget(this);
+  QHBoxLayout* sizeLayout = new QHBoxLayout(sizeWidget);
+  sizeLayout->setContentsMargins(0, 0, 0, 0);
+
+  m_windowWidthSpin = new QSpinBox(this);
+  m_windowWidthSpin->setRange(800, 9999);
+  m_windowWidthSpin->setSuffix(tr(" px"));
+  sizeLayout->addWidget(new QLabel(tr("Width:"), this));
+  sizeLayout->addWidget(m_windowWidthSpin);
+
+  m_windowHeightSpin = new QSpinBox(this);
+  m_windowHeightSpin->setRange(600, 9999);
+  m_windowHeightSpin->setSuffix(tr(" px"));
+  sizeLayout->addWidget(new QLabel(tr("Height:"), this));
+  sizeLayout->addWidget(m_windowHeightSpin);
+  sizeLayout->addStretch();
+
+  windowLayout->addRow(tr("Custom Size:"), sizeWidget);
+
+  // Window position
+  m_windowPositionModeCombo = new QComboBox(this);
+  m_windowPositionModeCombo->addItem(tr("Default (Center)"), static_cast<int>(WindowPositionMode::Default));
+  m_windowPositionModeCombo->addItem(tr("Last Session"), static_cast<int>(WindowPositionMode::LastSession));
+  m_windowPositionModeCombo->addItem(tr("Custom"), static_cast<int>(WindowPositionMode::Custom));
+  connect(m_windowPositionModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, &BehaviorTab::onWindowPositionModeChanged);
+  windowLayout->addRow(tr("Window Position:"), m_windowPositionModeCombo);
+
+  QWidget* posWidget = new QWidget(this);
+  QHBoxLayout* posLayout = new QHBoxLayout(posWidget);
+  posLayout->setContentsMargins(0, 0, 0, 0);
+
+  m_windowXSpin = new QSpinBox(this);
+  m_windowXSpin->setRange(0, 9999);
+  m_windowXSpin->setSuffix(tr(" px"));
+  posLayout->addWidget(new QLabel(tr("X:"), this));
+  posLayout->addWidget(m_windowXSpin);
+
+  m_windowYSpin = new QSpinBox(this);
+  m_windowYSpin->setRange(0, 9999);
+  m_windowYSpin->setSuffix(tr(" px"));
+  posLayout->addWidget(new QLabel(tr("Y:"), this));
+  posLayout->addWidget(m_windowYSpin);
+  posLayout->addStretch();
+
+  windowLayout->addRow(tr("Custom Position:"), posWidget);
+
+  mainLayout->addWidget(windowGroup);
+
   mainLayout->addStretch();
 }
 
@@ -130,6 +200,33 @@ void BehaviorTab::loadSettings() {
 
   // Startup settings
   m_restoreLastPathCheck->setChecked(settings.restoreLastPath());
+
+  // Window settings
+  for (int i = 0; i < m_windowSizeModeCombo->count(); ++i) {
+    if (m_windowSizeModeCombo->itemData(i).toInt() == static_cast<int>(settings.windowSizeMode())) {
+      m_windowSizeModeCombo->setCurrentIndex(i);
+      break;
+    }
+  }
+
+  QSize customSize = settings.customWindowSize();
+  m_windowWidthSpin->setValue(customSize.width());
+  m_windowHeightSpin->setValue(customSize.height());
+
+  for (int i = 0; i < m_windowPositionModeCombo->count(); ++i) {
+    if (m_windowPositionModeCombo->itemData(i).toInt() == static_cast<int>(settings.windowPositionMode())) {
+      m_windowPositionModeCombo->setCurrentIndex(i);
+      break;
+    }
+  }
+
+  QPoint customPos = settings.customWindowPosition();
+  m_windowXSpin->setValue(customPos.x());
+  m_windowYSpin->setValue(customPos.y());
+
+  // Update spin box enabled state
+  onWindowSizeModeChanged(m_windowSizeModeCombo->currentIndex());
+  onWindowPositionModeChanged(m_windowPositionModeCombo->currentIndex());
 }
 
 void BehaviorTab::save() {
@@ -174,6 +271,29 @@ void BehaviorTab::save() {
 
   // Save startup settings
   settings.setRestoreLastPath(m_restoreLastPathCheck->isChecked());
+
+  // Save window settings
+  WindowSizeMode sizeMode = static_cast<WindowSizeMode>(m_windowSizeModeCombo->currentData().toInt());
+  settings.setWindowSizeMode(sizeMode);
+  settings.setCustomWindowSize(QSize(m_windowWidthSpin->value(), m_windowHeightSpin->value()));
+
+  WindowPositionMode posMode = static_cast<WindowPositionMode>(m_windowPositionModeCombo->currentData().toInt());
+  settings.setWindowPositionMode(posMode);
+  settings.setCustomWindowPosition(QPoint(m_windowXSpin->value(), m_windowYSpin->value()));
+}
+
+void BehaviorTab::onWindowSizeModeChanged(int index) {
+  WindowSizeMode mode = static_cast<WindowSizeMode>(m_windowSizeModeCombo->itemData(index).toInt());
+  bool enableCustomSize = (mode == WindowSizeMode::Custom);
+  m_windowWidthSpin->setEnabled(enableCustomSize);
+  m_windowHeightSpin->setEnabled(enableCustomSize);
+}
+
+void BehaviorTab::onWindowPositionModeChanged(int index) {
+  WindowPositionMode mode = static_cast<WindowPositionMode>(m_windowPositionModeCombo->itemData(index).toInt());
+  bool enableCustomPos = (mode == WindowPositionMode::Custom);
+  m_windowXSpin->setEnabled(enableCustomPos);
+  m_windowYSpin->setEnabled(enableCustomPos);
 }
 
 } // namespace Farman
