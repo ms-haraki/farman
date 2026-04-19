@@ -10,6 +10,7 @@
 #include <QCloseEvent>
 #include <QTableView>
 #include <QApplication>
+#include <QMessageBox>
 
 namespace Farman {
 
@@ -422,12 +423,30 @@ void MainWindow::onSettingsChanged() {
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
-  // Save last window size and position
   auto& settings = Settings::instance();
+
+  // Show confirmation dialog if enabled
+  if (settings.confirmOnExit()) {
+    QMessageBox::StandardButton reply = QMessageBox::question(
+      this,
+      tr("Confirm Exit"),
+      tr("Are you sure you want to exit farman?"),
+      QMessageBox::Yes | QMessageBox::No,
+      QMessageBox::No
+    );
+
+    if (reply != QMessageBox::Yes) {
+      event->ignore();
+      return;
+    }
+  }
+
+  // Save last window size and position
   settings.setLastWindowSize(size());
   settings.setLastWindowPosition(pos());
   settings.save();
 
+  event->accept();
   QMainWindow::closeEvent(event);
 }
 

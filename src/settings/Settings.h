@@ -59,6 +59,9 @@ public:
   bool restoreLastPath()                const;
   void setRestoreLastPath(bool restore);
 
+  bool confirmOnExit()                  const;
+  void setConfirmOnExit(bool confirm);
+
   // ── ウィンドウ設定 ──────────────────────
   WindowSizeMode     windowSizeMode()     const;
   void               setWindowSizeMode(WindowSizeMode mode);
@@ -90,6 +93,7 @@ private:
   QString          m_dateTimeFormat  = "yyyy/MM/dd HH:mm:ss";
   QList<ColorRule> m_colorRules;
   bool             m_restoreLastPath = true;
+  bool             m_confirmOnExit   = false;
 
   // Window settings
   WindowSizeMode     m_windowSizeMode     = WindowSizeMode::Default;

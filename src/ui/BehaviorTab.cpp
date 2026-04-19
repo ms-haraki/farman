@@ -20,6 +20,7 @@ BehaviorTab::BehaviorTab(QWidget* parent)
   , m_sortCaseSensitiveCheck(nullptr)
   , m_showHiddenCheck(nullptr)
   , m_restoreLastPathCheck(nullptr)
+  , m_confirmOnExitCheck(nullptr)
   , m_windowSizeModeCombo(nullptr)
   , m_windowWidthSpin(nullptr)
   , m_windowHeightSpin(nullptr)
@@ -93,6 +94,10 @@ void BehaviorTab::setupUi() {
   m_restoreLastPathCheck = new QCheckBox(tr("Restore last opened paths on startup"), this);
   m_restoreLastPathCheck->setToolTip(tr("Remember and restore the last opened directories when starting the application"));
   startupLayout->addWidget(m_restoreLastPathCheck);
+
+  m_confirmOnExitCheck = new QCheckBox(tr("Confirm on exit"), this);
+  m_confirmOnExitCheck->setToolTip(tr("Show confirmation dialog when closing the application"));
+  startupLayout->addWidget(m_confirmOnExitCheck);
 
   mainLayout->addWidget(startupGroup);
 
@@ -200,6 +205,7 @@ void BehaviorTab::loadSettings() {
 
   // Startup settings
   m_restoreLastPathCheck->setChecked(settings.restoreLastPath());
+  m_confirmOnExitCheck->setChecked(settings.confirmOnExit());
 
   // Window settings
   for (int i = 0; i < m_windowSizeModeCombo->count(); ++i) {
@@ -271,6 +277,7 @@ void BehaviorTab::save() {
 
   // Save startup settings
   settings.setRestoreLastPath(m_restoreLastPathCheck->isChecked());
+  settings.setConfirmOnExit(m_confirmOnExitCheck->isChecked());
 
   // Save window settings
   WindowSizeMode sizeMode = static_cast<WindowSizeMode>(m_windowSizeModeCombo->currentData().toInt());

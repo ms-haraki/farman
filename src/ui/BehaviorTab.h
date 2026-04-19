@@ -37,6 +37,7 @@ private:
 
   // Behavior settings
   QCheckBox*  m_restoreLastPathCheck;
+  QCheckBox*  m_confirmOnExitCheck;
 
   // Window settings
   QComboBox*  m_windowSizeModeCombo;

@@ -92,6 +92,14 @@ void Settings::setRestoreLastPath(bool restore) {
   m_restoreLastPath = restore;
 }
 
+bool Settings::confirmOnExit() const {
+  return m_confirmOnExit;
+}
+
+void Settings::setConfirmOnExit(bool confirm) {
+  m_confirmOnExit = confirm;
+}
+
 WindowSizeMode Settings::windowSizeMode() const {
   return m_windowSizeMode;
 }
@@ -348,6 +356,7 @@ void Settings::load() {
   // Load behavior settings
   QJsonObject behavior = root.value("behavior").toObject();
   m_restoreLastPath = behavior.value("restoreLastPath").toBool(true);
+  m_confirmOnExit = behavior.value("confirmOnExit").toBool(false);
 
   // Load window settings
   QJsonObject window = root.value("window").toObject();
@@ -433,6 +442,7 @@ void Settings::save() const {
   // Save behavior settings
   QJsonObject behavior;
   behavior["restoreLastPath"] = m_restoreLastPath;
+  behavior["confirmOnExit"] = m_confirmOnExit;
   root["behavior"] = behavior;
 
   // Save window settings

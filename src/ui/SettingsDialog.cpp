@@ -38,9 +38,9 @@ void SettingsDialog::setupUi() {
   m_appearanceTab = new AppearanceTab(this);
   m_behaviorTab = new BehaviorTab(this);
 
-  m_tabWidget->addTab(m_keybindingTab, tr("1. Keybindings"));
+  m_tabWidget->addTab(m_behaviorTab, tr("1. Behavior"));
   m_tabWidget->addTab(m_appearanceTab, tr("2. Appearance"));
-  m_tabWidget->addTab(m_behaviorTab, tr("3. Behavior"));
+  m_tabWidget->addTab(m_keybindingTab, tr("3. Keybindings"));
 
   // Info label for keyboard shortcuts
   int tabCount = m_tabWidget->count();
