@@ -9,6 +9,7 @@ class QPushButton;
 class QTableWidgetItem;
 class QFrame;
 class QLabel;
+class QShortcut;
 
 namespace Farman {
 
@@ -20,6 +21,8 @@ public:
   ~KeybindingTab() override = default;
 
   void save();
+  void clearCurrentBinding();
+  void resetToDefaults();
 
 protected:
   bool eventFilter(QObject* obj, QEvent* event) override;

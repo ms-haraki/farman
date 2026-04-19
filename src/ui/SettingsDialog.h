@@ -4,6 +4,7 @@
 
 class QTabWidget;
 class QDialogButtonBox;
+class QShortcut;
 
 namespace Farman {
 
@@ -18,12 +19,17 @@ public:
   explicit SettingsDialog(QWidget* parent = nullptr);
   ~SettingsDialog() override = default;
 
+protected:
+  void keyPressEvent(QKeyEvent* event) override;
+
 signals:
   void settingsChanged();
 
 private slots:
   void onOk();
   void onApply();
+  void onClearBinding();
+  void onResetToDefaults();
 
 private:
   void setupUi();
@@ -33,6 +39,8 @@ private:
   AppearanceTab*  m_appearanceTab;
   BehaviorTab*    m_behaviorTab;
   QDialogButtonBox* m_buttonBox;
+  QShortcut*      m_clearShortcut;
+  QShortcut*      m_resetShortcut;
 };
 
 } // namespace Farman

@@ -11,6 +11,7 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QFrame>
+#include <QShortcut>
 
 namespace Farman {
 
@@ -151,12 +152,20 @@ void KeybindingTab::setupUi() {
   // Buttons
   QHBoxLayout* buttonLayout = new QHBoxLayout();
 
-  m_clearButton = new QPushButton(tr("Clear Binding"), this);
+#ifdef Q_OS_MACOS
+  m_clearButton = new QPushButton(tr("Clear Binding (Cmd+D)"), this);
+#else
+  m_clearButton = new QPushButton(tr("Clear Binding (Ctrl+D)"), this);
+#endif
   m_clearButton->setToolTip(tr("Remove the keybinding for the selected command"));
   connect(m_clearButton, &QPushButton::clicked, this, &KeybindingTab::onClearBinding);
   buttonLayout->addWidget(m_clearButton);
 
-  m_resetButton = new QPushButton(tr("Reset to Defaults"), this);
+#ifdef Q_OS_MACOS
+  m_resetButton = new QPushButton(tr("Reset to Defaults (Cmd+R)"), this);
+#else
+  m_resetButton = new QPushButton(tr("Reset to Defaults (Ctrl+R)"), this);
+#endif
   m_resetButton->setToolTip(tr("Reset all keybindings to their default values"));
   connect(m_resetButton, &QPushButton::clicked, this, &KeybindingTab::onResetToDefaults);
   buttonLayout->addWidget(m_resetButton);
@@ -185,11 +194,35 @@ void KeybindingTab::updateTable() {
 
   QList<ICommand*> commands = registry.allCommands();
 
+  // Define preferred order for Navigation commands
+  QMap<QString, int> navigationOrder = {
+    {"Up", 0},
+    {"Down", 1},
+    {"Page Up", 2},
+    {"Page Down", 3},
+    {"Jump to Top", 4},
+    {"Jump to Bottom", 5},
+    {"Left", 6},
+    {"Right", 7},
+    {"Enter", 8},
+    {"Parent Directory", 9}
+  };
+
   // Sort commands by category and then by label
-  std::sort(commands.begin(), commands.end(), [](ICommand* a, ICommand* b) {
+  std::sort(commands.begin(), commands.end(), [&navigationOrder](ICommand* a, ICommand* b) {
     if (a->category() != b->category()) {
       return a->category() < b->category();
     }
+
+    // Special handling for navigation category
+    if (a->category() == "navigation") {
+      int orderA = navigationOrder.value(a->label(), 999);
+      int orderB = navigationOrder.value(b->label(), 999);
+      if (orderA != orderB) {
+        return orderA < orderB;
+      }
+    }
+
     return a->label() < b->label();
   });
 
@@ -243,7 +276,24 @@ void KeybindingTab::updateTable() {
 }
 
 QString KeybindingTab::keySequenceToString(const QKeySequence& key) const {
-  return key.toString(QKeySequence::NativeText);
+  QString result = key.toString(QKeySequence::NativeText);
+
+  // Replace platform-specific symbols with readable text
+  result.replace("↖", "Home");
+  result.replace("↘", "End");
+  result.replace("⇞", "Page Up");
+  result.replace("⇟", "Page Down");
+  result.replace("←", "Left");
+  result.replace("→", "Right");
+  result.replace("↑", "Up");
+  result.replace("↓", "Down");
+  result.replace("⌫", "Backspace");
+  result.replace("⌦", "Delete");
+  result.replace("↩", "Return");
+  result.replace("⇥", "Tab");
+  result.replace("⎋", "Esc");
+
+  return result;
 }
 
 void KeybindingTab::onCellDoubleClicked(int row, int column) {
@@ -489,6 +539,7 @@ void KeybindingTab::onRecordOk() {
     }
   }
 
+
   // Hide record frame and show buttons
   m_recordFrame->setVisible(false);
   m_clearButton->setVisible(true);
@@ -507,6 +558,7 @@ void KeybindingTab::onRecordCancel() {
   if (!m_inRecordMode) {
     return;
   }
+
 
   // Cancel recording
   m_recordFrame->setVisible(false);
@@ -547,6 +599,14 @@ void KeybindingTab::save() {
   }
 
   m_pendingChanges.clear();
+}
+
+void KeybindingTab::clearCurrentBinding() {
+  onClearBinding();
+}
+
+void KeybindingTab::resetToDefaults() {
+  onResetToDefaults();
 }
 
 } // namespace Farman

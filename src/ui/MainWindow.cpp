@@ -151,7 +151,7 @@ void MainWindow::registerCommands() {
   // Navigation commands
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.up",
-    "Navigate Up",
+    "Up",
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Up, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -161,7 +161,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.down",
-    "Navigate Down",
+    "Down",
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Down, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -171,7 +171,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.left",
-    "Navigate Left",
+    "Left",
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Left, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -181,7 +181,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.right",
-    "Navigate Right",
+    "Right",
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Right, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -191,7 +191,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.home",
-    "Navigate Home",
+    "Jump to Top",
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Home, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -201,7 +201,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.end",
-    "Navigate End",
+    "Jump to Bottom",
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_End, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -211,7 +211,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.pageup",
-    "Navigate Page Up",
+    "Page Up",
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_PageUp, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -221,7 +221,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.pagedown",
-    "Navigate Page Down",
+    "Page Down",
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_PageDown, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -231,7 +231,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.enter",
-    "Enter Directory or Open File",
+    "Enter",
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -241,7 +241,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.parent",
-    "Navigate to Parent Directory",
+    "Parent Directory",
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Backspace, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
