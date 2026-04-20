@@ -52,6 +52,22 @@ void Settings::setPaneSettings(PaneType pane, const PaneSettings& s) {
   m_paneSettings[idx] = s;
 }
 
+bool Settings::hasPathOverride(const QString& path) const {
+  return m_pathOverrides.contains(path);
+}
+
+PaneSettings Settings::pathOverride(const QString& path) const {
+  return m_pathOverrides.value(path);
+}
+
+void Settings::setPathOverride(const QString& path, const PaneSettings& s) {
+  m_pathOverrides.insert(path, s);
+}
+
+void Settings::removePathOverride(const QString& path) {
+  m_pathOverrides.remove(path);
+}
+
 QFont Settings::font() const {
   return m_font;
 }
@@ -414,6 +430,15 @@ void Settings::load() {
       jsonToPaneSettings(panes.value("right").toObject());
   }
 
+  // Load per-path overrides
+  m_pathOverrides.clear();
+  QJsonObject overrides = root.value("pathOverrides").toObject();
+  for (auto it = overrides.begin(); it != overrides.end(); ++it) {
+    if (it.value().isObject()) {
+      m_pathOverrides.insert(it.key(), jsonToPaneSettings(it.value().toObject()));
+    }
+  }
+
   qDebug() << "Settings::load: loaded settings from" << filePath;
   emit settingsChanged();
 }
@@ -490,6 +515,13 @@ void Settings::save() const {
   panes["left"] = paneSettingsToJson(m_paneSettings[static_cast<int>(PaneType::Left)]);
   panes["right"] = paneSettingsToJson(m_paneSettings[static_cast<int>(PaneType::Right)]);
   root["panes"] = panes;
+
+  // Save per-path overrides
+  QJsonObject overrides;
+  for (auto it = m_pathOverrides.begin(); it != m_pathOverrides.end(); ++it) {
+    overrides[it.key()] = paneSettingsToJson(it.value());
+  }
+  root["pathOverrides"] = overrides;
 
   QJsonDocument doc(root);
   QByteArray data = doc.toJson(QJsonDocument::Indented);

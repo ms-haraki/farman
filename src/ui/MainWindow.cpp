@@ -342,6 +342,15 @@ void MainWindow::registerCommands() {
     "pane"
   ));
 
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "pane.sort_filter",
+    "Sort & Filter...",
+    [this]() {
+      m_fileManagerPanel->openSortFilterDialog();
+    },
+    "pane"
+  ));
+
   // File operation commands
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.copy",

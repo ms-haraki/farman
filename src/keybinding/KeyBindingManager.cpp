@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QSettings>
+#include <QSet>
 
 namespace Farman {
 
@@ -63,88 +64,115 @@ QList<QKeySequence> KeyBindingManager::keysForCommand(const QString& commandId) 
   return result;
 }
 
+namespace {
+
+QList<QPair<QKeySequence, QString>> defaultBindingList() {
+  return {
+    // Navigation
+    { QKeySequence(Qt::Key_Up),        "navigate.up"        },
+    { QKeySequence(Qt::Key_Down),      "navigate.down"      },
+    { QKeySequence(Qt::Key_Left),      "navigate.left"      },
+    { QKeySequence(Qt::Key_Right),     "navigate.right"     },
+    { QKeySequence(Qt::Key_Home),      "navigate.home"      },
+    { QKeySequence(Qt::Key_End),       "navigate.end"       },
+    { QKeySequence(Qt::Key_PageUp),    "navigate.pageup"    },
+    { QKeySequence(Qt::Key_PageDown),  "navigate.pagedown"  },
+    { QKeySequence(Qt::Key_Return),    "navigate.enter"     },
+    { QKeySequence(Qt::Key_Enter),     "navigate.enter"     },
+    { QKeySequence(Qt::Key_Backspace), "navigate.parent"    },
+
+    // Selection
+    { QKeySequence(Qt::Key_Space),           "select.toggle"          },
+    { QKeySequence(Qt::Key_Insert),          "select.toggle_and_down" },
+    { QKeySequence(Qt::Key_Asterisk),        "select.invert"          },
+    { QKeySequence(Qt::CTRL | Qt::Key_A),    "select.all"             },
+
+    // Pane
+    { QKeySequence(Qt::Key_Tab),             "pane.switch"        },
+    { QKeySequence(Qt::CTRL | Qt::Key_O),    "pane.toggle_single" },
+    { QKeySequence(Qt::Key_F4),              "pane.sort_filter"   },
+
+    // File operations
+    { QKeySequence(Qt::Key_F5), "file.copy"   },
+    { QKeySequence(Qt::Key_F6), "file.move"   },
+    { QKeySequence(Qt::Key_F7), "file.mkdir"  },
+    { QKeySequence(Qt::Key_F8), "file.delete" },
+
+    // View
+    { QKeySequence(Qt::Key_F3), "view.file" },
+
+    // Application
+    { QKeySequence(Qt::Key_F9),           "app.settings" },
+    { QKeySequence(Qt::Key_F10),          "app.quit"     },
+    { QKeySequence(Qt::CTRL | Qt::Key_Q), "app.quit"     },
+  };
+}
+
+} // anonymous namespace
+
 void KeyBindingManager::loadDefaults() {
   clearAllBindings();
-
-  // Navigation
-  bind(QKeySequence(Qt::Key_Up),        "navigate.up");
-  bind(QKeySequence(Qt::Key_Down),      "navigate.down");
-  bind(QKeySequence(Qt::Key_Left),      "navigate.left");
-  bind(QKeySequence(Qt::Key_Right),     "navigate.right");
-  bind(QKeySequence(Qt::Key_Home),      "navigate.home");
-  bind(QKeySequence(Qt::Key_End),       "navigate.end");
-  bind(QKeySequence(Qt::Key_PageUp),    "navigate.pageup");
-  bind(QKeySequence(Qt::Key_PageDown),  "navigate.pagedown");
-  bind(QKeySequence(Qt::Key_Return),    "navigate.enter");
-  bind(QKeySequence(Qt::Key_Enter),     "navigate.enter");
-  bind(QKeySequence(Qt::Key_Backspace), "navigate.parent");
-
-  // Selection
-  bind(QKeySequence(Qt::Key_Space),     "select.toggle");
-  bind(QKeySequence(Qt::Key_Insert),    "select.toggle_and_down");
-  bind(QKeySequence(Qt::Key_Asterisk),  "select.invert");
-  bind(QKeySequence(Qt::CTRL | Qt::Key_A), "select.all");
-
-  // Pane switching
-  bind(QKeySequence(Qt::Key_Tab),       "pane.switch");
-  bind(QKeySequence(Qt::CTRL | Qt::Key_O), "pane.toggle_single");
-
-  // File operations
-  bind(QKeySequence(Qt::Key_F5),        "file.copy");
-  bind(QKeySequence(Qt::Key_F6),        "file.move");
-  bind(QKeySequence(Qt::Key_F8),        "file.delete");
-  bind(QKeySequence(Qt::Key_F7),        "file.mkdir");
-
-  // View
-  bind(QKeySequence(Qt::Key_F3),        "view.file");
-
-  // Application
-  bind(QKeySequence(Qt::Key_F9),        "app.settings");
-  bind(QKeySequence(Qt::Key_F10),       "app.quit");
-  bind(QKeySequence(Qt::CTRL | Qt::Key_Q), "app.quit");
-
+  for (const auto& [key, command] : defaultBindingList()) {
+    m_bindings.insert(key, command);
+  }
+  emit bindingsChanged();
   qDebug() << "KeyBindingManager: loaded" << m_bindings.size() << "default bindings";
 }
 
 void KeyBindingManager::loadFromSettings() {
   QSettings settings("farman", "farman");
 
-  // Try to load from JSON format in settings
   QString jsonData = settings.value("keybindings/json").toString();
 
-  if (!jsonData.isEmpty()) {
-    QJsonDocument doc = QJsonDocument::fromJson(jsonData.toUtf8());
-    if (!doc.isObject()) {
-      qWarning() << "KeyBindingManager::loadFromSettings: invalid JSON format";
-      loadDefaults();
-      return;
-    }
-
-    clearAllBindings();
-    QJsonObject root = doc.object();
-    QJsonArray bindings = root.value("bindings").toArray();
-
-    for (const QJsonValue& val : bindings) {
-      if (!val.isObject()) continue;
-
-      QJsonObject binding = val.toObject();
-      QString keyStr = binding.value("key").toString();
-      QString commandId = binding.value("command").toString();
-
-      if (keyStr.isEmpty() || commandId.isEmpty()) continue;
-
-      QKeySequence key(keyStr);
-      if (!key.isEmpty()) {
-        m_bindings.insert(key, commandId);
-      }
-    }
-
-    qDebug() << "KeyBindingManager: loaded" << m_bindings.size() << "bindings from settings";
-  } else {
-    // No saved bindings, load defaults
+  if (jsonData.isEmpty()) {
     qDebug() << "KeyBindingManager: no saved bindings, loading defaults";
     loadDefaults();
+    return;
   }
+
+  QJsonDocument doc = QJsonDocument::fromJson(jsonData.toUtf8());
+  if (!doc.isObject()) {
+    qWarning() << "KeyBindingManager::loadFromSettings: invalid JSON format";
+    loadDefaults();
+    return;
+  }
+
+  clearAllBindings();
+
+  QJsonObject root = doc.object();
+  QJsonArray bindings = root.value("bindings").toArray();
+
+  QSet<QString> savedCommands;
+  for (const QJsonValue& val : bindings) {
+    if (!val.isObject()) continue;
+
+    QJsonObject binding = val.toObject();
+    QString keyStr = binding.value("key").toString();
+    QString commandId = binding.value("command").toString();
+
+    if (keyStr.isEmpty() || commandId.isEmpty()) continue;
+
+    QKeySequence key(keyStr);
+    if (!key.isEmpty()) {
+      m_bindings.insert(key, commandId);
+      savedCommands.insert(commandId);
+    }
+  }
+
+  // 保存データに含まれない新規コマンドについてはデフォルトを補完する。
+  // これにより、アプリアップデートで追加されたコマンドが既存ユーザー環境でも
+  // 動作する。保存済みキーと衝突する場合は上書きせずスキップ。
+  int merged = 0;
+  for (const auto& [key, command] : defaultBindingList()) {
+    if (savedCommands.contains(command)) continue;
+    if (m_bindings.contains(key))        continue;
+    m_bindings.insert(key, command);
+    ++merged;
+  }
+
+  qDebug() << "KeyBindingManager: loaded" << m_bindings.size()
+           << "bindings from settings ("
+           << merged << "merged from defaults)";
 
   emit bindingsChanged();
 }

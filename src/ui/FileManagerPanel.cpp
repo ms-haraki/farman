@@ -1,6 +1,7 @@
 #include "FileManagerPanel.h"
 #include "FileListPane.h"
 #include "ProgressDialog.h"
+#include "SortFilterDialog.h"
 #include "model/FileListModel.h"
 #include "core/FileItem.h"
 #include "core/workers/CopyWorker.h"
@@ -15,6 +16,7 @@
 #include <QDir>
 #include <QKeyEvent>
 #include <QTableView>
+#include <QHeaderView>
 #include <QFile>
 
 namespace Farman {
@@ -59,39 +61,14 @@ void FileManagerPanel::setupUi() {
 void FileManagerPanel::loadInitialPath() {
   auto& settings = Settings::instance();
 
-  // Load pane settings
   PaneSettings leftSettings = settings.paneSettings(PaneType::Left);
   PaneSettings rightSettings = settings.paneSettings(PaneType::Right);
 
-  // Apply sort settings to models
-  m_leftPane->model()->setSortSettings(
-    leftSettings.sortKey,
-    leftSettings.sortOrder,
-    leftSettings.sortKey2nd,
-    leftSettings.sortDirsType,
-    leftSettings.sortDotFirst,
-    leftSettings.sortCS
-  );
-
-  m_rightPane->model()->setSortSettings(
-    rightSettings.sortKey,
-    rightSettings.sortOrder,
-    rightSettings.sortKey2nd,
-    rightSettings.sortDirsType,
-    rightSettings.sortDotFirst,
-    rightSettings.sortCS
-  );
-
-  // Apply attribute filters
-  m_leftPane->model()->setAttrFilter(leftSettings.attrFilter);
-  m_rightPane->model()->setAttrFilter(rightSettings.attrFilter);
-
-  // Load paths
   QString leftPath = settings.restoreLastPath() ? leftSettings.path : QDir::homePath();
   QString rightPath = settings.restoreLastPath() ? rightSettings.path : QDir::homePath();
 
-  m_leftPane->setPath(leftPath);
-  m_rightPane->setPath(rightPath);
+  navigatePane(PaneType::Left, leftPath);
+  navigatePane(PaneType::Right, rightPath);
 
   // 左ペインをアクティブに
   setActivePane(PaneType::Left);
@@ -100,38 +77,65 @@ void FileManagerPanel::loadInitialPath() {
 }
 
 void FileManagerPanel::applySettings() {
-  auto& settings = Settings::instance();
+  // Behavior タブでデフォルト設定が変更された際の再適用。
+  // パス単位の override があればそちらを優先する。
+  applyPathSortFilter(PaneType::Left);
+  applyPathSortFilter(PaneType::Right);
 
-  // Load pane settings
-  PaneSettings leftSettings = settings.paneSettings(PaneType::Left);
-  PaneSettings rightSettings = settings.paneSettings(PaneType::Right);
-
-  // Apply sort settings to models
-  m_leftPane->model()->setSortSettings(
-    leftSettings.sortKey,
-    leftSettings.sortOrder,
-    leftSettings.sortKey2nd,
-    leftSettings.sortDirsType,
-    leftSettings.sortDotFirst,
-    leftSettings.sortCS
-  );
-
-  m_rightPane->model()->setSortSettings(
-    rightSettings.sortKey,
-    rightSettings.sortOrder,
-    rightSettings.sortKey2nd,
-    rightSettings.sortDirsType,
-    rightSettings.sortDotFirst,
-    rightSettings.sortCS
-  );
-
-  // Apply attribute filters
-  m_leftPane->model()->setAttrFilter(leftSettings.attrFilter);
-  m_rightPane->model()->setAttrFilter(rightSettings.attrFilter);
-
-  // Refresh both panes to apply the changes
   m_leftPane->model()->refresh();
   m_rightPane->model()->refresh();
+}
+
+void FileManagerPanel::applyPathSortFilter(PaneType paneType) {
+  FileListPane* pane = (paneType == PaneType::Left) ? m_leftPane : m_rightPane;
+  FileListModel* model = pane->model();
+  auto& settings = Settings::instance();
+  const QString path = pane->currentPath();
+
+  PaneSettings s = settings.hasPathOverride(path)
+                   ? settings.pathOverride(path)
+                   : settings.paneSettings(paneType);
+
+  model->setSortSettings(
+    s.sortKey, s.sortOrder, s.sortKey2nd,
+    s.sortDirsType, s.sortDotFirst, s.sortCS
+  );
+  model->setAttrFilter(s.attrFilter);
+  model->setNameFilters(s.nameFilters);
+
+  // Header sort indicator を現在のソート状態に合わせる
+  int section = -1;
+  switch (s.sortKey) {
+    case SortKey::Name:         section = FileListModel::Name;         break;
+    case SortKey::Size:         section = FileListModel::Size;         break;
+    case SortKey::Type:         section = FileListModel::Type;         break;
+    case SortKey::LastModified: section = FileListModel::LastModified; break;
+    case SortKey::None: break;
+  }
+  if (section >= 0) {
+    pane->view()->horizontalHeader()->setSortIndicator(section, s.sortOrder);
+  }
+
+  pane->refreshSortFilterStatus();
+}
+
+bool FileManagerPanel::navigatePane(PaneType paneType, const QString& path) {
+  FileListPane* pane = (paneType == PaneType::Left) ? m_leftPane : m_rightPane;
+  FileListModel* model = pane->model();
+  auto& settings = Settings::instance();
+
+  PaneSettings s = settings.hasPathOverride(path)
+                   ? settings.pathOverride(path)
+                   : settings.paneSettings(paneType);
+
+  model->setSortSettings(
+    s.sortKey, s.sortOrder, s.sortKey2nd,
+    s.sortDirsType, s.sortDotFirst, s.sortCS
+  );
+  model->setAttrFilter(s.attrFilter);
+  model->setNameFilters(s.nameFilters);
+
+  return pane->setPath(path);
 }
 
 bool FileManagerPanel::handleKeyEvent(QKeyEvent* event) {
@@ -319,7 +323,7 @@ void FileManagerPanel::handleEnterKey() {
   if (item->isDir()) {
     // ディレクトリに入る
     QString newPath = item->absolutePath();
-    if (pane->setPath(newPath)) {
+    if (navigatePane(m_activePane, newPath)) {
       updatePathSignal();
     }
   } else {
@@ -344,7 +348,7 @@ void FileManagerPanel::handleBackspaceKey() {
   }
 
   QString parentPath = dir.absolutePath();
-  if (pane->setPath(parentPath)) {
+  if (navigatePane(m_activePane, parentPath)) {
     updatePathSignal();
   }
 }
@@ -464,7 +468,7 @@ void FileManagerPanel::onLeftFolderButtonClicked() {
   );
 
   if (!selectedPath.isEmpty() && selectedPath != currentPath) {
-    if (m_leftPane->setPath(selectedPath)) {
+    if (navigatePane(PaneType::Left, selectedPath)) {
       updatePathSignal();
     }
   }
@@ -480,7 +484,7 @@ void FileManagerPanel::onRightFolderButtonClicked() {
   );
 
   if (!selectedPath.isEmpty() && selectedPath != currentPath) {
-    if (m_rightPane->setPath(selectedPath)) {
+    if (navigatePane(PaneType::Right, selectedPath)) {
       updatePathSignal();
     }
   }
@@ -825,6 +829,62 @@ void FileManagerPanel::createDirectory() {
   }
 
   srcPane->view()->setFocus();
+}
+
+void FileManagerPanel::openSortFilterDialog() {
+  FileListPane* pane = activePane();
+  const QString path = pane->currentPath();
+  if (path.isEmpty()) {
+    return;
+  }
+
+  auto& settings = Settings::instance();
+  const bool alreadySaved = settings.hasPathOverride(path);
+
+  // 初期値は override があればそれ、なければペインの既定
+  PaneSettings initial = alreadySaved
+                         ? settings.pathOverride(path)
+                         : settings.paneSettings(m_activePane);
+
+  SortFilterDialog dialog(path, initial, alreadySaved, this);
+  if (dialog.exec() != QDialog::Accepted) {
+    return;
+  }
+
+  PaneSettings result = dialog.result();
+
+  // 保存 or 削除
+  if (dialog.saveForDirectory()) {
+    settings.setPathOverride(path, result);
+    settings.save();
+  } else if (alreadySaved) {
+    settings.removePathOverride(path);
+    settings.save();
+  }
+
+  // 現在のビューに即座に適用
+  FileListModel* model = pane->model();
+  model->setSortSettings(
+    result.sortKey, result.sortOrder, result.sortKey2nd,
+    result.sortDirsType, result.sortDotFirst, result.sortCS
+  );
+  model->setAttrFilter(result.attrFilter);
+  model->setNameFilters(result.nameFilters);
+
+  int section = -1;
+  switch (result.sortKey) {
+    case SortKey::Name:         section = FileListModel::Name;         break;
+    case SortKey::Size:         section = FileListModel::Size;         break;
+    case SortKey::Type:         section = FileListModel::Type;         break;
+    case SortKey::LastModified: section = FileListModel::LastModified; break;
+    case SortKey::None: break;
+  }
+  if (section >= 0) {
+    pane->view()->horizontalHeader()->setSortIndicator(section, result.sortOrder);
+  }
+
+  pane->refreshSortFilterStatus();
+  pane->view()->setFocus();
 }
 
 void FileManagerPanel::renameItem() {

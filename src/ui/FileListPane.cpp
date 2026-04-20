@@ -17,6 +17,7 @@ FileListPane::FileListPane(QWidget* parent)
   , m_pathLabel(nullptr)
   , m_folderButton(nullptr)
   , m_view(nullptr)
+  , m_sortFilterStatusLabel(nullptr)
   , m_model(nullptr)
   , m_delegate(nullptr) {
 
@@ -77,6 +78,19 @@ void FileListPane::setupUi() {
   m_view->setColumnWidth(FileListModel::LastModified, 150);
 
   mainLayout->addWidget(m_view);
+
+  // ソート・フィルタ条件の現在値をリスト下部に表示
+  m_sortFilterStatusLabel = new QLabel(this);
+  m_sortFilterStatusLabel->setStyleSheet(
+    "QLabel { background-color: #e8e8e8; color: #333; padding: 2px 5px; }"
+  );
+  m_sortFilterStatusLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  QFont statusFont = m_sortFilterStatusLabel->font();
+  statusFont.setPointSize(qMax(statusFont.pointSize() - 1, 9));
+  m_sortFilterStatusLabel->setFont(statusFont);
+  mainLayout->addWidget(m_sortFilterStatusLabel);
+
+  refreshSortFilterStatus();
 }
 
 QString FileListPane::currentPath() const {
@@ -114,8 +128,72 @@ bool FileListPane::setPath(const QString& path) {
     if (section >= 0) {
       m_view->horizontalHeader()->setSortIndicator(section, m_model->sortOrder());
     }
+
+    refreshSortFilterStatus();
   }
   return result;
+}
+
+namespace {
+
+QString sortKeyLabel(SortKey k) {
+  switch (k) {
+    case SortKey::Name:         return QObject::tr("Name");
+    case SortKey::Size:         return QObject::tr("Size");
+    case SortKey::Type:         return QObject::tr("Type");
+    case SortKey::LastModified: return QObject::tr("Modified");
+    case SortKey::None:         return {};
+  }
+  return {};
+}
+
+QString dirsPlacementLabel(SortDirsType t) {
+  switch (t) {
+    case SortDirsType::First: return QObject::tr("Dirs First");
+    case SortDirsType::Last:  return QObject::tr("Dirs Last");
+    case SortDirsType::Mixed: return QObject::tr("Mixed");
+  }
+  return {};
+}
+
+} // anonymous namespace
+
+void FileListPane::refreshSortFilterStatus() {
+  if (!m_sortFilterStatusLabel || !m_model) return;
+
+  const QString arrow = (m_model->sortOrder() == Qt::AscendingOrder)
+                        ? QStringLiteral("↑")
+                        : QStringLiteral("↓");
+
+  // Sort 部
+  QStringList sortKeys;
+  sortKeys << QString("%1 %2").arg(sortKeyLabel(m_model->sortKey()), arrow);
+  if (m_model->sortKey2nd() != SortKey::None) {
+    sortKeys << QString("%1 %2").arg(sortKeyLabel(m_model->sortKey2nd()), arrow);
+  }
+
+  QStringList sortTail;
+  sortTail << dirsPlacementLabel(m_model->sortDirsType());
+  if (m_model->sortCS() == Qt::CaseSensitive) sortTail << tr("CS");
+  if (m_model->sortDotFirst())                sortTail << tr("Dot-first");
+
+  const QString sortStr = sortKeys.join(" / ") + QStringLiteral(" · ") + sortTail.join(" · ");
+
+  // Filter 部
+  QStringList filterParts;
+  AttrFilterFlags attr = m_model->attrFilter();
+  if (attr & AttrFilter::ShowHidden) filterParts << tr("Hidden");
+  if (attr & AttrFilter::DirsOnly)   filterParts << tr("Dirs only");
+  if (attr & AttrFilter::FilesOnly)  filterParts << tr("Files only");
+
+  const QStringList names = m_model->nameFilters();
+  if (!names.isEmpty()) {
+    filterParts << names.join(' ');
+  }
+
+  const QString filterStr = filterParts.isEmpty() ? tr("(none)") : filterParts.join(" · ");
+
+  m_sortFilterStatusLabel->setText(tr("Sort: %1  │  Filter: %2").arg(sortStr, filterStr));
 }
 
 void FileListPane::setActive(bool active) {
@@ -162,6 +240,8 @@ void FileListPane::onHeaderClicked(int section) {
 
   // ヘッダーにソートインジケーターを表示
   m_view->horizontalHeader()->setSortIndicator(section, newOrder);
+
+  refreshSortFilterStatus();
 }
 
 } // namespace Farman

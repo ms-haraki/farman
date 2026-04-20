@@ -57,7 +57,11 @@ public:
   SortKey       sortKey() const { return m_sortKey; }
   Qt::SortOrder sortOrder() const { return m_sortOrder; }
   SortKey       sortKey2nd() const { return m_sortKey2nd; }
+  SortDirsType  sortDirsType() const { return m_dirsType; }
+  bool          sortDotFirst() const { return m_dotFirst; }
+  Qt::CaseSensitivity sortCS() const { return m_cs; }
   AttrFilterFlags attrFilter() const { return m_attrFilter; }
+  QStringList   nameFilters() const { return m_nameFilters; }
 
   // ── アイテムアクセス ──────────────────────
   const FileItem* itemAt(const QModelIndex& index) const;

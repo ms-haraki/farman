@@ -46,6 +46,9 @@ public:
   void createDirectory();
   void renameItem();
 
+  // アクティブペインのソート・フィルタ編集ダイアログを開く
+  void openSortFilterDialog();
+
 signals:
   void pathChanged(const QString& leftPath, const QString& rightPath);
   void fileActivated(const QString& filePath);
@@ -66,6 +69,11 @@ private:
   void handleSelectAllKey();
   void handleTabKey();
   void updatePathSignal();
+
+  // ペインのパスに対応する保存済み override があればそれを、なければ既定を適用する
+  void applyPathSortFilter(PaneType paneType);
+  // ペインのパス遷移を一元化するヘルパ（applyPathSortFilter 適用まで面倒を見る）
+  bool navigatePane(PaneType paneType, const QString& path);
 
   QSplitter* m_splitter;
   FileListPane* m_leftPane;

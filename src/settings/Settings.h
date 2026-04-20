@@ -41,6 +41,14 @@ public:
   PaneSettings paneSettings(PaneType pane) const;
   void setPaneSettings(PaneType pane, const PaneSettings& s);
 
+  // ── ディレクトリ単位のソート・フィルタ上書き ─
+  // 絶対パスをキーに、そのディレクトリ専用の PaneSettings を保持する。
+  // PaneSettings::path は未使用。
+  bool         hasPathOverride(const QString& path) const;
+  PaneSettings pathOverride(const QString& path)    const;
+  void         setPathOverride(const QString& path, const PaneSettings& s);
+  void         removePathOverride(const QString& path);
+
   // ── 表示設定 ───────────────────────────
   QFont  font()                        const;
   void   setFont(const QFont& font);
@@ -91,6 +99,7 @@ private:
   explicit Settings(QObject* parent = nullptr);
 
   PaneSettings     m_paneSettings[static_cast<int>(PaneType::Count)];
+  QMap<QString, PaneSettings> m_pathOverrides;
   QFont            m_font;
   FileSizeFormat   m_fileSizeFormat  = FileSizeFormat::Auto;
   QString          m_dateTimeFormat  = "yyyy/MM/dd HH:mm:ss";

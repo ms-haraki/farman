@@ -30,6 +30,9 @@ public:
   // アクティブ状態
   void setActive(bool active);
 
+  // 現在のソート・フィルタ条件をフッタに表示するラベルを更新する
+  void refreshSortFilterStatus();
+
 signals:
   void folderButtonClicked();
   void currentChanged(const QModelIndex& current, const QModelIndex& previous);
@@ -45,6 +48,7 @@ private:
   QLabel* m_pathLabel;
   QToolButton* m_folderButton;
   QTableView* m_view;
+  QLabel* m_sortFilterStatusLabel;
   FileListModel* m_model;
   FileListDelegate* m_delegate;
 };

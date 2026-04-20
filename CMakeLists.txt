@@ -21,6 +21,7 @@ qt_add_executable(farman
   src/ui/KeybindingTab.cpp
   src/ui/AppearanceTab.cpp
   src/ui/BehaviorTab.cpp
+  src/ui/SortFilterDialog.cpp
   src/core/FileItem.cpp
   src/core/workers/WorkerBase.cpp
   src/core/workers/CopyWorker.cpp
