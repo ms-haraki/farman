@@ -128,16 +128,19 @@ void BehaviorTab::setupUi() {
 
   // Window settings
   QGroupBox* windowGroup = new QGroupBox(tr("Window Settings"), this);
-  QFormLayout* windowLayout = new QFormLayout(windowGroup);
+  QHBoxLayout* windowLayout = new QHBoxLayout(windowGroup);
 
-  // Window size
+  // --- Window size column ---
+  QGroupBox* sizeGroup = new QGroupBox(tr("Size"), this);
+  QFormLayout* sizeFormLayout = new QFormLayout(sizeGroup);
+
   m_windowSizeModeCombo = new QComboBox(this);
   m_windowSizeModeCombo->addItem(tr("Default (1200x600)"), static_cast<int>(WindowSizeMode::Default));
   m_windowSizeModeCombo->addItem(tr("Last Session"), static_cast<int>(WindowSizeMode::LastSession));
   m_windowSizeModeCombo->addItem(tr("Custom"), static_cast<int>(WindowSizeMode::Custom));
   connect(m_windowSizeModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, &BehaviorTab::onWindowSizeModeChanged);
-  windowLayout->addRow(tr("Window Size:"), m_windowSizeModeCombo);
+  sizeFormLayout->addRow(tr("Window Size:"), m_windowSizeModeCombo);
 
   QWidget* sizeWidget = new QWidget(this);
   QHBoxLayout* sizeLayout = new QHBoxLayout(sizeWidget);
@@ -156,16 +159,19 @@ void BehaviorTab::setupUi() {
   sizeLayout->addWidget(m_windowHeightSpin);
   sizeLayout->addStretch();
 
-  windowLayout->addRow(tr("Custom Size:"), sizeWidget);
+  sizeFormLayout->addRow(tr("Custom Size:"), sizeWidget);
 
-  // Window position
+  // --- Window position column ---
+  QGroupBox* posGroup = new QGroupBox(tr("Position"), this);
+  QFormLayout* posFormLayout = new QFormLayout(posGroup);
+
   m_windowPositionModeCombo = new QComboBox(this);
   m_windowPositionModeCombo->addItem(tr("Default (Center)"), static_cast<int>(WindowPositionMode::Default));
   m_windowPositionModeCombo->addItem(tr("Last Session"), static_cast<int>(WindowPositionMode::LastSession));
   m_windowPositionModeCombo->addItem(tr("Custom"), static_cast<int>(WindowPositionMode::Custom));
   connect(m_windowPositionModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, &BehaviorTab::onWindowPositionModeChanged);
-  windowLayout->addRow(tr("Window Position:"), m_windowPositionModeCombo);
+  posFormLayout->addRow(tr("Window Position:"), m_windowPositionModeCombo);
 
   QWidget* posWidget = new QWidget(this);
   QHBoxLayout* posLayout = new QHBoxLayout(posWidget);
@@ -184,7 +190,10 @@ void BehaviorTab::setupUi() {
   posLayout->addWidget(m_windowYSpin);
   posLayout->addStretch();
 
-  windowLayout->addRow(tr("Custom Position:"), posWidget);
+  posFormLayout->addRow(tr("Custom Position:"), posWidget);
+
+  windowLayout->addWidget(sizeGroup);
+  windowLayout->addWidget(posGroup);
 
   mainLayout->addWidget(windowGroup);
 
