@@ -56,6 +56,7 @@ public:
   // ── 状態取得 ──────────────────────────────
   SortKey       sortKey() const { return m_sortKey; }
   Qt::SortOrder sortOrder() const { return m_sortOrder; }
+  SortKey       sortKey2nd() const { return m_sortKey2nd; }
   AttrFilterFlags attrFilter() const { return m_attrFilter; }
 
   // ── アイテムアクセス ──────────────────────

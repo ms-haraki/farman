@@ -28,6 +28,7 @@ private:
   // Sort settings
   QComboBox*  m_sortKeyCombo;
   QComboBox*  m_sortOrderCombo;
+  QComboBox*  m_sortKey2ndCombo;
   QComboBox*  m_sortDirsTypeCombo;
   QCheckBox*  m_sortDotFirstCheck;
   QCheckBox*  m_sortCaseSensitiveCheck;

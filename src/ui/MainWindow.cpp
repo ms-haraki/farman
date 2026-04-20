@@ -418,8 +418,8 @@ void MainWindow::showSettingsDialog() {
 
 void MainWindow::onSettingsChanged() {
   // Settings have been changed and saved
-  // The Settings singleton will emit its own settingsChanged signal
-  // which can be connected to by other components if needed
+  // Apply the new settings to the file manager panel
+  m_fileManagerPanel->applySettings();
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {

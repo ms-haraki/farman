@@ -20,6 +20,7 @@ public:
 
   // 初期化
   void loadInitialPath();
+  void applySettings();  // 設定を両ペインに適用
 
   // アクセサ
   FileListPane* activePane() const;

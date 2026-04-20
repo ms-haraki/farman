@@ -26,7 +26,7 @@ Settings::Settings(QObject* parent) : QObject(parent) {
     m_paneSettings[i].path = QDir::homePath();
     m_paneSettings[i].sortKey = SortKey::Name;
     m_paneSettings[i].sortOrder = Qt::AscendingOrder;
-    m_paneSettings[i].sortKey2nd = SortKey::Name;
+    m_paneSettings[i].sortKey2nd = SortKey::None;
     m_paneSettings[i].sortDirsType = SortDirsType::First;
     m_paneSettings[i].sortDotFirst = true;
     m_paneSettings[i].sortCS = Qt::CaseInsensitive;
@@ -153,6 +153,7 @@ namespace {
 
 QString sortKeyToString(SortKey key) {
   switch (key) {
+    case SortKey::None: return "none";
     case SortKey::Name: return "name";
     case SortKey::Size: return "size";
     case SortKey::Type: return "type";
@@ -162,6 +163,7 @@ QString sortKeyToString(SortKey key) {
 }
 
 SortKey stringToSortKey(const QString& str) {
+  if (str == "none") return SortKey::None;
   if (str == "size") return SortKey::Size;
   if (str == "type") return SortKey::Type;
   if (str == "lastModified") return SortKey::LastModified;

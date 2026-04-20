@@ -6,6 +6,7 @@
 #include "core/workers/CopyWorker.h"
 #include "core/workers/MoveWorker.h"
 #include "core/workers/RemoveWorker.h"
+#include "settings/Settings.h"
 #include <QVBoxLayout>
 #include <QSplitter>
 #include <QFileDialog>
@@ -56,15 +57,81 @@ void FileManagerPanel::setupUi() {
 }
 
 void FileManagerPanel::loadInitialPath() {
-  QString homePath = QDir::homePath();
+  auto& settings = Settings::instance();
 
-  m_leftPane->setPath(homePath);
-  m_rightPane->setPath(homePath);
+  // Load pane settings
+  PaneSettings leftSettings = settings.paneSettings(PaneType::Left);
+  PaneSettings rightSettings = settings.paneSettings(PaneType::Right);
+
+  // Apply sort settings to models
+  m_leftPane->model()->setSortSettings(
+    leftSettings.sortKey,
+    leftSettings.sortOrder,
+    leftSettings.sortKey2nd,
+    leftSettings.sortDirsType,
+    leftSettings.sortDotFirst,
+    leftSettings.sortCS
+  );
+
+  m_rightPane->model()->setSortSettings(
+    rightSettings.sortKey,
+    rightSettings.sortOrder,
+    rightSettings.sortKey2nd,
+    rightSettings.sortDirsType,
+    rightSettings.sortDotFirst,
+    rightSettings.sortCS
+  );
+
+  // Apply attribute filters
+  m_leftPane->model()->setAttrFilter(leftSettings.attrFilter);
+  m_rightPane->model()->setAttrFilter(rightSettings.attrFilter);
+
+  // Load paths
+  QString leftPath = settings.restoreLastPath() ? leftSettings.path : QDir::homePath();
+  QString rightPath = settings.restoreLastPath() ? rightSettings.path : QDir::homePath();
+
+  m_leftPane->setPath(leftPath);
+  m_rightPane->setPath(rightPath);
 
   // 左ペインをアクティブに
   setActivePane(PaneType::Left);
 
   updatePathSignal();
+}
+
+void FileManagerPanel::applySettings() {
+  auto& settings = Settings::instance();
+
+  // Load pane settings
+  PaneSettings leftSettings = settings.paneSettings(PaneType::Left);
+  PaneSettings rightSettings = settings.paneSettings(PaneType::Right);
+
+  // Apply sort settings to models
+  m_leftPane->model()->setSortSettings(
+    leftSettings.sortKey,
+    leftSettings.sortOrder,
+    leftSettings.sortKey2nd,
+    leftSettings.sortDirsType,
+    leftSettings.sortDotFirst,
+    leftSettings.sortCS
+  );
+
+  m_rightPane->model()->setSortSettings(
+    rightSettings.sortKey,
+    rightSettings.sortOrder,
+    rightSettings.sortKey2nd,
+    rightSettings.sortDirsType,
+    rightSettings.sortDotFirst,
+    rightSettings.sortCS
+  );
+
+  // Apply attribute filters
+  m_leftPane->model()->setAttrFilter(leftSettings.attrFilter);
+  m_rightPane->model()->setAttrFilter(rightSettings.attrFilter);
+
+  // Refresh both panes to apply the changes
+  m_leftPane->model()->refresh();
+  m_rightPane->model()->refresh();
 }
 
 bool FileManagerPanel::handleKeyEvent(QKeyEvent* event) {

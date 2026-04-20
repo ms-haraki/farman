@@ -95,6 +95,9 @@ bool FileListPane::setPath(const QString& path) {
     // 現在のソート状態をヘッダーに反映
     int section = -1;
     switch (m_model->sortKey()) {
+      case SortKey::None:
+        // None is not a valid primary sort key, don't set indicator
+        break;
       case SortKey::Name:
         section = FileListModel::Name;
         break;
@@ -154,8 +157,8 @@ void FileListPane::onHeaderClicked(int section) {
     newOrder = Qt::DescendingOrder;
   }
 
-  // ソート設定を更新
-  m_model->setSortSettings(sortKey, newOrder);
+  // ソート設定を更新（第2ソートキーは現在の値を保持）
+  m_model->setSortSettings(sortKey, newOrder, m_model->sortKey2nd());
 
   // ヘッダーにソートインジケーターを表示
   m_view->horizontalHeader()->setSortIndicator(section, newOrder);

@@ -2,6 +2,7 @@
 #include "settings/Settings.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QGridLayout>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QComboBox>
@@ -15,6 +16,7 @@ BehaviorTab::BehaviorTab(QWidget* parent)
   : QWidget(parent)
   , m_sortKeyCombo(nullptr)
   , m_sortOrderCombo(nullptr)
+  , m_sortKey2ndCombo(nullptr)
   , m_sortDirsTypeCombo(nullptr)
   , m_sortDotFirstCheck(nullptr)
   , m_sortCaseSensitiveCheck(nullptr)
@@ -36,7 +38,7 @@ void BehaviorTab::setupUi() {
 
   // Sort settings
   QGroupBox* sortGroup = new QGroupBox(tr("Default Sort Settings"), this);
-  QFormLayout* sortLayout = new QFormLayout(sortGroup);
+  QVBoxLayout* sortGroupLayout = new QVBoxLayout(sortGroup);
 
   QLabel* sortLabel = new QLabel(
     tr("These settings define the default sorting behavior for new panes. "
@@ -44,36 +46,59 @@ void BehaviorTab::setupUi() {
     this
   );
   sortLabel->setWordWrap(true);
-  sortLayout->addRow(sortLabel);
+  sortGroupLayout->addWidget(sortLabel);
 
+  // Grid layout for sort controls (2x2 grid)
+  QGridLayout* sortGrid = new QGridLayout();
+  sortGrid->setColumnStretch(1, 1);
+  sortGrid->setColumnStretch(3, 1);
+
+  // Row 0: Sort by + Then by
   m_sortKeyCombo = new QComboBox(this);
   m_sortKeyCombo->addItem(tr("Name"), static_cast<int>(SortKey::Name));
   m_sortKeyCombo->addItem(tr("Size"), static_cast<int>(SortKey::Size));
   m_sortKeyCombo->addItem(tr("Type"), static_cast<int>(SortKey::Type));
   m_sortKeyCombo->addItem(tr("Last Modified"), static_cast<int>(SortKey::LastModified));
   m_sortKeyCombo->setToolTip(tr("Primary sort key for file lists"));
-  sortLayout->addRow(tr("Sort by:"), m_sortKeyCombo);
+  sortGrid->addWidget(new QLabel(tr("Sort by:"), this), 0, 0);
+  sortGrid->addWidget(m_sortKeyCombo, 0, 1);
 
+  m_sortKey2ndCombo = new QComboBox(this);
+  m_sortKey2ndCombo->addItem(tr("None"), static_cast<int>(SortKey::None));
+  m_sortKey2ndCombo->addItem(tr("Name"), static_cast<int>(SortKey::Name));
+  m_sortKey2ndCombo->addItem(tr("Size"), static_cast<int>(SortKey::Size));
+  m_sortKey2ndCombo->addItem(tr("Type"), static_cast<int>(SortKey::Type));
+  m_sortKey2ndCombo->addItem(tr("Last Modified"), static_cast<int>(SortKey::LastModified));
+  m_sortKey2ndCombo->setToolTip(tr("Secondary sort key used when primary keys are equal"));
+  sortGrid->addWidget(new QLabel(tr("Then by:"), this), 0, 2);
+  sortGrid->addWidget(m_sortKey2ndCombo, 0, 3);
+
+  // Row 1: Order + Directory Placement
   m_sortOrderCombo = new QComboBox(this);
   m_sortOrderCombo->addItem(tr("Ascending"), static_cast<int>(Qt::AscendingOrder));
   m_sortOrderCombo->addItem(tr("Descending"), static_cast<int>(Qt::DescendingOrder));
   m_sortOrderCombo->setToolTip(tr("Sort direction"));
-  sortLayout->addRow(tr("Order:"), m_sortOrderCombo);
+  sortGrid->addWidget(new QLabel(tr("Order:"), this), 1, 0);
+  sortGrid->addWidget(m_sortOrderCombo, 1, 1);
 
   m_sortDirsTypeCombo = new QComboBox(this);
   m_sortDirsTypeCombo->addItem(tr("Directories First"), static_cast<int>(SortDirsType::First));
   m_sortDirsTypeCombo->addItem(tr("Directories Last"), static_cast<int>(SortDirsType::Last));
   m_sortDirsTypeCombo->addItem(tr("Mixed with Files"), static_cast<int>(SortDirsType::Mixed));
   m_sortDirsTypeCombo->setToolTip(tr("Where to place directories in the sorted list"));
-  sortLayout->addRow(tr("Directory Placement:"), m_sortDirsTypeCombo);
+  sortGrid->addWidget(new QLabel(tr("Directory Placement:"), this), 1, 2);
+  sortGrid->addWidget(m_sortDirsTypeCombo, 1, 3);
 
+  sortGroupLayout->addLayout(sortGrid);
+
+  // Checkboxes
   m_sortDotFirstCheck = new QCheckBox(tr("Sort dot files first"), this);
   m_sortDotFirstCheck->setToolTip(tr("Place files/folders starting with '.' at the beginning"));
-  sortLayout->addRow(QString(), m_sortDotFirstCheck);
+  sortGroupLayout->addWidget(m_sortDotFirstCheck);
 
   m_sortCaseSensitiveCheck = new QCheckBox(tr("Case sensitive sorting"), this);
   m_sortCaseSensitiveCheck->setToolTip(tr("Enable case-sensitive sorting (A-Z then a-z)"));
-  sortLayout->addRow(QString(), m_sortCaseSensitiveCheck);
+  sortGroupLayout->addWidget(m_sortCaseSensitiveCheck);
 
   mainLayout->addWidget(sortGroup);
 
@@ -188,6 +213,14 @@ void BehaviorTab::loadSettings() {
     }
   }
 
+  // Sort key 2nd
+  for (int i = 0; i < m_sortKey2ndCombo->count(); ++i) {
+    if (m_sortKey2ndCombo->itemData(i).toInt() == static_cast<int>(pane.sortKey2nd)) {
+      m_sortKey2ndCombo->setCurrentIndex(i);
+      break;
+    }
+  }
+
   // Sort dirs type
   for (int i = 0; i < m_sortDirsTypeCombo->count(); ++i) {
     if (m_sortDirsTypeCombo->itemData(i).toInt() == static_cast<int>(pane.sortDirsType)) {
@@ -245,6 +278,7 @@ void BehaviorTab::save() {
   // Update sort settings for both panes
   SortKey sortKey = static_cast<SortKey>(m_sortKeyCombo->currentData().toInt());
   Qt::SortOrder sortOrder = static_cast<Qt::SortOrder>(m_sortOrderCombo->currentData().toInt());
+  SortKey sortKey2nd = static_cast<SortKey>(m_sortKey2ndCombo->currentData().toInt());
   SortDirsType sortDirsType = static_cast<SortDirsType>(m_sortDirsTypeCombo->currentData().toInt());
   bool sortDotFirst = m_sortDotFirstCheck->isChecked();
   Qt::CaseSensitivity sortCS = m_sortCaseSensitiveCheck->isChecked() ?
@@ -252,12 +286,14 @@ void BehaviorTab::save() {
 
   leftPane.sortKey = sortKey;
   leftPane.sortOrder = sortOrder;
+  leftPane.sortKey2nd = sortKey2nd;
   leftPane.sortDirsType = sortDirsType;
   leftPane.sortDotFirst = sortDotFirst;
   leftPane.sortCS = sortCS;
 
   rightPane.sortKey = sortKey;
   rightPane.sortOrder = sortOrder;
+  rightPane.sortKey2nd = sortKey2nd;
   rightPane.sortDirsType = sortDirsType;
   rightPane.sortDotFirst = sortDotFirst;
   rightPane.sortCS = sortCS;

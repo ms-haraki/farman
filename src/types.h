@@ -13,6 +13,7 @@ enum class PaneType {
 
 // ソートキー
 enum class SortKey {
+  None,          // ソートなし（第2キー用）
   Name,
   Size,
   Type,

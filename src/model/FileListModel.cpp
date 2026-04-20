@@ -403,13 +403,19 @@ void FileListModel::applyFilterAndSort() {
       }
 
       // 第2ソートキー
-      cmp = compareItems(a.get(), b.get(), m_sortKey2nd);
-      return m_sortOrder == Qt::AscendingOrder ? cmp < 0 : cmp > 0;
+      if (m_sortKey2nd != SortKey::None) {
+        cmp = compareItems(a.get(), b.get(), m_sortKey2nd);
+        return m_sortOrder == Qt::AscendingOrder ? cmp < 0 : cmp > 0;
+      }
+
+      return false;
     });
 }
 
 int FileListModel::compareItems(const FileItem* a, const FileItem* b, SortKey key) const {
   switch (key) {
+    case SortKey::None:
+      return 0;
     case SortKey::Name: {
       QString nameA = a->name();
       QString nameB = b->name();
