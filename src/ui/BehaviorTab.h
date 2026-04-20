@@ -35,6 +35,7 @@ private:
 
   // Display settings
   QCheckBox*  m_showHiddenCheck;
+  QCheckBox*  m_cursorLoopCheck;
 
   // Behavior settings
   QCheckBox*  m_restoreLastPathCheck;

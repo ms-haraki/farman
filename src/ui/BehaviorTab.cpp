@@ -21,6 +21,7 @@ BehaviorTab::BehaviorTab(QWidget* parent)
   , m_sortDotFirstCheck(nullptr)
   , m_sortCaseSensitiveCheck(nullptr)
   , m_showHiddenCheck(nullptr)
+  , m_cursorLoopCheck(nullptr)
   , m_restoreLastPathCheck(nullptr)
   , m_confirmOnExitCheck(nullptr)
   , m_windowSizeModeCombo(nullptr)
@@ -111,6 +112,18 @@ void BehaviorTab::setupUi() {
   displayLayout->addWidget(m_showHiddenCheck);
 
   mainLayout->addWidget(displayGroup);
+
+  // Navigation settings
+  QGroupBox* navigationGroup = new QGroupBox(tr("Navigation Settings"), this);
+  QVBoxLayout* navigationLayout = new QVBoxLayout(navigationGroup);
+
+  m_cursorLoopCheck = new QCheckBox(tr("Loop cursor between top and bottom"), this);
+  m_cursorLoopCheck->setToolTip(
+    tr("Pressing Down on the last row moves the cursor to the top, "
+       "and Up on the first row moves it to the bottom"));
+  navigationLayout->addWidget(m_cursorLoopCheck);
+
+  mainLayout->addWidget(navigationGroup);
 
   // Startup settings
   QGroupBox* startupGroup = new QGroupBox(tr("Startup Settings"), this);
@@ -245,6 +258,9 @@ void BehaviorTab::loadSettings() {
   // Display settings
   m_showHiddenCheck->setChecked(static_cast<bool>(pane.attrFilter & AttrFilter::ShowHidden));
 
+  // Navigation settings
+  m_cursorLoopCheck->setChecked(settings.cursorLoop());
+
   // Startup settings
   m_restoreLastPathCheck->setChecked(settings.restoreLastPath());
   m_confirmOnExitCheck->setChecked(settings.confirmOnExit());
@@ -319,6 +335,9 @@ void BehaviorTab::save() {
   // Save pane settings
   settings.setPaneSettings(PaneType::Left, leftPane);
   settings.setPaneSettings(PaneType::Right, rightPane);
+
+  // Save navigation settings
+  settings.setCursorLoop(m_cursorLoopCheck->isChecked());
 
   // Save startup settings
   settings.setRestoreLastPath(m_restoreLastPathCheck->isChecked());

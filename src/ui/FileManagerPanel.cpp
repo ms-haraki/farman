@@ -200,16 +200,28 @@ bool FileManagerPanel::handleKeyEvent(QKeyEvent* event) {
   switch (event->key()) {
     case Qt::Key_Up: {
       QModelIndex current = pane->view()->currentIndex();
-      if (current.isValid() && current.row() > 0) {
+      if (!current.isValid()) {
+        return true;
+      }
+      int rows = model->rowCount();
+      if (current.row() > 0) {
         pane->view()->setCurrentIndex(model->index(current.row() - 1, 0));
+      } else if (Settings::instance().cursorLoop() && rows > 0) {
+        pane->view()->setCurrentIndex(model->index(rows - 1, 0));
       }
       return true;
     }
 
     case Qt::Key_Down: {
       QModelIndex current = pane->view()->currentIndex();
-      if (current.isValid() && current.row() < model->rowCount() - 1) {
+      if (!current.isValid()) {
+        return true;
+      }
+      int rows = model->rowCount();
+      if (current.row() < rows - 1) {
         pane->view()->setCurrentIndex(model->index(current.row() + 1, 0));
+      } else if (Settings::instance().cursorLoop() && rows > 0) {
+        pane->view()->setCurrentIndex(model->index(0, 0));
       }
       return true;
     }

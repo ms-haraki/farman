@@ -62,6 +62,9 @@ public:
   bool confirmOnExit()                  const;
   void setConfirmOnExit(bool confirm);
 
+  bool cursorLoop()                     const;
+  void setCursorLoop(bool loop);
+
   // ── ウィンドウ設定 ──────────────────────
   WindowSizeMode     windowSizeMode()     const;
   void               setWindowSizeMode(WindowSizeMode mode);
@@ -94,6 +97,7 @@ private:
   QList<ColorRule> m_colorRules;
   bool             m_restoreLastPath = true;
   bool             m_confirmOnExit   = false;
+  bool             m_cursorLoop      = false;
 
   // Window settings
   WindowSizeMode     m_windowSizeMode     = WindowSizeMode::Default;

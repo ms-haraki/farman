@@ -100,6 +100,14 @@ void Settings::setConfirmOnExit(bool confirm) {
   m_confirmOnExit = confirm;
 }
 
+bool Settings::cursorLoop() const {
+  return m_cursorLoop;
+}
+
+void Settings::setCursorLoop(bool loop) {
+  m_cursorLoop = loop;
+}
+
 WindowSizeMode Settings::windowSizeMode() const {
   return m_windowSizeMode;
 }
@@ -359,6 +367,7 @@ void Settings::load() {
   QJsonObject behavior = root.value("behavior").toObject();
   m_restoreLastPath = behavior.value("restoreLastPath").toBool(true);
   m_confirmOnExit = behavior.value("confirmOnExit").toBool(false);
+  m_cursorLoop = behavior.value("cursorLoop").toBool(false);
 
   // Load window settings
   QJsonObject window = root.value("window").toObject();
@@ -445,6 +454,7 @@ void Settings::save() const {
   QJsonObject behavior;
   behavior["restoreLastPath"] = m_restoreLastPath;
   behavior["confirmOnExit"] = m_confirmOnExit;
+  behavior["cursorLoop"] = m_cursorLoop;
   root["behavior"] = behavior;
 
   // Save window settings
