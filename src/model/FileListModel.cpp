@@ -28,9 +28,10 @@ bool FileListModel::setPath(const QString& path) {
   m_currentPath = dir.absolutePath();
   m_entries.clear();
 
-  // ディレクトリエントリを読み込む
+  // ディレクトリエントリを読み込む。
+  // 隠し・システムファイルも一旦全て取得し、表示可否は applyFilterAndSort で制御する。
   QFileInfoList infoList = dir.entryInfoList(
-    QDir::AllEntries | QDir::NoDotAndDotDot,
+    QDir::AllEntries | QDir::Hidden | QDir::System | QDir::NoDotAndDotDot,
     QDir::NoSort  // 自前でソート
   );
 
@@ -404,11 +405,9 @@ void FileListModel::applyFilterAndSort() {
   // ソート
   std::stable_sort(m_entries.begin(), m_entries.end(),
     [this](const std::shared_ptr<FileItem>& a, const std::shared_ptr<FileItem>& b) {
-      // ".." は常に先頭
-      if (m_dotFirst) {
-        if (a->isDotDot()) return true;
-        if (b->isDotDot()) return false;
-      }
+      // ".." は常に先頭（ソート設定に関わらず）
+      if (a->isDotDot()) return true;
+      if (b->isDotDot()) return false;
 
       // ディレクトリのソート位置
       if (m_dirsType == SortDirsType::First) {
@@ -417,6 +416,14 @@ void FileListModel::applyFilterAndSort() {
       } else if (m_dirsType == SortDirsType::Last) {
         if (a->isDir() && !b->isDir()) return false;
         if (!a->isDir() && b->isDir()) return true;
+      }
+
+      // ドットで始まるエントリを同一グループ（ディレクトリ／ファイル）内で先頭に。
+      // ディレクトリ・ファイル双方に適用。
+      if (m_dotFirst) {
+        const bool aDot = a->name().startsWith('.');
+        const bool bDot = b->name().startsWith('.');
+        if (aDot != bDot) return aDot;
       }
 
       // 主ソートキー
