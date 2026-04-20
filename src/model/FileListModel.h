@@ -16,8 +16,8 @@ public:
   // 列定義
   enum Column {
     Name         = 0,
-    Size         = 1,
-    Type         = 2,
+    Type         = 1,
+    Size         = 2,
     LastModified = 3,
     ColumnCount
   };

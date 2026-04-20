@@ -72,8 +72,8 @@ void FileListPane::setupUi() {
           this, &FileListPane::onHeaderClicked);
 
   m_view->setColumnWidth(FileListModel::Name, 250);
-  m_view->setColumnWidth(FileListModel::Size, 100);
   m_view->setColumnWidth(FileListModel::Type, 80);
+  m_view->setColumnWidth(FileListModel::Size, 100);
   m_view->setColumnWidth(FileListModel::LastModified, 150);
 
   mainLayout->addWidget(m_view);

@@ -256,8 +256,33 @@ QVariant FileListModel::data(const QModelIndex& index, int role) const {
 
   if (role == Qt::DisplayRole) {
     switch (index.column()) {
-      case Name:
-        return item->name();
+      case Name: {
+        QString name = item->name();
+        // ".." や "." はそのまま表示
+        if (name == ".." || name == ".") {
+          return name;
+        }
+        // ドットファイル（.から始まる）の場合はファイル名全体を表示
+        if (name.startsWith('.')) {
+          return name;
+        }
+        // 通常のファイルは拡張子を除いた名前を表示
+        QString suffix = item->suffix();
+        if (!suffix.isEmpty()) {
+          // 拡張子がある場合は除去
+          return name.left(name.length() - suffix.length() - 1);  // -1 は "." の分
+        }
+        return name;
+      }
+      case Type: {
+        QString name = item->name();
+        // ドットファイル（.から始まる）の場合はTypeを空にする
+        if (name.startsWith('.') && name != ".." && name != ".") {
+          return QString("");
+        }
+        // 通常のファイルは拡張子を表示
+        return item->suffix().isEmpty() ? QString("") : item->suffix();
+      }
       case Size:
         if (item->isDir()) {
           return QString("<DIR>");
@@ -273,8 +298,6 @@ QVariant FileListModel::data(const QModelIndex& index, int role) const {
             return QString("%1 GB").arg(bytes / (1024.0 * 1024.0 * 1024.0), 0, 'f', 1);
           }
         }
-      case Type:
-        return item->suffix().isEmpty() ? QString("") : item->suffix();
       case LastModified:
         return item->lastModified().toString("yyyy/MM/dd HH:mm:ss");
     }
