@@ -15,13 +15,17 @@
 
 namespace Farman {
 
-SettingsDialog::SettingsDialog(QWidget* parent)
+SettingsDialog::SettingsDialog(const QString& leftCurrentPath,
+                               const QString& rightCurrentPath,
+                               QWidget* parent)
   : QDialog(parent)
   , m_tabWidget(nullptr)
   , m_keybindingTab(nullptr)
   , m_appearanceTab(nullptr)
   , m_behaviorTab(nullptr)
-  , m_buttonBox(nullptr) {
+  , m_buttonBox(nullptr)
+  , m_leftCurrentPath(leftCurrentPath)
+  , m_rightCurrentPath(rightCurrentPath) {
   setupUi();
 }
 
@@ -36,7 +40,7 @@ void SettingsDialog::setupUi() {
 
   m_keybindingTab = new KeybindingTab(this);
   m_appearanceTab = new AppearanceTab(this);
-  m_behaviorTab = new BehaviorTab(this);
+  m_behaviorTab = new BehaviorTab(m_leftCurrentPath, m_rightCurrentPath, this);
 
   m_tabWidget->addTab(m_behaviorTab, tr("1. Behavior"));
   m_tabWidget->addTab(m_appearanceTab, tr("2. Appearance"));

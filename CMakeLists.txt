@@ -22,6 +22,8 @@ qt_add_executable(farman
   src/ui/AppearanceTab.cpp
   src/ui/BehaviorTab.cpp
   src/ui/SortFilterDialog.cpp
+  src/ui/TransferConfirmDialog.cpp
+  src/ui/OverwriteDialog.cpp
   src/core/FileItem.cpp
   src/core/workers/WorkerBase.cpp
   src/core/workers/CopyWorker.cpp

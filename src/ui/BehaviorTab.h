@@ -5,6 +5,8 @@
 class QComboBox;
 class QCheckBox;
 class QSpinBox;
+class QLineEdit;
+class QToolButton;
 
 namespace Farman {
 
@@ -12,7 +14,9 @@ class BehaviorTab : public QWidget {
   Q_OBJECT
 
 public:
-  explicit BehaviorTab(QWidget* parent = nullptr);
+  BehaviorTab(const QString& leftCurrentPath,
+              const QString& rightCurrentPath,
+              QWidget* parent = nullptr);
   ~BehaviorTab() override = default;
 
   void save();
@@ -20,10 +24,19 @@ public:
 private slots:
   void onWindowSizeModeChanged(int index);
   void onWindowPositionModeChanged(int index);
+  void onLeftInitialPathModeChanged(int index);
+  void onRightInitialPathModeChanged(int index);
+  void onLeftBrowseInitialPath();
+  void onRightBrowseInitialPath();
 
 private:
   void setupUi();
   void loadSettings();
+
+  // ダイアログ起動時の各ペインのカレントディレクトリ。
+  // Custom Path 未設定時のデフォルトや、Default/LastSession 選択時の表示値として使う。
+  QString m_leftCurrentPath;
+  QString m_rightCurrentPath;
 
   // Sort settings
   QComboBox*  m_sortKeyCombo;
@@ -37,9 +50,17 @@ private:
   QCheckBox*  m_showHiddenCheck;
   QCheckBox*  m_cursorLoopCheck;
 
-  // Behavior settings
-  QCheckBox*  m_restoreLastPathCheck;
-  QCheckBox*  m_confirmOnExitCheck;
+  // File operation settings
+  QLineEdit*  m_autoRenameTemplateEdit;
+
+  // Startup / Behavior settings
+  QComboBox*   m_leftInitialPathModeCombo;
+  QLineEdit*   m_leftCustomPathEdit;
+  QToolButton* m_leftBrowseButton;
+  QComboBox*   m_rightInitialPathModeCombo;
+  QLineEdit*   m_rightCustomPathEdit;
+  QToolButton* m_rightBrowseButton;
+  QCheckBox*   m_confirmOnExitCheck;
 
   // Window settings
   QComboBox*  m_windowSizeModeCombo;

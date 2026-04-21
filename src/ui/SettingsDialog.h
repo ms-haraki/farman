@@ -16,7 +16,9 @@ class SettingsDialog : public QDialog {
   Q_OBJECT
 
 public:
-  explicit SettingsDialog(QWidget* parent = nullptr);
+  SettingsDialog(const QString& leftCurrentPath,
+                 const QString& rightCurrentPath,
+                 QWidget* parent = nullptr);
   ~SettingsDialog() override = default;
 
 protected:
@@ -33,6 +35,9 @@ private slots:
 
 private:
   void setupUi();
+
+  QString m_leftCurrentPath;
+  QString m_rightCurrentPath;
 
   QTabWidget*     m_tabWidget;
   KeybindingTab*  m_keybindingTab;

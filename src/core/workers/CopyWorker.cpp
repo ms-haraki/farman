@@ -46,6 +46,28 @@ void CopyWorker::run() {
     }
 
     QString dstPath = m_dstDir + "/" + srcInfo.fileName();
+
+    // トップレベルの競合解決（ディレクトリ or ファイル）
+    if (QFileInfo::exists(dstPath)) {
+      OverwriteResolution resolution = resolveOverwrite(srcPath, dstPath);
+      if (resolution.action == OverwriteResolution::Action::Cancel) {
+        requestCancel();
+        emit finished(false);
+        return;
+      }
+      if (resolution.action == OverwriteResolution::Action::Rename) {
+        dstPath = resolution.targetPath;
+      } else {
+        // Overwrite: 既存を削除（dir は再帰的に）
+        QFileInfo dstInfo(dstPath);
+        if (dstInfo.isDir()) {
+          QDir(dstPath).removeRecursively();
+        } else {
+          QFile::remove(dstPath);
+        }
+      }
+    }
+
     progress.currentFile = srcPath;
     emit progressUpdated(progress);
 
@@ -71,30 +93,25 @@ bool CopyWorker::copyEntry(const QString& src, const QString& dst) {
   }
 }
 
-bool CopyWorker::copyFile(const QString& src, const QString& dst) {
+bool CopyWorker::copyFile(const QString& src, const QString& dstIn) {
   if (isCancelled()) {
     return false;
   }
 
-  QFileInfo dstInfo(dst);
-  if (dstInfo.exists()) {
-    // Ask for overwrite confirmation
-    OverwriteResult result = askOverwrite(src, dst);
-
-    switch (result) {
-      case OverwriteResult::Yes:
-      case OverwriteResult::YesAll:
-        if (!QFile::remove(dst)) {
-          emit errorOccurred(dst, "Failed to remove existing file");
-          return false;
-        }
-        break;
-      case OverwriteResult::No:
-      case OverwriteResult::NoAll:
-        return true; // Skip this file
-      case OverwriteResult::Cancel:
-        requestCancel();
+  QString dst = dstIn;
+  if (QFileInfo::exists(dst)) {
+    OverwriteResolution resolution = resolveOverwrite(src, dst);
+    if (resolution.action == OverwriteResolution::Action::Cancel) {
+      requestCancel();
+      return false;
+    }
+    if (resolution.action == OverwriteResolution::Action::Rename) {
+      dst = resolution.targetPath;
+    } else {
+      if (!QFile::remove(dst)) {
+        emit errorOccurred(dst, "Failed to remove existing file");
         return false;
+      }
     }
   }
 

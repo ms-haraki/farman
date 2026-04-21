@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QtGlobal>
+#include <QString>
 
 namespace Farman {
 
@@ -53,13 +54,22 @@ enum class WorkerOperation {
   Remove
 };
 
-// 上書き確認の結果
-enum class OverwriteResult {
-  Yes,
-  YesAll,
-  No,
-  NoAll,
-  Cancel
+// 上書き時の動作モード（操作開始前に選択）
+enum class OverwriteMode {
+  Ask,            // 都度確認
+  AutoOverwrite,  // 自動で上書き
+  AutoRename      // 自動でリネーム（"foo (1).txt" など）
+};
+
+// 上書き競合発生時のユーザー選択（Ask モードの OverwriteDialog からの応答）
+struct OverwriteDecision {
+  enum class Action {
+    Overwrite,  // そのまま上書き
+    Rename,     // 任意のファイル名でリネーム
+    Cancel      // 操作全体をキャンセル
+  };
+  Action  action  = Action::Cancel;
+  QString newName;  // Rename 選択時のみ有効（ファイル名のみ、パスを含まない）
 };
 
 // ウィンドウサイズの復元モード
@@ -74,6 +84,13 @@ enum class WindowPositionMode {
   Default,      // デフォルト位置 (画面中央)
   LastSession,  // 前回終了時の位置
   Custom        // ユーザー指定の位置
+};
+
+// 初期表示ディレクトリのモード（ペイン別）
+enum class InitialPathMode {
+  Default,      // ホームディレクトリ
+  LastSession,  // 前回終了時のパス
+  Custom        // ユーザー指定の固定パス
 };
 
 } // namespace Farman

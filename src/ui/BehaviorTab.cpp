@@ -8,12 +8,21 @@
 #include <QComboBox>
 #include <QCheckBox>
 #include <QSpinBox>
+#include <QLineEdit>
+#include <QToolButton>
+#include <QFileDialog>
+#include <QDir>
 #include <QLabel>
+#include <QStyle>
 
 namespace Farman {
 
-BehaviorTab::BehaviorTab(QWidget* parent)
+BehaviorTab::BehaviorTab(const QString& leftCurrentPath,
+                         const QString& rightCurrentPath,
+                         QWidget* parent)
   : QWidget(parent)
+  , m_leftCurrentPath(leftCurrentPath)
+  , m_rightCurrentPath(rightCurrentPath)
   , m_sortKeyCombo(nullptr)
   , m_sortOrderCombo(nullptr)
   , m_sortKey2ndCombo(nullptr)
@@ -22,7 +31,13 @@ BehaviorTab::BehaviorTab(QWidget* parent)
   , m_sortCaseSensitiveCheck(nullptr)
   , m_showHiddenCheck(nullptr)
   , m_cursorLoopCheck(nullptr)
-  , m_restoreLastPathCheck(nullptr)
+  , m_autoRenameTemplateEdit(nullptr)
+  , m_leftInitialPathModeCombo(nullptr)
+  , m_leftCustomPathEdit(nullptr)
+  , m_leftBrowseButton(nullptr)
+  , m_rightInitialPathModeCombo(nullptr)
+  , m_rightCustomPathEdit(nullptr)
+  , m_rightBrowseButton(nullptr)
   , m_confirmOnExitCheck(nullptr)
   , m_windowSizeModeCombo(nullptr)
   , m_windowWidthSpin(nullptr)
@@ -125,13 +140,73 @@ void BehaviorTab::setupUi() {
 
   mainLayout->addWidget(navigationGroup);
 
+  // File operation settings
+  QGroupBox* fileOpsGroup = new QGroupBox(tr("File Operations"), this);
+  QFormLayout* fileOpsLayout = new QFormLayout(fileOpsGroup);
+
+  m_autoRenameTemplateEdit = new QLineEdit(this);
+  m_autoRenameTemplateEdit->setToolTip(
+    tr("Default suffix template for auto-rename on copy/move conflicts. "
+       "Use {n} as the counter placeholder (e.g., ' ({n})' → 'foo (1).txt')."));
+  m_autoRenameTemplateEdit->setPlaceholderText(QStringLiteral(" ({n})"));
+  fileOpsLayout->addRow(tr("Auto-rename suffix:"), m_autoRenameTemplateEdit);
+
+  mainLayout->addWidget(fileOpsGroup);
+
   // Startup settings
   QGroupBox* startupGroup = new QGroupBox(tr("Startup Settings"), this);
   QVBoxLayout* startupLayout = new QVBoxLayout(startupGroup);
 
-  m_restoreLastPathCheck = new QCheckBox(tr("Restore last opened paths on startup"), this);
-  m_restoreLastPathCheck->setToolTip(tr("Remember and restore the last opened directories when starting the application"));
-  startupLayout->addWidget(m_restoreLastPathCheck);
+  // Per-pane initial path (left / right) — Window Settings と同様の 2 カラム
+  QGroupBox* initialPathsGroup = new QGroupBox(tr("Initial Directory"), this);
+  QHBoxLayout* initialPathsLayout = new QHBoxLayout(initialPathsGroup);
+
+  auto buildPanePathBox = [this](
+      const QString& title,
+      QComboBox*& modeCombo,
+      QLineEdit*& pathEdit,
+      QToolButton*& browseBtn) -> QGroupBox* {
+    QGroupBox* box = new QGroupBox(title, this);
+    QFormLayout* form = new QFormLayout(box);
+
+    modeCombo = new QComboBox(this);
+    modeCombo->addItem(tr("Default (Home)"),   static_cast<int>(InitialPathMode::Default));
+    modeCombo->addItem(tr("Last Session"),     static_cast<int>(InitialPathMode::LastSession));
+    modeCombo->addItem(tr("Custom"),           static_cast<int>(InitialPathMode::Custom));
+    form->addRow(tr("Mode:"), modeCombo);
+
+    QWidget* pathRow = new QWidget(this);
+    QHBoxLayout* pathRowLayout = new QHBoxLayout(pathRow);
+    pathRowLayout->setContentsMargins(0, 0, 0, 0);
+    pathEdit = new QLineEdit(this);
+    pathEdit->setPlaceholderText(tr("/path/to/directory"));
+    browseBtn = new QToolButton(this);
+    browseBtn->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
+    browseBtn->setToolTip(tr("Browse for folder..."));
+    pathRowLayout->addWidget(pathEdit, 1);
+    pathRowLayout->addWidget(browseBtn);
+    form->addRow(tr("Custom Path:"), pathRow);
+
+    return box;
+  };
+
+  initialPathsLayout->addWidget(buildPanePathBox(
+    tr("Left Pane"),
+    m_leftInitialPathModeCombo, m_leftCustomPathEdit, m_leftBrowseButton));
+  initialPathsLayout->addWidget(buildPanePathBox(
+    tr("Right Pane"),
+    m_rightInitialPathModeCombo, m_rightCustomPathEdit, m_rightBrowseButton));
+
+  connect(m_leftInitialPathModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, &BehaviorTab::onLeftInitialPathModeChanged);
+  connect(m_rightInitialPathModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, &BehaviorTab::onRightInitialPathModeChanged);
+  connect(m_leftBrowseButton,  &QToolButton::clicked,
+          this, &BehaviorTab::onLeftBrowseInitialPath);
+  connect(m_rightBrowseButton, &QToolButton::clicked,
+          this, &BehaviorTab::onRightBrowseInitialPath);
+
+  startupLayout->addWidget(initialPathsGroup);
 
   m_confirmOnExitCheck = new QCheckBox(tr("Confirm on exit"), this);
   m_confirmOnExitCheck->setToolTip(tr("Show confirmation dialog when closing the application"));
@@ -261,8 +336,26 @@ void BehaviorTab::loadSettings() {
   // Navigation settings
   m_cursorLoopCheck->setChecked(settings.cursorLoop());
 
+  // File operations
+  m_autoRenameTemplateEdit->setText(settings.autoRenameTemplate());
+
   // Startup settings
-  m_restoreLastPathCheck->setChecked(settings.restoreLastPath());
+  auto selectModeByData = [](QComboBox* combo, int value) {
+    for (int i = 0; i < combo->count(); ++i) {
+      if (combo->itemData(i).toInt() == value) {
+        combo->setCurrentIndex(i);
+        return;
+      }
+    }
+  };
+  selectModeByData(m_leftInitialPathModeCombo,
+                   static_cast<int>(settings.initialPathMode(PaneType::Left)));
+  selectModeByData(m_rightInitialPathModeCombo,
+                   static_cast<int>(settings.initialPathMode(PaneType::Right)));
+  // Custom Path 欄の表示はモードに応じて onXxxInitialPathModeChanged が決める
+  onLeftInitialPathModeChanged(m_leftInitialPathModeCombo->currentIndex());
+  onRightInitialPathModeChanged(m_rightInitialPathModeCombo->currentIndex());
+
   m_confirmOnExitCheck->setChecked(settings.confirmOnExit());
 
   // Window settings
@@ -339,8 +432,20 @@ void BehaviorTab::save() {
   // Save navigation settings
   settings.setCursorLoop(m_cursorLoopCheck->isChecked());
 
+  // Save file operation settings
+  settings.setAutoRenameTemplate(m_autoRenameTemplateEdit->text());
+
   // Save startup settings
-  settings.setRestoreLastPath(m_restoreLastPathCheck->isChecked());
+  settings.setInitialPathMode(
+    PaneType::Left,
+    static_cast<InitialPathMode>(m_leftInitialPathModeCombo->currentData().toInt())
+  );
+  settings.setInitialPathMode(
+    PaneType::Right,
+    static_cast<InitialPathMode>(m_rightInitialPathModeCombo->currentData().toInt())
+  );
+  settings.setCustomInitialPath(PaneType::Left,  m_leftCustomPathEdit->text().trimmed());
+  settings.setCustomInitialPath(PaneType::Right, m_rightCustomPathEdit->text().trimmed());
   settings.setConfirmOnExit(m_confirmOnExitCheck->isChecked());
 
   // Save window settings
@@ -365,6 +470,63 @@ void BehaviorTab::onWindowPositionModeChanged(int index) {
   bool enableCustomPos = (mode == WindowPositionMode::Custom);
   m_windowXSpin->setEnabled(enableCustomPos);
   m_windowYSpin->setEnabled(enableCustomPos);
+}
+
+void BehaviorTab::onLeftInitialPathModeChanged(int index) {
+  InitialPathMode mode = static_cast<InitialPathMode>(
+    m_leftInitialPathModeCombo->itemData(index).toInt());
+  const bool enableCustom = (mode == InitialPathMode::Custom);
+  m_leftCustomPathEdit->setEnabled(enableCustom);
+  m_leftBrowseButton->setEnabled(enableCustom);
+
+  // Custom + 保存済み値あり → 保存値を表示、それ以外 → ペインのカレントディレクトリ
+  const QString saved = Settings::instance().customInitialPath(PaneType::Left);
+  if (mode == InitialPathMode::Custom && !saved.isEmpty()) {
+    m_leftCustomPathEdit->setText(saved);
+  } else {
+    m_leftCustomPathEdit->setText(m_leftCurrentPath);
+  }
+}
+
+void BehaviorTab::onRightInitialPathModeChanged(int index) {
+  InitialPathMode mode = static_cast<InitialPathMode>(
+    m_rightInitialPathModeCombo->itemData(index).toInt());
+  const bool enableCustom = (mode == InitialPathMode::Custom);
+  m_rightCustomPathEdit->setEnabled(enableCustom);
+  m_rightBrowseButton->setEnabled(enableCustom);
+
+  const QString saved = Settings::instance().customInitialPath(PaneType::Right);
+  if (mode == InitialPathMode::Custom && !saved.isEmpty()) {
+    m_rightCustomPathEdit->setText(saved);
+  } else {
+    m_rightCustomPathEdit->setText(m_rightCurrentPath);
+  }
+}
+
+void BehaviorTab::onLeftBrowseInitialPath() {
+  const QString start = m_leftCustomPathEdit->text().isEmpty()
+                        ? QDir::homePath()
+                        : m_leftCustomPathEdit->text();
+  const QString selected = QFileDialog::getExistingDirectory(
+    this, tr("Select initial directory for left pane"), start,
+    QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
+  );
+  if (!selected.isEmpty()) {
+    m_leftCustomPathEdit->setText(selected);
+  }
+}
+
+void BehaviorTab::onRightBrowseInitialPath() {
+  const QString start = m_rightCustomPathEdit->text().isEmpty()
+                        ? QDir::homePath()
+                        : m_rightCustomPathEdit->text();
+  const QString selected = QFileDialog::getExistingDirectory(
+    this, tr("Select initial directory for right pane"), start,
+    QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
+  );
+  if (!selected.isEmpty()) {
+    m_rightCustomPathEdit->setText(selected);
+  }
 }
 
 } // namespace Farman

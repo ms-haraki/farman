@@ -1,4 +1,6 @@
 #include "WorkerBase.h"
+#include <QFileInfo>
+#include <QDir>
 
 namespace Farman {
 
@@ -15,11 +17,85 @@ bool WorkerBase::isCancelled() const {
   return m_cancelRequested.load();
 }
 
-OverwriteResult WorkerBase::askOverwrite(
+void WorkerBase::setOverwriteMode(OverwriteMode mode) {
+  m_overwriteMode = mode;
+}
+
+void WorkerBase::setAutoRenameTemplate(const QString& tmpl) {
+  m_autoRenameTemplate = tmpl;
+}
+
+OverwriteResolution WorkerBase::resolveOverwrite(
   const QString& srcPath,
   const QString& dstPath) {
-  // TODO: 実装
-  return OverwriteResult::Cancel;
+  OverwriteResolution resolution;
+  resolution.targetPath = dstPath;
+
+  switch (m_overwriteMode) {
+    case OverwriteMode::AutoOverwrite:
+      resolution.action = OverwriteResolution::Action::Overwrite;
+      return resolution;
+
+    case OverwriteMode::AutoRename:
+      resolution.action     = OverwriteResolution::Action::Rename;
+      resolution.targetPath = generateUniqueName(dstPath);
+      return resolution;
+
+    case OverwriteMode::Ask: {
+      OverwriteDecision decision;
+      emit overwriteRequired(srcPath, dstPath, &decision);
+      switch (decision.action) {
+        case OverwriteDecision::Action::Overwrite:
+          resolution.action = OverwriteResolution::Action::Overwrite;
+          break;
+        case OverwriteDecision::Action::Rename: {
+          resolution.action = OverwriteResolution::Action::Rename;
+          const QString parent = QFileInfo(dstPath).absolutePath();
+          resolution.targetPath = parent + "/" + decision.newName;
+          break;
+        }
+        case OverwriteDecision::Action::Cancel:
+          resolution.action = OverwriteResolution::Action::Cancel;
+          break;
+      }
+      return resolution;
+    }
+  }
+  return resolution;
+}
+
+QString WorkerBase::generateUniqueName(const QString& path) const {
+  QFileInfo info(path);
+  const QString dir      = info.absolutePath();
+  const QString fileName = info.fileName();
+
+  // dot-file 保護: 先頭 '.' を含まない最初の '.' を区切りとする
+  int firstDot = -1;
+  for (int i = 1; i < fileName.length(); ++i) {
+    if (fileName[i] == QLatin1Char('.')) {
+      firstDot = i;
+      break;
+    }
+  }
+  const QString base = (firstDot >= 0) ? fileName.left(firstDot) : fileName;
+  const QString ext  = (firstDot >= 0) ? fileName.mid(firstDot)  : QString();
+
+  // テンプレート正規化: 空 or {n} を含まなければ末尾に " ({n})" を補う
+  QString tmpl = m_autoRenameTemplate;
+  if (tmpl.isEmpty()) tmpl = QStringLiteral(" ({n})");
+  if (!tmpl.contains(QStringLiteral("{n}"))) tmpl += QStringLiteral(" ({n})");
+
+  for (int n = 1; n < 10000; ++n) {
+    QString suffix = tmpl;
+    suffix.replace(QStringLiteral("{n}"), QString::number(n));
+    const QString candidate     = base + suffix + ext;
+    const QString candidatePath = dir + "/" + candidate;
+    if (!QFileInfo::exists(candidatePath)) {
+      return candidatePath;
+    }
+  }
+  // フォールバック（まずあり得ないが念のため）
+  return path + " (copy)";
 }
 
 } // namespace Farman

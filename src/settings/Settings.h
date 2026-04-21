@@ -64,14 +64,22 @@ public:
   void             setColorRules(const QList<ColorRule>& rules);
 
   // ── 起動設定 ───────────────────────────
-  bool restoreLastPath()                const;
-  void setRestoreLastPath(bool restore);
+  // ペインごとの初期表示ディレクトリ
+  InitialPathMode initialPathMode(PaneType pane)            const;
+  void            setInitialPathMode(PaneType pane, InitialPathMode mode);
+  QString         customInitialPath(PaneType pane)          const;
+  void            setCustomInitialPath(PaneType pane, const QString& path);
 
   bool confirmOnExit()                  const;
   void setConfirmOnExit(bool confirm);
 
   bool cursorLoop()                     const;
   void setCursorLoop(bool loop);
+
+  // コピー／移動の「自動リネーム」で使うサフィックステンプレート。
+  // "{n}" がカウンタのプレースホルダ。未指定なら " ({n})" を補う。
+  QString autoRenameTemplate()          const;
+  void    setAutoRenameTemplate(const QString& tmpl);
 
   // ── ウィンドウ設定 ──────────────────────
   WindowSizeMode     windowSizeMode()     const;
@@ -104,9 +112,16 @@ private:
   FileSizeFormat   m_fileSizeFormat  = FileSizeFormat::Auto;
   QString          m_dateTimeFormat  = "yyyy/MM/dd HH:mm:ss";
   QList<ColorRule> m_colorRules;
-  bool             m_restoreLastPath = true;
+  // Per-pane 初期表示ディレクトリ（デフォルトは LastSession で従来動作と互換）
+  InitialPathMode  m_initialPathMode[static_cast<int>(PaneType::Count)] = {
+    InitialPathMode::LastSession,
+    InitialPathMode::LastSession
+  };
+  QString          m_customInitialPath[static_cast<int>(PaneType::Count)];
+
   bool             m_confirmOnExit   = false;
   bool             m_cursorLoop      = false;
+  QString          m_autoRenameTemplate = QStringLiteral(" ({n})");
 
   // Window settings
   WindowSizeMode     m_windowSizeMode     = WindowSizeMode::Default;

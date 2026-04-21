@@ -100,12 +100,30 @@ void Settings::setColorRules(const QList<ColorRule>& rules) {
   m_colorRules = rules;
 }
 
-bool Settings::restoreLastPath() const {
-  return m_restoreLastPath;
+InitialPathMode Settings::initialPathMode(PaneType pane) const {
+  int idx = static_cast<int>(pane);
+  if (idx < 0 || idx >= static_cast<int>(PaneType::Count)) {
+    return InitialPathMode::LastSession;
+  }
+  return m_initialPathMode[idx];
 }
 
-void Settings::setRestoreLastPath(bool restore) {
-  m_restoreLastPath = restore;
+void Settings::setInitialPathMode(PaneType pane, InitialPathMode mode) {
+  int idx = static_cast<int>(pane);
+  if (idx < 0 || idx >= static_cast<int>(PaneType::Count)) return;
+  m_initialPathMode[idx] = mode;
+}
+
+QString Settings::customInitialPath(PaneType pane) const {
+  int idx = static_cast<int>(pane);
+  if (idx < 0 || idx >= static_cast<int>(PaneType::Count)) return {};
+  return m_customInitialPath[idx];
+}
+
+void Settings::setCustomInitialPath(PaneType pane, const QString& path) {
+  int idx = static_cast<int>(pane);
+  if (idx < 0 || idx >= static_cast<int>(PaneType::Count)) return;
+  m_customInitialPath[idx] = path;
 }
 
 bool Settings::confirmOnExit() const {
@@ -122,6 +140,14 @@ bool Settings::cursorLoop() const {
 
 void Settings::setCursorLoop(bool loop) {
   m_cursorLoop = loop;
+}
+
+QString Settings::autoRenameTemplate() const {
+  return m_autoRenameTemplate;
+}
+
+void Settings::setAutoRenameTemplate(const QString& tmpl) {
+  m_autoRenameTemplate = tmpl;
 }
 
 WindowSizeMode Settings::windowSizeMode() const {
@@ -256,6 +282,21 @@ WindowPositionMode stringToWindowPositionMode(const QString& str) {
   return WindowPositionMode::Default;
 }
 
+QString initialPathModeToString(InitialPathMode mode) {
+  switch (mode) {
+    case InitialPathMode::Default:     return "default";
+    case InitialPathMode::LastSession: return "lastSession";
+    case InitialPathMode::Custom:      return "custom";
+  }
+  return "lastSession";
+}
+
+InitialPathMode stringToInitialPathMode(const QString& str) {
+  if (str == "default") return InitialPathMode::Default;
+  if (str == "custom")  return InitialPathMode::Custom;
+  return InitialPathMode::LastSession;
+}
+
 QJsonObject paneSettingsToJson(const PaneSettings& pane) {
   QJsonObject obj;
   obj["path"] = pane.path;
@@ -381,9 +422,30 @@ void Settings::load() {
 
   // Load behavior settings
   QJsonObject behavior = root.value("behavior").toObject();
-  m_restoreLastPath = behavior.value("restoreLastPath").toBool(true);
   m_confirmOnExit = behavior.value("confirmOnExit").toBool(false);
   m_cursorLoop = behavior.value("cursorLoop").toBool(false);
+  m_autoRenameTemplate = behavior.value("autoRenameTemplate").toString(" ({n})");
+
+  // Per-pane 初期表示ディレクトリ。旧 restoreLastPath が残っていれば
+  // LastSession/Default にマップして互換性を保つ。
+  const bool legacyRestore = behavior.value("restoreLastPath").toBool(true);
+  const InitialPathMode legacyMode = legacyRestore ? InitialPathMode::LastSession
+                                                   : InitialPathMode::Default;
+
+  QJsonObject initialPaths = root.value("initialPaths").toObject();
+  auto loadInitialPath = [&](PaneType pane, const QString& key) {
+    int idx = static_cast<int>(pane);
+    if (initialPaths.contains(key)) {
+      QJsonObject obj = initialPaths.value(key).toObject();
+      m_initialPathMode[idx]   = stringToInitialPathMode(obj.value("mode").toString());
+      m_customInitialPath[idx] = obj.value("customPath").toString();
+    } else {
+      m_initialPathMode[idx]   = legacyMode;
+      m_customInitialPath[idx].clear();
+    }
+  };
+  loadInitialPath(PaneType::Left,  "left");
+  loadInitialPath(PaneType::Right, "right");
 
   // Load window settings
   QJsonObject window = root.value("window").toObject();
@@ -477,10 +539,23 @@ void Settings::save() const {
 
   // Save behavior settings
   QJsonObject behavior;
-  behavior["restoreLastPath"] = m_restoreLastPath;
   behavior["confirmOnExit"] = m_confirmOnExit;
   behavior["cursorLoop"] = m_cursorLoop;
+  behavior["autoRenameTemplate"] = m_autoRenameTemplate;
   root["behavior"] = behavior;
+
+  // Per-pane 初期表示ディレクトリ
+  QJsonObject initialPaths;
+  auto paneInitial = [this](PaneType pane) -> QJsonObject {
+    int idx = static_cast<int>(pane);
+    QJsonObject obj;
+    obj["mode"]       = initialPathModeToString(m_initialPathMode[idx]);
+    obj["customPath"] = m_customInitialPath[idx];
+    return obj;
+  };
+  initialPaths["left"]  = paneInitial(PaneType::Left);
+  initialPaths["right"] = paneInitial(PaneType::Right);
+  root["initialPaths"]  = initialPaths;
 
   // Save window settings
   QJsonObject window;

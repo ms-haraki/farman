@@ -2,6 +2,8 @@
 #include "FileListPane.h"
 #include "ProgressDialog.h"
 #include "SortFilterDialog.h"
+#include "TransferConfirmDialog.h"
+#include "OverwriteDialog.h"
 #include "model/FileListModel.h"
 #include "core/FileItem.h"
 #include "core/workers/CopyWorker.h"
@@ -61,14 +63,25 @@ void FileManagerPanel::setupUi() {
 void FileManagerPanel::loadInitialPath() {
   auto& settings = Settings::instance();
 
-  PaneSettings leftSettings = settings.paneSettings(PaneType::Left);
-  PaneSettings rightSettings = settings.paneSettings(PaneType::Right);
+  auto resolveInitialPath = [&](PaneType pane) -> QString {
+    const QString home = QDir::homePath();
+    switch (settings.initialPathMode(pane)) {
+      case InitialPathMode::Default:
+        return home;
+      case InitialPathMode::LastSession: {
+        const QString last = settings.paneSettings(pane).path;
+        return (!last.isEmpty() && QDir(last).exists()) ? last : home;
+      }
+      case InitialPathMode::Custom: {
+        const QString custom = settings.customInitialPath(pane);
+        return (!custom.isEmpty() && QDir(custom).exists()) ? custom : home;
+      }
+    }
+    return home;
+  };
 
-  QString leftPath = settings.restoreLastPath() ? leftSettings.path : QDir::homePath();
-  QString rightPath = settings.restoreLastPath() ? rightSettings.path : QDir::homePath();
-
-  navigatePane(PaneType::Left, leftPath);
-  navigatePane(PaneType::Right, rightPath);
+  navigatePane(PaneType::Left,  resolveInitialPath(PaneType::Left));
+  navigatePane(PaneType::Right, resolveInitialPath(PaneType::Right));
 
   // 左ペインをアクティブに
   setActivePane(PaneType::Left);
@@ -341,6 +354,9 @@ void FileManagerPanel::handleBackspaceKey() {
     return;
   }
 
+  // 親に戻った際にカーソルを元いた子ディレクトリに合わせる
+  const QString childDirName = QFileInfo(currentPath).fileName();
+
   QDir dir(currentPath);
   if (!dir.cdUp()) {
     // ルートディレクトリにいる場合は何もしない
@@ -349,6 +365,16 @@ void FileManagerPanel::handleBackspaceKey() {
 
   QString parentPath = dir.absolutePath();
   if (navigatePane(m_activePane, parentPath)) {
+    if (!childDirName.isEmpty()) {
+      FileListModel* parentModel = pane->model();
+      for (int i = 0; i < parentModel->rowCount(); ++i) {
+        const FileItem* item = parentModel->itemAt(i);
+        if (item && item->name() == childDirName) {
+          pane->view()->setCurrentIndex(parentModel->index(i, 0));
+          break;
+        }
+      }
+    }
     updatePathSignal();
   }
 }
@@ -529,8 +555,31 @@ void FileManagerPanel::copySelectedFiles() {
     return;
   }
 
+  // 確認ダイアログ（コピー元・一覧・コピー先・上書きモード）
+  TransferConfirmDialog confirm(
+    TransferConfirmDialog::Copy,
+    srcPane->currentPath(),
+    selectedFiles,
+    destDir,
+    this
+  );
+  if (confirm.exec() != QDialog::Accepted) {
+    return;
+  }
+  const OverwriteMode overwriteMode = confirm.overwriteMode();
+
   // Create worker and dialog
   CopyWorker* worker = new CopyWorker(selectedFiles, destDir, this);
+  worker->setOverwriteMode(overwriteMode);
+  worker->setAutoRenameTemplate(confirm.autoRenameTemplate());
+  connect(worker, &WorkerBase::overwriteRequired, this,
+    [this](const QString& srcPath, const QString& dstPath, OverwriteDecision* decision) {
+      OverwriteDialog dlg(srcPath, dstPath, this);
+      dlg.exec();
+      *decision = dlg.decision();
+    },
+    Qt::BlockingQueuedConnection
+  );
   ProgressDialog* dialog = new ProgressDialog(tr("Copying files..."), this);
   dialog->setWorker(worker);
 
@@ -619,8 +668,31 @@ void FileManagerPanel::moveSelectedFiles() {
     return;
   }
 
+  // 確認ダイアログ
+  TransferConfirmDialog confirm(
+    TransferConfirmDialog::Move,
+    srcPane->currentPath(),
+    selectedFiles,
+    destDir,
+    this
+  );
+  if (confirm.exec() != QDialog::Accepted) {
+    return;
+  }
+  const OverwriteMode overwriteMode = confirm.overwriteMode();
+
   // Create worker and dialog
   MoveWorker* worker = new MoveWorker(selectedFiles, destDir, this);
+  worker->setOverwriteMode(overwriteMode);
+  worker->setAutoRenameTemplate(confirm.autoRenameTemplate());
+  connect(worker, &WorkerBase::overwriteRequired, this,
+    [this](const QString& srcPath, const QString& dstPath, OverwriteDecision* decision) {
+      OverwriteDialog dlg(srcPath, dstPath, this);
+      dlg.exec();
+      *decision = dlg.decision();
+    },
+    Qt::BlockingQueuedConnection
+  );
   ProgressDialog* dialog = new ProgressDialog(tr("Moving files..."), this);
   dialog->setWorker(worker);
 

@@ -46,6 +46,35 @@ void MoveWorker::run() {
     }
 
     QString dstPath = m_dstDir + "/" + srcInfo.fileName();
+
+    if (QFileInfo::exists(dstPath)) {
+      OverwriteResolution resolution = resolveOverwrite(srcPath, dstPath);
+      if (resolution.action == OverwriteResolution::Action::Cancel) {
+        requestCancel();
+        emit finished(false);
+        return;
+      }
+      if (resolution.action == OverwriteResolution::Action::Rename) {
+        dstPath = resolution.targetPath;
+      } else {
+        // Overwrite: 既存を削除
+        QFileInfo dstInfo(dstPath);
+        if (dstInfo.isDir()) {
+          if (!removeDirectory(dstPath)) {
+            emit errorOccurred(dstPath, "Failed to remove existing directory");
+            success = false;
+            continue;
+          }
+        } else {
+          if (!QFile::remove(dstPath)) {
+            emit errorOccurred(dstPath, "Failed to remove existing file");
+            success = false;
+            continue;
+          }
+        }
+      }
+    }
+
     progress.currentFile = srcPath;
     emit progressUpdated(progress);
 
@@ -67,37 +96,7 @@ bool MoveWorker::moveEntry(const QString& src, const QString& dst) {
   }
 
   QFileInfo srcInfo(src);
-  QFileInfo dstInfo(dst);
-
-  // Check if destination exists
-  if (dstInfo.exists()) {
-    // Ask for overwrite confirmation
-    OverwriteResult result = askOverwrite(src, dst);
-
-    switch (result) {
-      case OverwriteResult::Yes:
-      case OverwriteResult::YesAll:
-        // Remove destination before moving
-        if (dstInfo.isDir()) {
-          if (!removeDirectory(dst)) {
-            emit errorOccurred(dst, "Failed to remove existing directory");
-            return false;
-          }
-        } else {
-          if (!QFile::remove(dst)) {
-            emit errorOccurred(dst, "Failed to remove existing file");
-            return false;
-          }
-        }
-        break;
-      case OverwriteResult::No:
-      case OverwriteResult::NoAll:
-        return true; // Skip this file
-      case OverwriteResult::Cancel:
-        requestCancel();
-        return false;
-    }
-  }
+  // run() 側でトップレベル競合は解決済み。ここでは dst は存在しない前提。
 
   // Try to rename first (fast for same filesystem)
   if (QFile::rename(src, dst)) {

@@ -16,6 +16,17 @@ struct WorkerProgress {
   int     filesTotal;   // 合計ファイル数
 };
 
+// resolveOverwrite の結果
+struct OverwriteResolution {
+  enum class Action {
+    Overwrite,  // dst を削除してから書き込み
+    Rename,     // targetPath の新パスへ書き込み（ユニーク名）
+    Cancel      // 操作を中止
+  };
+  Action  action      = Action::Cancel;
+  QString targetPath;  // 最終的に使用する出力先フルパス
+};
+
 class WorkerBase : public QThread {
   Q_OBJECT
 
@@ -27,12 +38,21 @@ public:
   void requestCancel();
   bool isCancelled() const;
 
+  // 上書き動作モード（開始前に設定）
+  void setOverwriteMode(OverwriteMode mode);
+
+  // AutoRename 時に付加するサフィックステンプレート。"{n}" がカウンタ。
+  // 空 or {n} を含まない場合は末尾に " ({n})" を補う。
+  void setAutoRenameTemplate(const QString& tmpl);
+
 signals:
   void progressUpdated(const WorkerProgress& progress);
+  // Ask モードでのみ emit。UI スレッドで dialog を開き、decision を埋める。
+  // Qt::BlockingQueuedConnection で接続することを想定。
   void overwriteRequired(
     const QString& srcPath,
     const QString& dstPath,
-    OverwriteResult* result  // Worker側でブロックして待つ
+    OverwriteDecision* decision
   );
   void errorOccurred(const QString& path, const QString& message);
   void finished(bool success);
@@ -40,13 +60,22 @@ signals:
 protected:
   void run() override = 0;
 
-  // 上書き確認（UIスレッドと同期）
-  OverwriteResult askOverwrite(
+  // 上書き競合の解決。dst が既に存在する場合に呼び出す。
+  // - AutoOverwrite: { Overwrite, dst }
+  // - AutoRename:    { Rename, generateUniqueName(dst) }
+  // - Ask:           ダイアログ結果に従う
+  OverwriteResolution resolveOverwrite(
     const QString& srcPath,
     const QString& dstPath
   );
 
+  // "foo.txt" → "foo (1).txt", "foo (2).txt" … のように既存ファイルと衝突しない
+  // ファイル名を生成して返す（m_autoRenameTemplate を使用）。
+  QString generateUniqueName(const QString& path) const;
+
   std::atomic<bool> m_cancelRequested{false};
+  OverwriteMode     m_overwriteMode = OverwriteMode::Ask;
+  QString           m_autoRenameTemplate = QStringLiteral(" ({n})");
 };
 
 } // namespace Farman

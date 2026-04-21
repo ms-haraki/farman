@@ -419,7 +419,11 @@ void MainWindow::registerCommands() {
 }
 
 void MainWindow::showSettingsDialog() {
-  SettingsDialog* dialog = new SettingsDialog(this);
+  SettingsDialog* dialog = new SettingsDialog(
+    m_fileManagerPanel->leftPath(),
+    m_fileManagerPanel->rightPath(),
+    this
+  );
   connect(dialog, &SettingsDialog::settingsChanged, this, &MainWindow::onSettingsChanged);
   dialog->exec();
   delete dialog;
@@ -453,6 +457,16 @@ void MainWindow::closeEvent(QCloseEvent* event) {
   // Save last window size and position
   settings.setLastWindowSize(size());
   settings.setLastWindowPosition(pos());
+
+  // Persist each pane's current path so InitialPathMode::LastSession works.
+  auto storeLastPath = [&settings](PaneType type, FileListPane* pane) {
+    PaneSettings s = settings.paneSettings(type);
+    s.path = pane->currentPath();
+    settings.setPaneSettings(type, s);
+  };
+  storeLastPath(PaneType::Left,  m_fileManagerPanel->leftPane());
+  storeLastPath(PaneType::Right, m_fileManagerPanel->rightPane());
+
   settings.save();
 
   event->accept();
