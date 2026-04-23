@@ -95,6 +95,10 @@ void FileManagerPanel::applySettings() {
   applyPathSortFilter(PaneType::Left);
   applyPathSortFilter(PaneType::Right);
 
+  // パス表示・カーソル色など外観の再適用
+  m_leftPane->refreshAppearance();
+  m_rightPane->refreshAppearance();
+
   m_leftPane->model()->refresh();
   m_rightPane->model()->refresh();
 }

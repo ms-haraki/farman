@@ -63,6 +63,25 @@ public:
   QList<ColorRule> colorRules()         const;
   void             setColorRules(const QList<ColorRule>& rules);
 
+  // カテゴリ別カラー（Normal / Hidden / Directory）。
+  // selected=true で選択時、inactive=true で非アクティブペイン側のスタイルを取得・設定する。
+  CategoryColor    categoryColor(FileCategory cat, bool selected = false, bool inactive = false) const;
+  void             setCategoryColor(FileCategory cat, bool selected, bool inactive, const CategoryColor& c);
+
+  // 非アクティブペインの専用カラーを使用するか
+  bool             useInactivePaneColors() const;
+  void             setUseInactivePaneColors(bool use);
+
+  // ペイン上部のパスラベルのカラー
+  QColor           pathForeground()                 const;
+  void             setPathForeground(const QColor& c);
+  QColor           pathBackground()                 const;
+  void             setPathBackground(const QColor& c);
+
+  // カーソル（現在行下線）のカラー
+  QColor           cursorColor(bool active)         const;
+  void             setCursorColor(bool active, const QColor& c);
+
   // ── 起動設定 ───────────────────────────
   // ペインごとの初期表示ディレクトリ
   InitialPathMode initialPathMode(PaneType pane)            const;
@@ -112,6 +131,17 @@ private:
   FileSizeFormat   m_fileSizeFormat  = FileSizeFormat::Auto;
   QString          m_dateTimeFormat  = "yyyy/MM/dd HH:mm:ss";
   QList<ColorRule> m_colorRules;
+  CategoryColor    m_categoryColors[static_cast<int>(FileCategory::Count)];
+  CategoryColor    m_selectedCategoryColors[static_cast<int>(FileCategory::Count)];
+  CategoryColor    m_inactiveCategoryColors[static_cast<int>(FileCategory::Count)];
+  CategoryColor    m_inactiveSelectedCategoryColors[static_cast<int>(FileCategory::Count)];
+  bool             m_useInactivePaneColors = false;
+
+  // Path label & cursor colors
+  QColor           m_pathForeground       = QColor(Qt::black);
+  QColor           m_pathBackground       = QColor(0xE0, 0xE0, 0xE0);
+  QColor           m_cursorActiveColor    = QColor(Qt::black);
+  QColor           m_cursorInactiveColor  = QColor(Qt::lightGray);
   // Per-pane 初期表示ディレクトリ（デフォルトは LastSession で従来動作と互換）
   InitialPathMode  m_initialPathMode[static_cast<int>(PaneType::Count)] = {
     InitialPathMode::LastSession,

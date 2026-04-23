@@ -1,6 +1,7 @@
 #include "FileListPane.h"
 #include "FileListDelegate.h"
 #include "model/FileListModel.h"
+#include "settings/Settings.h"
 #include "types.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -38,13 +39,11 @@ void FileListPane::setupUi() {
   pathLayout->setSpacing(0);
 
   m_pathLabel = new QLabel(this);
-  m_pathLabel->setStyleSheet("QLabel { background-color: #e0e0e0; padding: 2px 5px; }");
   pathLayout->addWidget(m_pathLabel, 1);
 
   m_folderButton = new QToolButton(this);
   m_folderButton->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
   m_folderButton->setToolTip(tr("Browse folder..."));
-  m_folderButton->setStyleSheet("QToolButton { background-color: #e0e0e0; border: none; padding: 2px; }");
   connect(m_folderButton, &QToolButton::clicked, this, &FileListPane::onFolderButtonClicked);
   pathLayout->addWidget(m_folderButton);
 
@@ -54,7 +53,9 @@ void FileListPane::setupUi() {
   m_view = new QTableView(this);
   m_view->setSelectionBehavior(QAbstractItemView::SelectRows);
   m_view->setSelectionMode(QAbstractItemView::NoSelection);
-  m_view->setAlternatingRowColors(true);
+  m_view->setAlternatingRowColors(false);
+  m_view->setFrameShape(QFrame::NoFrame);
+  m_view->setShowGrid(false);
   m_view->horizontalHeader()->setStretchLastSection(true);
   m_view->horizontalHeader()->setSectionsClickable(true);
   m_view->horizontalHeader()->setSortIndicatorShown(true);
@@ -91,6 +92,19 @@ void FileListPane::setupUi() {
   mainLayout->addWidget(m_sortFilterStatusLabel);
 
   refreshSortFilterStatus();
+  refreshAppearance();
+}
+
+void FileListPane::refreshAppearance() {
+  const QColor fg = Settings::instance().pathForeground();
+  const QColor bg = Settings::instance().pathBackground();
+  const QString pathStyle = QString("QLabel { color: %1; background-color: %2; padding: 2px 5px; }")
+                              .arg(fg.name(), bg.name());
+  const QString buttonStyle = QString("QToolButton { background-color: %1; border: none; padding: 2px; }")
+                                .arg(bg.name());
+  if (m_pathLabel)    m_pathLabel->setStyleSheet(pathStyle);
+  if (m_folderButton) m_folderButton->setStyleSheet(buttonStyle);
+  if (m_view)         m_view->viewport()->update();  // cursor 再描画
 }
 
 QString FileListPane::currentPath() const {
@@ -198,6 +212,7 @@ void FileListPane::refreshSortFilterStatus() {
 
 void FileListPane::setActive(bool active) {
   m_delegate->setActive(active);
+  m_model->setActive(active);
   m_view->viewport()->update();
 }
 

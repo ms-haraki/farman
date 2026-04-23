@@ -7,9 +7,9 @@
 
 class QPushButton;
 class QComboBox;
-class QListWidget;
-class QTextEdit;
 class QGroupBox;
+class QCheckBox;
+class QGridLayout;
 
 namespace Farman {
 
@@ -24,16 +24,30 @@ public:
 
 private slots:
   void onSelectFont();
-  void onAddColorRule();
-  void onEditColorRule();
-  void onRemoveColorRule();
-  void onColorRuleSelectionChanged();
-  void updatePreview();
 
 private:
   void setupUi();
   void loadSettings();
-  QString formatColorRule(const ColorRule& rule) const;
+
+  // カテゴリ×状態（通常／選択）1 組のウィジェットをまとめた構造
+  struct CategoryStateRow {
+    QPushButton*  fgButton  = nullptr;
+    QPushButton*  bgButton  = nullptr;
+    QCheckBox*    boldCheck = nullptr;
+    CategoryColor value;  // 編集中の値
+  };
+  struct CategoryRow {
+    CategoryStateRow normal;           // active / normal
+    CategoryStateRow selected;         // active / selected
+    CategoryStateRow inactiveNormal;   // inactive / normal
+    CategoryStateRow inactiveSelected; // inactive / selected
+  };
+  // 1 行分のウィジェット（1 状態ぶん）を構築
+  void buildCategoryRow(QGridLayout* grid, int row,
+                        FileCategory cat, const QString& label,
+                        bool selected, bool inactive);
+  // 色ボタンにプレビュー色を反映
+  void updateColorButton(QPushButton* btn, const QColor& color);
 
   // Font settings
   QPushButton*   m_fontButton;
@@ -45,18 +59,26 @@ private:
   // Date/time format
   QComboBox*     m_dateTimeFormatCombo;
 
-  // Color rules
-  QListWidget*   m_colorRulesList;
-  QPushButton*   m_addRuleButton;
-  QPushButton*   m_editRuleButton;
-  QPushButton*   m_removeRuleButton;
+  // Category colors (Normal / Hidden / Directory)
+  CategoryRow m_categoryRows[static_cast<int>(FileCategory::Count)];
+  // 非アクティブペインのカラーを使うかのチェック
+  QCheckBox*  m_useInactivePaneColorsCheck = nullptr;
+  // 非アクティブ側のグリッド全体（チェック OFF 時に disable）
+  QGroupBox*  m_inactivePaneGroup = nullptr;
 
-  // Preview
-  QTextEdit*     m_previewText;
+  // Path label colors
+  QPushButton* m_pathFgButton = nullptr;
+  QPushButton* m_pathBgButton = nullptr;
+  QColor       m_pathFgValue;
+  QColor       m_pathBgValue;
+  // Cursor colors
+  QPushButton* m_cursorActiveButton   = nullptr;
+  QPushButton* m_cursorInactiveButton = nullptr;
+  QColor       m_cursorActiveValue;
+  QColor       m_cursorInactiveValue;
 
   // Pending changes
-  QList<ColorRule> m_pendingColorRules;
-  QString          m_pendingDateTimeFormat;
+  QString m_pendingDateTimeFormat;
 };
 
 } // namespace Farman

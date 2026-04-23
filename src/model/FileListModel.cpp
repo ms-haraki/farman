@@ -1,7 +1,10 @@
 #include "FileListModel.h"
+#include "settings/Settings.h"
 #include <QDir>
 #include <QFileInfo>
 #include <QColor>
+#include <QFont>
+#include <QGuiApplication>
 #include <algorithm>
 
 namespace Farman {
@@ -11,6 +14,17 @@ FileListModel::FileListModel(QObject* parent)
 }
 
 FileListModel::~FileListModel() = default;
+
+void FileListModel::setActive(bool active) {
+  if (m_active == active) return;
+  m_active = active;
+  if (!m_entries.isEmpty()) {
+    emit dataChanged(
+      index(0, 0),
+      index(m_entries.size() - 1, ColumnCount - 1),
+      { Qt::ForegroundRole, Qt::BackgroundRole, Qt::FontRole });
+  }
+}
 
 QString FileListModel::currentPath() const {
   return m_currentPath;
@@ -310,15 +324,30 @@ QVariant FileListModel::data(const QModelIndex& index, int role) const {
     }
   }
   else if (role == Qt::BackgroundRole) {
-    if (item->isSelected()) {
-      // 選択中の背景色（青系）
-      return QColor(0, 120, 215);  // Windows 10 の選択色に近い
-    }
+    FileCategory cat = item->isHidden() ? FileCategory::Hidden
+                     : item->isDir()    ? FileCategory::Directory
+                                        : FileCategory::Normal;
+    const bool inactive = !m_active && Settings::instance().useInactivePaneColors();
+    const QColor bg = Settings::instance().categoryColor(cat, item->isSelected(), inactive).background;
+    if (bg.isValid()) return bg;
   }
   else if (role == Qt::ForegroundRole) {
-    if (item->isSelected()) {
-      // 選択中の文字色（白）
-      return QColor(Qt::white);
+    FileCategory cat = item->isHidden() ? FileCategory::Hidden
+                     : item->isDir()    ? FileCategory::Directory
+                                        : FileCategory::Normal;
+    const bool inactive = !m_active && Settings::instance().useInactivePaneColors();
+    const QColor fg = Settings::instance().categoryColor(cat, item->isSelected(), inactive).foreground;
+    if (fg.isValid()) return fg;
+  }
+  else if (role == Qt::FontRole) {
+    FileCategory cat = item->isHidden() ? FileCategory::Hidden
+                     : item->isDir()    ? FileCategory::Directory
+                                        : FileCategory::Normal;
+    const bool inactive = !m_active && Settings::instance().useInactivePaneColors();
+    if (Settings::instance().categoryColor(cat, item->isSelected(), inactive).bold) {
+      QFont f = QGuiApplication::font();
+      f.setBold(true);
+      return f;
     }
   }
   else if (role == FileItemRole) {

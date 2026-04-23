@@ -32,6 +32,43 @@ Settings::Settings(QObject* parent) : QObject(parent) {
     m_paneSettings[i].sortCS = Qt::CaseInsensitive;
     m_paneSettings[i].attrFilter = AttrFilter::None;
   }
+
+  // Default category colors (normal state)
+  m_categoryColors[static_cast<int>(FileCategory::Normal)].foreground    = QColor(Qt::black);
+  m_categoryColors[static_cast<int>(FileCategory::Normal)].background    = QColor();
+  m_categoryColors[static_cast<int>(FileCategory::Normal)].bold          = false;
+  m_categoryColors[static_cast<int>(FileCategory::Hidden)].foreground    = QColor(140, 140, 140);
+  m_categoryColors[static_cast<int>(FileCategory::Hidden)].background    = QColor();
+  m_categoryColors[static_cast<int>(FileCategory::Hidden)].bold          = false;
+  m_categoryColors[static_cast<int>(FileCategory::Directory)].foreground = QColor(30, 90, 200);
+  m_categoryColors[static_cast<int>(FileCategory::Directory)].background = QColor();
+  m_categoryColors[static_cast<int>(FileCategory::Directory)].bold       = true;
+
+  // Default category colors (selected state): preserve existing blue/white look
+  const QColor kSelBg(0, 120, 215);
+  for (int i = 0; i < static_cast<int>(FileCategory::Count); ++i) {
+    m_selectedCategoryColors[i].foreground = QColor(Qt::white);
+    m_selectedCategoryColors[i].background = kSelBg;
+    m_selectedCategoryColors[i].bold       = m_categoryColors[i].bold;
+  }
+
+  // 非アクティブペイン用のデフォルト。当初は使わないがユーザー ON 時の初期値として。
+  // 通常のカテゴリカラーを薄めたグレー系にする。
+  auto dim = [](const QColor& c) {
+    if (!c.isValid()) return QColor();
+    const int avg = (c.red() + c.green() + c.blue()) / 3;
+    const int dimmed = (avg + 170) / 2;  // グレーに寄せる
+    return QColor(dimmed, dimmed, dimmed);
+  };
+  for (int i = 0; i < static_cast<int>(FileCategory::Count); ++i) {
+    m_inactiveCategoryColors[i].foreground = dim(m_categoryColors[i].foreground);
+    m_inactiveCategoryColors[i].background = m_categoryColors[i].background;
+    m_inactiveCategoryColors[i].bold       = m_categoryColors[i].bold;
+
+    m_inactiveSelectedCategoryColors[i].foreground = QColor(Qt::white);
+    m_inactiveSelectedCategoryColors[i].background = QColor(140, 140, 160);
+    m_inactiveSelectedCategoryColors[i].bold       = m_selectedCategoryColors[i].bold;
+  }
 }
 
 PaneSettings Settings::paneSettings(PaneType pane) const {
@@ -98,6 +135,50 @@ QList<ColorRule> Settings::colorRules() const {
 
 void Settings::setColorRules(const QList<ColorRule>& rules) {
   m_colorRules = rules;
+}
+
+CategoryColor Settings::categoryColor(FileCategory cat, bool selected, bool inactive) const {
+  int idx = static_cast<int>(cat);
+  if (idx < 0 || idx >= static_cast<int>(FileCategory::Count)) return {};
+  if (inactive) {
+    return selected ? m_inactiveSelectedCategoryColors[idx]
+                    : m_inactiveCategoryColors[idx];
+  }
+  return selected ? m_selectedCategoryColors[idx] : m_categoryColors[idx];
+}
+
+void Settings::setCategoryColor(FileCategory cat, bool selected, bool inactive,
+                                const CategoryColor& c) {
+  int idx = static_cast<int>(cat);
+  if (idx < 0 || idx >= static_cast<int>(FileCategory::Count)) return;
+  if (inactive) {
+    if (selected) m_inactiveSelectedCategoryColors[idx] = c;
+    else          m_inactiveCategoryColors[idx]         = c;
+  } else {
+    if (selected) m_selectedCategoryColors[idx] = c;
+    else          m_categoryColors[idx]         = c;
+  }
+}
+
+bool Settings::useInactivePaneColors() const {
+  return m_useInactivePaneColors;
+}
+
+void Settings::setUseInactivePaneColors(bool use) {
+  m_useInactivePaneColors = use;
+}
+
+QColor Settings::pathForeground() const { return m_pathForeground; }
+void   Settings::setPathForeground(const QColor& c) { m_pathForeground = c; }
+QColor Settings::pathBackground() const { return m_pathBackground; }
+void   Settings::setPathBackground(const QColor& c) { m_pathBackground = c; }
+
+QColor Settings::cursorColor(bool active) const {
+  return active ? m_cursorActiveColor : m_cursorInactiveColor;
+}
+void Settings::setCursorColor(bool active, const QColor& c) {
+  if (active) m_cursorActiveColor   = c;
+  else        m_cursorInactiveColor = c;
 }
 
 InitialPathMode Settings::initialPathMode(PaneType pane) const {
@@ -352,6 +433,34 @@ PaneSettings jsonToPaneSettings(const QJsonObject& obj) {
   return pane;
 }
 
+QString fileCategoryToString(FileCategory cat) {
+  switch (cat) {
+    case FileCategory::Normal:    return "normal";
+    case FileCategory::Hidden:    return "hidden";
+    case FileCategory::Directory: return "directory";
+    case FileCategory::Count:     break;
+  }
+  return "normal";
+}
+
+QJsonObject categoryColorToJson(const CategoryColor& c) {
+  QJsonObject obj;
+  obj["foreground"] = c.foreground.isValid() ? c.foreground.name(QColor::HexArgb) : QString();
+  obj["background"] = c.background.isValid() ? c.background.name(QColor::HexArgb) : QString();
+  obj["bold"]       = c.bold;
+  return obj;
+}
+
+CategoryColor jsonToCategoryColor(const QJsonObject& obj, const CategoryColor& fallback) {
+  CategoryColor c = fallback;
+  const QString fg = obj.value("foreground").toString();
+  const QString bg = obj.value("background").toString();
+  if (!fg.isEmpty()) c.foreground = QColor(fg);
+  if (!bg.isEmpty()) c.background = QColor(bg);
+  if (obj.contains("bold")) c.bold = obj.value("bold").toBool();
+  return c;
+}
+
 QJsonObject colorRuleToJson(const ColorRule& rule) {
   QJsonObject obj;
   obj["pattern"] = rule.pattern;
@@ -418,6 +527,89 @@ void Settings::load() {
     if (val.isObject()) {
       m_colorRules.append(jsonToColorRule(val.toObject()));
     }
+  }
+
+  // Load category colors:
+  //   新形式:  { active: { normal:{}, selected:{} }, inactive: { normal:{}, selected:{} } }
+  //   中期形式: { normal:{}, selected:{} }                        ← active として扱う
+  //   旧形式:  { <category>:{} ... }                               ← active/normal として扱う
+  QJsonObject catColors = appearance.value("categoryColors").toObject();
+
+  auto extractGroup = [](const QJsonObject& root, const QString& key) {
+    return root.contains(key) && root.value(key).isObject()
+             ? root.value(key).toObject()
+             : QJsonObject();
+  };
+
+  QJsonObject activeNormal;
+  QJsonObject activeSelected;
+  QJsonObject inactiveNormal;
+  QJsonObject inactiveSel;
+
+  if (catColors.contains("active") && catColors.value("active").isObject()) {
+    // 新形式: categoryColors: { active: {...}, inactive: {...} }
+    QJsonObject active   = catColors.value("active").toObject();
+    QJsonObject inactive = extractGroup(catColors, "inactive");
+    activeNormal   = extractGroup(active,   "normal");
+    activeSelected = extractGroup(active,   "selected");
+    inactiveNormal = extractGroup(inactive, "normal");
+    inactiveSel    = extractGroup(inactive, "selected");
+  } else if (catColors.value("normal").toObject().contains("foreground")) {
+    // 最古のフラット形式: categoryColors: { normal: {fg/bg/bold}, hidden: {...}, directory: {...} }
+    activeNormal = catColors;
+  } else {
+    // 中期形式: categoryColors: { normal: {<category>:{...}}, selected: {<category>:{...}} }
+    activeNormal   = extractGroup(catColors, "normal");
+    activeSelected = extractGroup(catColors, "selected");
+  }
+
+  auto loadCat = [&](FileCategory cat) {
+    int idx = static_cast<int>(cat);
+    const QString key = fileCategoryToString(cat);
+    if (activeNormal.contains(key)) {
+      m_categoryColors[idx] = jsonToCategoryColor(
+        activeNormal.value(key).toObject(), m_categoryColors[idx]);
+    }
+    if (activeSelected.contains(key)) {
+      m_selectedCategoryColors[idx] = jsonToCategoryColor(
+        activeSelected.value(key).toObject(), m_selectedCategoryColors[idx]);
+    }
+    if (inactiveNormal.contains(key)) {
+      m_inactiveCategoryColors[idx] = jsonToCategoryColor(
+        inactiveNormal.value(key).toObject(), m_inactiveCategoryColors[idx]);
+    }
+    if (inactiveSel.contains(key)) {
+      m_inactiveSelectedCategoryColors[idx] = jsonToCategoryColor(
+        inactiveSel.value(key).toObject(), m_inactiveSelectedCategoryColors[idx]);
+    }
+  };
+  loadCat(FileCategory::Normal);
+  loadCat(FileCategory::Hidden);
+  loadCat(FileCategory::Directory);
+
+  m_useInactivePaneColors =
+    appearance.value("useInactivePaneColors").toBool(false);
+
+  // Path label colors
+  QJsonObject pathColors = appearance.value("pathColors").toObject();
+  if (pathColors.contains("foreground")) {
+    QColor fg(pathColors.value("foreground").toString());
+    if (fg.isValid()) m_pathForeground = fg;
+  }
+  if (pathColors.contains("background")) {
+    QColor bg(pathColors.value("background").toString());
+    if (bg.isValid()) m_pathBackground = bg;
+  }
+
+  // Cursor colors
+  QJsonObject cursorColors = appearance.value("cursorColors").toObject();
+  if (cursorColors.contains("active")) {
+    QColor a(cursorColors.value("active").toString());
+    if (a.isValid()) m_cursorActiveColor = a;
+  }
+  if (cursorColors.contains("inactive")) {
+    QColor i(cursorColors.value("inactive").toString());
+    if (i.isValid()) m_cursorInactiveColor = i;
   }
 
   // Load behavior settings
@@ -534,6 +726,36 @@ void Settings::save() const {
     colorRulesArray.append(colorRuleToJson(rule));
   }
   appearance["colorRules"] = colorRulesArray;
+
+  auto catStateToJson = [](const CategoryColor colors[]) {
+    QJsonObject obj;
+    for (int i = 0; i < static_cast<int>(FileCategory::Count); ++i) {
+      const QString key = fileCategoryToString(static_cast<FileCategory>(i));
+      obj[key] = categoryColorToJson(colors[i]);
+    }
+    return obj;
+  };
+  QJsonObject active;
+  active["normal"]   = catStateToJson(m_categoryColors);
+  active["selected"] = catStateToJson(m_selectedCategoryColors);
+  QJsonObject inactive;
+  inactive["normal"]   = catStateToJson(m_inactiveCategoryColors);
+  inactive["selected"] = catStateToJson(m_inactiveSelectedCategoryColors);
+  QJsonObject catColors;
+  catColors["active"]   = active;
+  catColors["inactive"] = inactive;
+  appearance["categoryColors"]      = catColors;
+  appearance["useInactivePaneColors"] = m_useInactivePaneColors;
+
+  QJsonObject pathColors;
+  pathColors["foreground"] = m_pathForeground.name(QColor::HexArgb);
+  pathColors["background"] = m_pathBackground.name(QColor::HexArgb);
+  appearance["pathColors"] = pathColors;
+
+  QJsonObject cursorColorsJson;
+  cursorColorsJson["active"]   = m_cursorActiveColor.name(QColor::HexArgb);
+  cursorColorsJson["inactive"] = m_cursorInactiveColor.name(QColor::HexArgb);
+  appearance["cursorColors"] = cursorColorsJson;
 
   root["appearance"] = appearance;
 

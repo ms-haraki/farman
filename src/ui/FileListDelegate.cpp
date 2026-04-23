@@ -1,4 +1,5 @@
 #include "FileListDelegate.h"
+#include "settings/Settings.h"
 #include <QPainter>
 #include <QApplication>
 #include <QAbstractItemView>
@@ -35,8 +36,11 @@ void FileListDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
     if (currentIndex.isValid() && currentIndex.row() == index.row()) {
       painter->save();
 
-      // 下線の色（アクティブなら黒、非アクティブなら薄いグレー）
-      QColor underlineColor = m_active ? Qt::black : Qt::lightGray;
+      // 下線の色は Settings のカーソル色（active/inactive）
+      QColor underlineColor = Settings::instance().cursorColor(m_active);
+      if (!underlineColor.isValid()) {
+        underlineColor = m_active ? Qt::black : Qt::lightGray;
+      }
       QPen pen(underlineColor);
       pen.setWidth(2);
       painter->setPen(pen);

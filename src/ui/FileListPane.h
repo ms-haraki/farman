@@ -33,6 +33,9 @@ public:
   // 現在のソート・フィルタ条件をフッタに表示するラベルを更新する
   void refreshSortFilterStatus();
 
+  // 設定からパス表示のカラー等を再適用する
+  void refreshAppearance();
+
 signals:
   void folderButtonClicked();
   void currentChanged(const QModelIndex& current, const QModelIndex& previous);

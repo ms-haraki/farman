@@ -2,6 +2,7 @@
 
 #include <QtGlobal>
 #include <QString>
+#include <QColor>
 
 namespace Farman {
 
@@ -91,6 +92,21 @@ enum class InitialPathMode {
   Default,      // ホームディレクトリ
   LastSession,  // 前回終了時のパス
   Custom        // ユーザー指定の固定パス
+};
+
+// ファイル一覧でのカラーリング対象カテゴリ
+enum class FileCategory {
+  Normal    = 0,  // 通常ファイル
+  Hidden    = 1,  // 隠しファイル／ディレクトリ（優先度: 最高）
+  Directory = 2,  // 非隠しのディレクトリ
+  Count     = 3
+};
+
+// ファイルカテゴリごとの表示スタイル
+struct CategoryColor {
+  QColor foreground;   // 文字色（invalid なら既定を使用）
+  QColor background;   // 背景色（invalid なら背景を上書きしない）
+  bool   bold = false; // 太字で表示するか
 };
 
 } // namespace Farman

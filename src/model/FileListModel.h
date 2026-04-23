@@ -33,6 +33,11 @@ public:
   explicit FileListModel(QObject* parent = nullptr);
   ~FileListModel() override;
 
+  // 所属ペインのアクティブ状態。非アクティブ時は Settings 側で有効化されていれば
+  // 専用のカラーに切替える。
+  void setActive(bool active);
+  bool isActive() const { return m_active; }
+
   // ── パス操作 ──────────────────────────────
   QString currentPath() const;
   bool    setPath(const QString& path);  // false = アクセス不可
@@ -112,6 +117,9 @@ private:
   // フィルタ設定
   QStringList     m_nameFilters;
   AttrFilterFlags m_attrFilter = AttrFilter::None;
+
+  // ペインのアクティブ状態（表示カラーの切替用）
+  bool            m_active = true;
 };
 
 } // namespace Farman
