@@ -298,7 +298,8 @@ void MainWindow::registerCommands() {
     "select.toggle",
     "Toggle Selection",
     [this]() {
-      QKeyEvent event(QEvent::KeyPress, Qt::Key_Space, Qt::NoModifier);
+      // カーソル据え置きで選択トグル。handleInsertKey の挙動。
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_Insert, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
     },
     "selection"
@@ -308,7 +309,8 @@ void MainWindow::registerCommands() {
     "select.toggle_and_down",
     "Toggle Selection and Move Down",
     [this]() {
-      QKeyEvent event(QEvent::KeyPress, Qt::Key_Insert, Qt::NoModifier);
+      // 選択トグル後にカーソルを下へ。handleSpaceKey の挙動。
+      QKeyEvent event(QEvent::KeyPress, Qt::Key_Space, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
     },
     "selection"
@@ -396,6 +398,15 @@ void MainWindow::registerCommands() {
     "Make Directory",
     [this]() {
       m_fileManagerPanel->createDirectory();
+    },
+    "file"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "file.rename",
+    "Rename",
+    [this]() {
+      m_fileManagerPanel->renameItem();
     },
     "file"
   ));

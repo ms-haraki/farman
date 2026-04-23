@@ -82,8 +82,9 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::Key_Backspace), "navigate.parent"    },
 
     // Selection
-    { QKeySequence(Qt::Key_Space),           "select.toggle"          },
-    { QKeySequence(Qt::Key_Insert),          "select.toggle_and_down" },
+    // 名前通りの動作に合わせる: Space が「選択して下に移動」、Insert が「カーソル据え置き」。
+    { QKeySequence(Qt::Key_Space),           "select.toggle_and_down" },
+    { QKeySequence(Qt::Key_Insert),          "select.toggle"          },
     { QKeySequence(Qt::Key_Asterisk),        "select.invert"          },
     { QKeySequence(Qt::CTRL | Qt::Key_A),    "select.all"             },
 
@@ -92,11 +93,12 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::CTRL | Qt::Key_O),    "pane.toggle_single" },
     { QKeySequence(Qt::Key_F4),              "pane.sort_filter"   },
 
-    // File operations
-    { QKeySequence(Qt::Key_F5), "file.copy"   },
-    { QKeySequence(Qt::Key_F6), "file.move"   },
-    { QKeySequence(Qt::Key_F7), "file.mkdir"  },
-    { QKeySequence(Qt::Key_F8), "file.delete" },
+    // File operations — 簡略キーボードでも打てる一文字キーをデフォルトに
+    { QKeySequence(Qt::Key_C), "file.copy"   },
+    { QKeySequence(Qt::Key_M), "file.move"   },
+    { QKeySequence(Qt::Key_K), "file.mkdir"  },
+    { QKeySequence(Qt::Key_D), "file.delete" },
+    { QKeySequence(Qt::Key_R), "file.rename" },
 
     // View
     { QKeySequence(Qt::Key_F3), "view.file" },
@@ -144,9 +146,21 @@ void KeyBindingManager::loadFromSettings() {
     return;
   }
 
+  QJsonObject root = doc.object();
+  const int version = root.value("version").toInt(1);
+
+  // version < 2: ファイル操作キーの大幅再編（F5-F8 -> c/m/k/d 等）が入ったため、
+  // 古い設定は破棄して新デフォルトを入れ直す。ユーザーがカスタムしていた場合は
+  // Settings の Keybindings タブで再設定してもらう。
+  if (version < 2) {
+    qDebug() << "KeyBindingManager: migrating bindings from version" << version;
+    loadDefaults();
+    saveToSettings();
+    return;
+  }
+
   clearAllBindings();
 
-  QJsonObject root = doc.object();
   QJsonArray bindings = root.value("bindings").toArray();
 
   QSet<QString> savedCommands;
@@ -196,7 +210,7 @@ void KeyBindingManager::saveToSettings() const {
 
   QJsonObject root;
   root["bindings"] = bindings;
-  root["version"] = 1;
+  root["version"] = 2;
 
   QJsonDocument doc(root);
   QString jsonData = QString::fromUtf8(doc.toJson(QJsonDocument::Indented));

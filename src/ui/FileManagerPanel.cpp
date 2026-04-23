@@ -176,13 +176,6 @@ bool FileManagerPanel::navigateActivePaneTo(const QString& path) {
 }
 
 bool FileManagerPanel::handleKeyEvent(QKeyEvent* event) {
-  // Ctrl+U (Windows/Linux) or Cmd+U (Mac) で1ペイン/2ペイン切り替え
-  if ((event->modifiers() & Qt::ControlModifier || event->modifiers() & Qt::MetaModifier)
-      && event->key() == Qt::Key_U) {
-    togglePaneMode();
-    return true;
-  }
-
   // Tabキーでペイン切り替え（2ペイン表示時のみ）
   if (event->key() == Qt::Key_Tab && !m_singlePaneMode) {
     handleTabKey();
@@ -301,27 +294,6 @@ bool FileManagerPanel::handleKeyEvent(QKeyEvent* event) {
 
     case Qt::Key_Asterisk:
       handleAsteriskKey();
-      return true;
-
-    case Qt::Key_F2:
-      renameItem();
-      return true;
-
-    case Qt::Key_F5:
-      copySelectedFiles();
-      return true;
-
-    case Qt::Key_F6:
-      moveSelectedFiles();
-      return true;
-
-    case Qt::Key_F7:
-      createDirectory();
-      return true;
-
-    case Qt::Key_F8:
-    case Qt::Key_Delete:
-      deleteSelectedFiles();
       return true;
 
     default:
