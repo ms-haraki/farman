@@ -225,6 +225,26 @@ void Settings::setCursorLoop(bool loop) {
   m_cursorLoop = loop;
 }
 
+bool Settings::persistHistory() const {
+  return m_persistHistory;
+}
+
+void Settings::setPersistHistory(bool persist) {
+  m_persistHistory = persist;
+}
+
+QStringList Settings::paneHistory(PaneType pane) const {
+  int idx = static_cast<int>(pane);
+  if (idx < 0 || idx >= static_cast<int>(PaneType::Count)) return {};
+  return m_paneHistory[idx];
+}
+
+void Settings::setPaneHistory(PaneType pane, const QStringList& entries) {
+  int idx = static_cast<int>(pane);
+  if (idx < 0 || idx >= static_cast<int>(PaneType::Count)) return;
+  m_paneHistory[idx] = entries;
+}
+
 QList<Bookmark> Settings::bookmarks() const {
   return m_bookmarks;
 }
@@ -673,8 +693,27 @@ void Settings::load() {
   QJsonObject behavior = root.value("behavior").toObject();
   m_confirmOnExit = behavior.value("confirmOnExit").toBool(false);
   m_cursorLoop = behavior.value("cursorLoop").toBool(false);
+  m_persistHistory = behavior.value("persistHistory").toBool(false);
   m_autoRenameTemplate = behavior.value("autoRenameTemplate").toString(" ({n})");
   m_defaultBookmarksInstalled = behavior.value("defaultBookmarksInstalled").toBool(false);
+
+  // ペイン履歴（ON の時のみ読む。OFF の時は必ず空にする）
+  for (int i = 0; i < static_cast<int>(PaneType::Count); ++i) {
+    m_paneHistory[i].clear();
+  }
+  if (m_persistHistory) {
+    QJsonObject hist = root.value("paneHistory").toObject();
+    auto load = [&](PaneType pane, const QString& key) {
+      int idx = static_cast<int>(pane);
+      QJsonArray arr = hist.value(key).toArray();
+      for (const QJsonValue& v : arr) {
+        const QString s = v.toString();
+        if (!s.isEmpty()) m_paneHistory[idx].append(s);
+      }
+    };
+    load(PaneType::Left,  "left");
+    load(PaneType::Right, "right");
+  }
 
   // Per-pane 初期表示ディレクトリ。旧 restoreLastPath が残っていれば
   // LastSession/Default にマップして互換性を保つ。
@@ -866,9 +905,23 @@ void Settings::save() const {
   QJsonObject behavior;
   behavior["confirmOnExit"] = m_confirmOnExit;
   behavior["cursorLoop"] = m_cursorLoop;
+  behavior["persistHistory"] = m_persistHistory;
   behavior["autoRenameTemplate"] = m_autoRenameTemplate;
   behavior["defaultBookmarksInstalled"] = m_defaultBookmarksInstalled;
   root["behavior"] = behavior;
+
+  // ペイン履歴（ON のときだけディスクに出す）
+  if (m_persistHistory) {
+    QJsonObject hist;
+    auto toArr = [](const QStringList& list) {
+      QJsonArray arr;
+      for (const QString& s : list) arr.append(s);
+      return arr;
+    };
+    hist["left"]  = toArr(m_paneHistory[static_cast<int>(PaneType::Left)]);
+    hist["right"] = toArr(m_paneHistory[static_cast<int>(PaneType::Right)]);
+    root["paneHistory"] = hist;
+  }
 
   // Per-pane 初期表示ディレクトリ
   QJsonObject initialPaths;

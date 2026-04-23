@@ -4,7 +4,9 @@
 #include "ViewerPanel.h"
 #include "SettingsDialog.h"
 #include "BookmarkListDialog.h"
+#include "HistoryDialog.h"
 #include "../keybinding/ICommand.h"
+#include "../core/DirectoryHistory.h"
 #include <QStackedWidget>
 #include <QVBoxLayout>
 #include <QKeyEvent>
@@ -31,6 +33,15 @@ MainWindow::MainWindow(QWidget* parent)
 
   // Load keybindings
   KeyBindingManager::instance().loadFromSettings();
+
+  // 履歴は永続化が ON の場合のみ、初期パス読み込みの前に復元しておく。
+  // loadInitialPath() が navigatePane() を呼び、現在パスが履歴の先頭に自然に入る。
+  if (Settings::instance().persistHistory()) {
+    m_fileManagerPanel->history(PaneType::Left).setEntries(
+      Settings::instance().paneHistory(PaneType::Left));
+    m_fileManagerPanel->history(PaneType::Right).setEntries(
+      Settings::instance().paneHistory(PaneType::Right));
+  }
 
   // Show file manager and load initial path
   m_stack->setCurrentWidget(m_fileManagerPanel);
@@ -444,6 +455,26 @@ void MainWindow::registerCommands() {
     },
     "bookmark"
   ));
+
+  // History commands
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "history.show",
+    "History...",
+    [this]() {
+      const DirectoryHistory& hist = m_fileManagerPanel->history(
+        m_fileManagerPanel->activePane() == m_fileManagerPanel->leftPane()
+          ? PaneType::Left : PaneType::Right);
+      HistoryDialog dlg(hist.entries(), this);
+      if (dlg.exec() == QDialog::Accepted) {
+        const QString path = dlg.selectedPath();
+        if (!path.isEmpty()) {
+          m_fileManagerPanel->navigateActivePaneTo(path);
+        }
+      }
+      m_fileManagerPanel->activePane()->view()->setFocus();
+    },
+    "history"
+  ));
 }
 
 void MainWindow::showSettingsDialog() {
@@ -494,6 +525,17 @@ void MainWindow::closeEvent(QCloseEvent* event) {
   };
   storeLastPath(PaneType::Left,  m_fileManagerPanel->leftPane());
   storeLastPath(PaneType::Right, m_fileManagerPanel->rightPane());
+
+  // 履歴の永続化: ON のときは現在の履歴を保存、OFF のときは空で上書きして残留を消す
+  auto storeHistory = [&settings, this](PaneType type) {
+    if (settings.persistHistory()) {
+      settings.setPaneHistory(type, m_fileManagerPanel->history(type).entries());
+    } else {
+      settings.setPaneHistory(type, {});
+    }
+  };
+  storeHistory(PaneType::Left);
+  storeHistory(PaneType::Right);
 
   settings.save();
 

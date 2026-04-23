@@ -105,6 +105,14 @@ public:
   bool cursorLoop()                     const;
   void setCursorLoop(bool loop);
 
+  // ディレクトリ履歴を終了時に保存し、起動時に復元するか
+  bool persistHistory()                 const;
+  void setPersistHistory(bool persist);
+
+  // ペインごとの履歴エントリ（最新順）
+  QStringList paneHistory(PaneType pane) const;
+  void        setPaneHistory(PaneType pane, const QStringList& entries);
+
   // ── ブックマーク ─────────────────────────
   QList<Bookmark> bookmarks() const;
   void            setBookmarks(const QList<Bookmark>& list);
@@ -165,6 +173,8 @@ private:
 
   bool             m_confirmOnExit   = false;
   bool             m_cursorLoop      = false;
+  bool             m_persistHistory  = false;
+  QStringList      m_paneHistory[static_cast<int>(PaneType::Count)];
   QString          m_autoRenameTemplate = QStringLiteral(" ({n})");
   QList<Bookmark>  m_bookmarks;
   // 初回起動時のデフォルトブックマーク注入を一度きりに制限するためのフラグ。

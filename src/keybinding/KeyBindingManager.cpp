@@ -105,6 +105,9 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::Key_B),            "bookmark.toggle" },
     { QKeySequence(Qt::CTRL | Qt::Key_B), "bookmark.list"   },
 
+    // History (macOS では Cmd+H が OS の Hide と衝突するため Shift を足す)
+    { QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_H), "history.show" },
+
     // Application
     { QKeySequence(Qt::Key_F9),           "app.settings" },
     { QKeySequence(Qt::Key_F10),          "app.quit"     },

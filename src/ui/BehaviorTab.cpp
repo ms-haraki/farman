@@ -31,6 +31,7 @@ BehaviorTab::BehaviorTab(const QString& leftCurrentPath,
   , m_sortCaseSensitiveCheck(nullptr)
   , m_showHiddenCheck(nullptr)
   , m_cursorLoopCheck(nullptr)
+  , m_persistHistoryCheck(nullptr)
   , m_autoRenameTemplateEdit(nullptr)
   , m_leftInitialPathModeCombo(nullptr)
   , m_leftCustomPathEdit(nullptr)
@@ -137,6 +138,11 @@ void BehaviorTab::setupUi() {
     tr("Pressing Down on the last row moves the cursor to the top, "
        "and Up on the first row moves it to the bottom"));
   navigationLayout->addWidget(m_cursorLoopCheck);
+
+  m_persistHistoryCheck = new QCheckBox(tr("Persist directory history across sessions"), this);
+  m_persistHistoryCheck->setToolTip(
+    tr("Save each pane's recent directory list on exit and restore it on next launch"));
+  navigationLayout->addWidget(m_persistHistoryCheck);
 
   mainLayout->addWidget(navigationGroup);
 
@@ -335,6 +341,7 @@ void BehaviorTab::loadSettings() {
 
   // Navigation settings
   m_cursorLoopCheck->setChecked(settings.cursorLoop());
+  m_persistHistoryCheck->setChecked(settings.persistHistory());
 
   // File operations
   m_autoRenameTemplateEdit->setText(settings.autoRenameTemplate());
@@ -431,6 +438,7 @@ void BehaviorTab::save() {
 
   // Save navigation settings
   settings.setCursorLoop(m_cursorLoopCheck->isChecked());
+  settings.setPersistHistory(m_persistHistoryCheck->isChecked());
 
   // Save file operation settings
   settings.setAutoRenameTemplate(m_autoRenameTemplateEdit->text());

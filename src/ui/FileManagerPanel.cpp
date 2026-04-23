@@ -152,7 +152,20 @@ bool FileManagerPanel::navigatePane(PaneType paneType, const QString& path) {
   model->setAttrFilter(s.attrFilter);
   model->setNameFilters(s.nameFilters);
 
-  return pane->setPath(path);
+  const bool ok = pane->setPath(path);
+  if (ok) {
+    DirectoryHistory& hist = (paneType == PaneType::Left) ? m_leftHistory : m_rightHistory;
+    hist.push(pane->currentPath());
+  }
+  return ok;
+}
+
+DirectoryHistory& FileManagerPanel::history(PaneType pane) {
+  return (pane == PaneType::Left) ? m_leftHistory : m_rightHistory;
+}
+
+const DirectoryHistory& FileManagerPanel::history(PaneType pane) const {
+  return (pane == PaneType::Left) ? m_leftHistory : m_rightHistory;
 }
 
 bool FileManagerPanel::navigateActivePaneTo(const QString& path) {

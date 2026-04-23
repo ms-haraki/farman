@@ -2,6 +2,7 @@
 
 #include <QWidget>
 #include "types.h"
+#include "core/DirectoryHistory.h"
 
 class QSplitter;
 class QKeyEvent;
@@ -52,6 +53,10 @@ public:
   // 任意のパスへアクティブペインを遷移させる（失敗時は false）
   bool navigateActivePaneTo(const QString& path);
 
+  // ── ディレクトリ履歴 ─────────────────────
+  DirectoryHistory&       history(PaneType pane);
+  const DirectoryHistory& history(PaneType pane) const;
+
 signals:
   void pathChanged(const QString& leftPath, const QString& rightPath);
   void fileActivated(const QString& filePath);
@@ -84,6 +89,9 @@ private:
 
   PaneType m_activePane;
   bool m_singlePaneMode;
+
+  DirectoryHistory m_leftHistory;
+  DirectoryHistory m_rightHistory;
 };
 
 } // namespace Farman
