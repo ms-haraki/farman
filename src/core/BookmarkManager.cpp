@@ -38,6 +38,7 @@ void BookmarkManager::removeAt(int index) {
 void BookmarkManager::rename(int index, const QString& newName) {
   QList<Bookmark> list = bookmarks();
   if (index < 0 || index >= list.size()) return;
+  if (list[index].isDefault) return;  // デフォルトブックマークはリネーム不可
   list[index].name = newName;
   setBookmarks(list);
 }
@@ -47,6 +48,8 @@ void BookmarkManager::move(int from, int to) {
   if (from < 0 || from >= list.size()) return;
   if (to   < 0 || to   >= list.size()) return;
   if (from == to) return;
+  // デフォルトブックマークは順序も不動。User 同士の並び替えのみ許可。
+  if (list[from].isDefault || list[to].isDefault) return;
   list.move(from, to);
   setBookmarks(list);
 }

@@ -2,17 +2,18 @@
 
 #include <QDialog>
 #include <QString>
+#include <QList>
 
 class QTableWidget;
 class QPushButton;
 
 namespace Farman {
 
-// ブックマーク一覧ダイアログ。ジャンプ／削除／並び替え／名前編集を行う。
-// - OK（またはダブルクリック／Go）で選択中のブックマークのパスを確定して閉じる。
-//   呼び出し側は exec() の戻り値が Accepted の時に selectedPath() で結果を取得。
-// - それ以外のボタン（Rename/Delete/Up/Down）は BookmarkManager を直接編集する。
-//   BookmarkManager::bookmarksChanged で他画面もライブ更新される。
+// ブックマーク一覧ダイアログ。単一テーブル内で3セクションを表示:
+//   1. 固定ブックマーク (isDefault=true): Rename/Move 可、Delete 不可
+//   2. "Detected locations" セパレータ + 動的検出した場所: Go のみ可
+//   3. 任意ブックマーク (isDefault=false): Rename/Delete/Move 可
+// OK（ダブルクリック／Go）で選択中のパスを確定して閉じる。
 class BookmarkListDialog : public QDialog {
   Q_OBJECT
 
@@ -20,7 +21,6 @@ public:
   explicit BookmarkListDialog(QWidget* parent = nullptr);
   ~BookmarkListDialog() override = default;
 
-  // Accepted 時に取得する、ジャンプ先パス
   QString selectedPath() const { return m_selectedPath; }
 
 private slots:
@@ -29,21 +29,34 @@ private slots:
   void onDelete();
   void onMoveUp();
   void onMoveDown();
-  void onItemDoubleClicked();
   void onSelectionChanged();
-  void refreshList();
+  void rebuildTable();
 
 private:
-  void setupUi();
-  int currentRow() const;
+  // 行1つ分のメタ情報
+  struct RowInfo {
+    enum class Type { Default, Separator, Detected, User };
+    Type    type = Type::User;
+    // BookmarkManager の index（Default/User 時）、Detected 配列の index（Detected 時）
+    int     sourceIndex = -1;
+  };
 
-  QTableWidget* m_table;
-  QPushButton*  m_goButton;
-  QPushButton*  m_renameButton;
-  QPushButton*  m_deleteButton;
-  QPushButton*  m_upButton;
-  QPushButton*  m_downButton;
-  QString       m_selectedPath;
+  void setupUi();
+  int  currentRow() const;
+  // 現在の選択行の RowInfo を返す。選択なしなら type=User, sourceIndex=-1。
+  RowInfo currentRowInfo() const;
+
+  QTableWidget*    m_table;
+  QPushButton*     m_goButton;
+  QPushButton*     m_renameButton;
+  QPushButton*     m_deleteButton;
+  QPushButton*     m_upButton;
+  QPushButton*     m_downButton;
+  QString          m_selectedPath;
+  // 各テーブル行に対応するメタ情報。rebuildTable で同時構築。
+  QList<RowInfo>   m_rowInfos;
+  // Detected セクションの現在のエントリ（パス解決用）
+  QList<QString>   m_detectedPaths;
 };
 
 } // namespace Farman

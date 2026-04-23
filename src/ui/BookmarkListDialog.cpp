@@ -10,8 +10,49 @@
 #include <QMessageBox>
 #include <QLineEdit>
 #include <QAbstractItemView>
+#include <QDir>
+#include <QFileInfo>
+#include <QFont>
+#include <QBrush>
+#include <QColor>
 
 namespace Farman {
+
+namespace {
+
+// 動的検出: /Volumes/* と一部の明示パス。存在するもののみ返す。
+// CloudStorage 以下は見ない。
+QList<QPair<QString, QString>> buildDetectedLocations() {
+  QList<QPair<QString, QString>> list;
+
+  auto addIfExists = [&](const QString& name, const QString& path) {
+    if (!path.isEmpty() && QDir(path).exists()) {
+      list.append({name, path});
+    }
+  };
+
+  // /Volumes/* (外部ディスク、ネットワークマウント、一部クラウド)
+  QDir volumes(QStringLiteral("/Volumes"));
+  if (volumes.exists()) {
+    const QFileInfoList infos = volumes.entryInfoList(
+      QDir::Dirs | QDir::NoDotAndDotDot);
+    for (const QFileInfo& fi : infos) {
+      if (fi.isSymLink()) continue;  // macOS のルートへの別名を除外
+      addIfExists(fi.fileName(), fi.absoluteFilePath());
+    }
+  }
+
+  // レガシー / 非標準位置にあるクラウドマウント
+  const QString home = QDir::homePath();
+  addIfExists(QObject::tr("iCloud Drive"),
+              home + QStringLiteral("/Library/Mobile Documents/com~apple~CloudDocs"));
+  addIfExists(QStringLiteral("Dropbox"),      home + QStringLiteral("/Dropbox"));
+  addIfExists(QStringLiteral("Google Drive"), home + QStringLiteral("/Google Drive"));
+
+  return list;
+}
+
+} // anonymous namespace
 
 BookmarkListDialog::BookmarkListDialog(QWidget* parent)
   : QDialog(parent)
@@ -23,12 +64,12 @@ BookmarkListDialog::BookmarkListDialog(QWidget* parent)
   , m_downButton(nullptr) {
 
   setWindowTitle(tr("Bookmarks"));
-  resize(560, 380);
+  resize(600, 520);
   setupUi();
-  refreshList();
+  rebuildTable();
 
   connect(&BookmarkManager::instance(), &BookmarkManager::bookmarksChanged,
-          this, &BookmarkListDialog::refreshList);
+          this, &BookmarkListDialog::rebuildTable);
 }
 
 void BookmarkListDialog::setupUi() {
@@ -40,20 +81,19 @@ void BookmarkListDialog::setupUi() {
   m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
   m_table->setSelectionMode(QAbstractItemView::SingleSelection);
   m_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
-  m_table->setAlternatingRowColors(true);
+  m_table->setAlternatingRowColors(false);
   m_table->verticalHeader()->setVisible(false);
   m_table->horizontalHeader()->setStretchLastSection(true);
   m_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
   m_table->setShowGrid(false);
 
   connect(m_table, &QTableWidget::itemDoubleClicked,
-          this, [this](QTableWidgetItem*) { onItemDoubleClicked(); });
+          this, [this](QTableWidgetItem*) { onGo(); });
   connect(m_table, &QTableWidget::currentCellChanged,
           this, [this](int, int, int, int) { onSelectionChanged(); });
   mainLayout->addWidget(m_table, 1);
 
   QHBoxLayout* btnLayout = new QHBoxLayout();
-
   m_goButton     = new QPushButton(tr("Go"),     this);
   m_renameButton = new QPushButton(tr("Rename"), this);
   m_deleteButton = new QPushButton(tr("Delete"), this);
@@ -89,108 +129,239 @@ int BookmarkListDialog::currentRow() const {
   return m_table ? m_table->currentRow() : -1;
 }
 
-void BookmarkListDialog::refreshList() {
-  if (!m_table) return;
-  const int prev = m_table->currentRow();
+BookmarkListDialog::RowInfo BookmarkListDialog::currentRowInfo() const {
+  const int row = currentRow();
+  RowInfo info;
+  if (row < 0 || row >= m_rowInfos.size()) return info;
+  return m_rowInfos[row];
+}
 
-  const QList<Bookmark> list = BookmarkManager::instance().bookmarks();
-  m_table->setRowCount(list.size());
-  for (int i = 0; i < list.size(); ++i) {
-    const Bookmark& b = list[i];
-    auto* nameItem = new QTableWidgetItem(b.name);
-    auto* pathItem = new QTableWidgetItem(b.path);
-    // 行全体が選択されるので Flag はデフォルトで OK（編集は setEditTriggers で抑止済み）
-    m_table->setItem(i, 0, nameItem);
-    m_table->setItem(i, 1, pathItem);
+void BookmarkListDialog::rebuildTable() {
+  if (!m_table) return;
+
+  // 現在選択中のパスを保存（再構築後に同じ行を選択し直すため）
+  const int prevRow = m_table->currentRow();
+  QString prevPath;
+  if (prevRow >= 0 && prevRow < m_rowInfos.size()) {
+    const RowInfo& prev = m_rowInfos[prevRow];
+    if (prev.type == RowInfo::Type::Default || prev.type == RowInfo::Type::User) {
+      const QList<Bookmark> bs = BookmarkManager::instance().bookmarks();
+      if (prev.sourceIndex >= 0 && prev.sourceIndex < bs.size()) {
+        prevPath = bs[prev.sourceIndex].path;
+      }
+    } else if (prev.type == RowInfo::Type::Detected) {
+      if (prev.sourceIndex >= 0 && prev.sourceIndex < m_detectedPaths.size()) {
+        prevPath = m_detectedPaths[prev.sourceIndex];
+      }
+    }
   }
 
-  // Name 列は初回のみ自動フィット（以後はユーザー操作に任せる）
+  // ソースデータ
+  const QList<Bookmark> bookmarks = BookmarkManager::instance().bookmarks();
+  const QList<QPair<QString, QString>> detected = buildDetectedLocations();
+
+  // BookmarkManager のリストから isDefault で分類
+  QList<int> defaultIdxs;
+  QList<int> userIdxs;
+  for (int i = 0; i < bookmarks.size(); ++i) {
+    if (bookmarks[i].isDefault) defaultIdxs.append(i);
+    else                         userIdxs.append(i);
+  }
+
+  // 行数を算出: default + (separator 1 + detected) + user
+  //            （detected が 0 件でもセパレータは出す：位置関係を示すため）
+  m_rowInfos.clear();
+  m_detectedPaths.clear();
+
+  // Default 行
+  for (int i : defaultIdxs) {
+    RowInfo ri;
+    ri.type = RowInfo::Type::Default;
+    ri.sourceIndex = i;
+    m_rowInfos.append(ri);
+  }
+  // Detected 行群（見出しなしでそのまま続ける。視覚的な区別は文字色のみ）
+  for (int i = 0; i < detected.size(); ++i) {
+    m_detectedPaths.append(detected[i].second);
+    RowInfo ri;
+    ri.type = RowInfo::Type::Detected;
+    ri.sourceIndex = i;
+    m_rowInfos.append(ri);
+  }
+  // User 行
+  for (int i : userIdxs) {
+    RowInfo ri;
+    ri.type = RowInfo::Type::User;
+    ri.sourceIndex = i;
+    m_rowInfos.append(ri);
+  }
+
+  // テーブル描画
+  m_table->clearSpans();
+  m_table->setRowCount(m_rowInfos.size());
+
+  const QBrush separatorBg(QColor(230, 230, 240));
+  QFont boldFont = m_table->font();
+  boldFont.setBold(true);
+  const QBrush detectedFg(QColor(80, 80, 100));
+
+  for (int r = 0; r < m_rowInfos.size(); ++r) {
+    const RowInfo& ri = m_rowInfos[r];
+    if (ri.type == RowInfo::Type::Separator) {
+      auto* item = new QTableWidgetItem(tr("Detected locations"));
+      item->setFont(boldFont);
+      item->setBackground(separatorBg);
+      item->setFlags(Qt::ItemIsEnabled);  // 選択不可
+      m_table->setItem(r, 0, item);
+      m_table->setSpan(r, 0, 1, 2);
+      continue;
+    }
+
+    QString name, path;
+    if (ri.type == RowInfo::Type::Default || ri.type == RowInfo::Type::User) {
+      if (ri.sourceIndex >= 0 && ri.sourceIndex < bookmarks.size()) {
+        name = bookmarks[ri.sourceIndex].name;
+        path = bookmarks[ri.sourceIndex].path;
+      }
+    } else if (ri.type == RowInfo::Type::Detected) {
+      if (ri.sourceIndex >= 0 && ri.sourceIndex < detected.size()) {
+        name = detected[ri.sourceIndex].first;
+        path = detected[ri.sourceIndex].second;
+      }
+    }
+
+    auto* nameItem = new QTableWidgetItem(name);
+    auto* pathItem = new QTableWidgetItem(path);
+    // Default と Detected は「編集不可」という共通性があるので文字色も揃える
+    if (ri.type == RowInfo::Type::Default || ri.type == RowInfo::Type::Detected) {
+      nameItem->setForeground(detectedFg);
+      pathItem->setForeground(detectedFg);
+    }
+    m_table->setItem(r, 0, nameItem);
+    m_table->setItem(r, 1, pathItem);
+  }
+
+  // Name 列は初回のみ自動フィット
   static bool resized = false;
   if (!resized) {
     m_table->resizeColumnToContents(0);
     resized = true;
   }
 
-  if (m_table->rowCount() > 0) {
-    int row = qBound(0, prev, m_table->rowCount() - 1);
-    if (prev < 0) row = 0;
-    m_table->setCurrentCell(row, 0);
+  // 以前選択していたパスに再選択（なければ最初の選択可能行）
+  int newRow = -1;
+  if (!prevPath.isEmpty()) {
+    for (int r = 0; r < m_rowInfos.size(); ++r) {
+      const RowInfo& ri = m_rowInfos[r];
+      if (ri.type == RowInfo::Type::Separator) continue;
+      const QTableWidgetItem* item = m_table->item(r, 1);
+      if (item && item->text() == prevPath) { newRow = r; break; }
+    }
   }
+  if (newRow < 0) {
+    for (int r = 0; r < m_rowInfos.size(); ++r) {
+      if (m_rowInfos[r].type != RowInfo::Type::Separator) { newRow = r; break; }
+    }
+  }
+  if (newRow >= 0) m_table->setCurrentCell(newRow, 0);
+
   onSelectionChanged();
 }
 
 void BookmarkListDialog::onSelectionChanged() {
-  const int row = currentRow();
-  const bool hasRow = row >= 0;
-  const QList<Bookmark> list = BookmarkManager::instance().bookmarks();
-  const bool isDefault = hasRow && row < list.size() && list[row].isDefault;
+  const RowInfo info = currentRowInfo();
 
-  if (m_goButton)     m_goButton->setEnabled(hasRow);
-  if (m_renameButton) m_renameButton->setEnabled(hasRow);
-  // デフォルトブックマークは削除禁止
-  if (m_deleteButton) m_deleteButton->setEnabled(hasRow && !isDefault);
-  if (m_upButton)     m_upButton->setEnabled(hasRow && row > 0);
-  if (m_downButton)   m_downButton->setEnabled(
-    hasRow && m_table && row < m_table->rowCount() - 1);
+  const bool isDefault  = info.type == RowInfo::Type::Default;
+  const bool isUser     = info.type == RowInfo::Type::User;
+  const bool isDetected = info.type == RowInfo::Type::Detected;
+  const bool isAnyBookmark = isDefault || isUser;
+  const bool canGo = isAnyBookmark || isDetected;
+
+  // Rename は User のみ、Delete も User のみ、Move は同セクション内のみ
+  if (m_goButton)     m_goButton->setEnabled(canGo);
+  if (m_renameButton) m_renameButton->setEnabled(isUser);
+  if (m_deleteButton) m_deleteButton->setEnabled(isUser);
+
+  bool canUp = false, canDown = false;
+  if (isUser) {
+    // User 行同士の並び替えのみ許可（Default/Detected は不動）
+    const int r = currentRow();
+    if (r > 0 && m_rowInfos[r - 1].type == RowInfo::Type::User) canUp = true;
+    if (r >= 0 && r + 1 < m_rowInfos.size()
+        && m_rowInfos[r + 1].type == RowInfo::Type::User) canDown = true;
+  }
+  if (m_upButton)   m_upButton->setEnabled(canUp);
+  if (m_downButton) m_downButton->setEnabled(canDown);
 }
 
 void BookmarkListDialog::onGo() {
-  const int row = currentRow();
-  if (row < 0) return;
-  const QList<Bookmark> list = BookmarkManager::instance().bookmarks();
-  if (row >= list.size()) return;
-  m_selectedPath = list[row].path;
+  const RowInfo info = currentRowInfo();
+  QString path;
+  if (info.type == RowInfo::Type::Default || info.type == RowInfo::Type::User) {
+    const QList<Bookmark> list = BookmarkManager::instance().bookmarks();
+    if (info.sourceIndex >= 0 && info.sourceIndex < list.size()) {
+      path = list[info.sourceIndex].path;
+    }
+  } else if (info.type == RowInfo::Type::Detected) {
+    if (info.sourceIndex >= 0 && info.sourceIndex < m_detectedPaths.size()) {
+      path = m_detectedPaths[info.sourceIndex];
+    }
+  }
+  if (path.isEmpty()) return;
+  m_selectedPath = path;
   accept();
 }
 
-void BookmarkListDialog::onItemDoubleClicked() {
-  onGo();
-}
-
 void BookmarkListDialog::onRename() {
-  const int row = currentRow();
-  if (row < 0) return;
+  const RowInfo info = currentRowInfo();
+  if (info.type != RowInfo::Type::User) return;  // Default/Detected はリネーム不可
   const QList<Bookmark> list = BookmarkManager::instance().bookmarks();
-  if (row >= list.size()) return;
+  if (info.sourceIndex < 0 || info.sourceIndex >= list.size()) return;
 
   bool ok = false;
   const QString newName = QInputDialog::getText(
     this, tr("Rename Bookmark"),
     tr("Name:"), QLineEdit::Normal,
-    list[row].name, &ok);
+    list[info.sourceIndex].name, &ok);
   if (!ok) return;
-  BookmarkManager::instance().rename(row, newName);
+  BookmarkManager::instance().rename(info.sourceIndex, newName);
 }
 
 void BookmarkListDialog::onDelete() {
-  const int row = currentRow();
-  if (row < 0) return;
+  const RowInfo info = currentRowInfo();
+  if (info.type != RowInfo::Type::User) return;  // Default も Detected も削除不可
   const QList<Bookmark> list = BookmarkManager::instance().bookmarks();
-  if (row >= list.size()) return;
+  if (info.sourceIndex < 0 || info.sourceIndex >= list.size()) return;
 
-  const QString label = list[row].name.isEmpty() ? list[row].path : list[row].name;
+  const Bookmark& b = list[info.sourceIndex];
+  const QString label = b.name.isEmpty() ? b.path : b.name;
   const auto reply = QMessageBox::question(
     this, tr("Delete Bookmark"),
     tr("Delete bookmark '%1'?").arg(label),
     QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
   if (reply != QMessageBox::Yes) return;
 
-  BookmarkManager::instance().removeAt(row);
+  BookmarkManager::instance().removeAt(info.sourceIndex);
 }
 
 void BookmarkListDialog::onMoveUp() {
-  const int row = currentRow();
-  if (row <= 0) return;
-  BookmarkManager::instance().move(row, row - 1);
-  if (m_table) m_table->setCurrentCell(row - 1, 0);
+  const RowInfo info = currentRowInfo();
+  if (info.type != RowInfo::Type::User) return;  // User 同士のみ
+  const int r = currentRow();
+  if (r <= 0) return;
+  if (m_rowInfos[r - 1].type != RowInfo::Type::User) return;
+  const int targetSource = m_rowInfos[r - 1].sourceIndex;
+  BookmarkManager::instance().move(info.sourceIndex, targetSource);
 }
 
 void BookmarkListDialog::onMoveDown() {
-  const int row = currentRow();
-  if (row < 0 || !m_table) return;
-  if (row >= m_table->rowCount() - 1) return;
-  BookmarkManager::instance().move(row, row + 1);
-  m_table->setCurrentCell(row + 1, 0);
+  const RowInfo info = currentRowInfo();
+  if (info.type != RowInfo::Type::User) return;
+  const int r = currentRow();
+  if (r < 0 || r + 1 >= m_rowInfos.size()) return;
+  if (m_rowInfos[r + 1].type != RowInfo::Type::User) return;
+  const int targetSource = m_rowInfos[r + 1].sourceIndex;
+  BookmarkManager::instance().move(info.sourceIndex, targetSource);
 }
 
 } // namespace Farman
