@@ -10,6 +10,7 @@
 #include "core/workers/MoveWorker.h"
 #include "core/workers/RemoveWorker.h"
 #include "settings/Settings.h"
+#include "utils/Dialogs.h"
 #include <QVBoxLayout>
 #include <QSplitter>
 #include <QFileDialog>
@@ -783,15 +784,7 @@ void FileManagerPanel::deleteSelectedFiles() {
     message = tr("Are you sure you want to delete %1 items?").arg(selectedFiles.size());
   }
 
-  QMessageBox::StandardButton reply = QMessageBox::question(
-    this,
-    tr("Confirm Delete"),
-    message,
-    QMessageBox::Yes | QMessageBox::No,
-    QMessageBox::No
-  );
-
-  if (reply != QMessageBox::Yes) {
+  if (!confirm(this, tr("Confirm Delete"), message)) {
     return;
   }
 

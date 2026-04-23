@@ -30,6 +30,7 @@ qt_add_executable(farman
   src/core/FileItem.cpp
   src/core/BookmarkManager.cpp
   src/core/DirectoryHistory.cpp
+  src/utils/Dialogs.cpp
   src/core/workers/WorkerBase.cpp
   src/core/workers/CopyWorker.cpp
   src/core/workers/MoveWorker.cpp

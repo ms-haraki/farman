@@ -1,6 +1,7 @@
 #include "BookmarkListDialog.h"
 #include "core/BookmarkManager.h"
 #include "settings/Settings.h"
+#include "utils/Dialogs.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QTableWidget>
@@ -335,11 +336,10 @@ void BookmarkListDialog::onDelete() {
 
   const Bookmark& b = list[info.sourceIndex];
   const QString label = b.name.isEmpty() ? b.path : b.name;
-  const auto reply = QMessageBox::question(
-    this, tr("Delete Bookmark"),
-    tr("Delete bookmark '%1'?").arg(label),
-    QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
-  if (reply != QMessageBox::Yes) return;
+  if (!confirm(this, tr("Delete Bookmark"),
+               tr("Delete bookmark '%1'?").arg(label))) {
+    return;
+  }
 
   BookmarkManager::instance().removeAt(info.sourceIndex);
 }

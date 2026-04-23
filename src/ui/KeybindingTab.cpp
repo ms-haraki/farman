@@ -2,6 +2,7 @@
 #include "keybinding/KeyBindingManager.h"
 #include "keybinding/CommandRegistry.h"
 #include "keybinding/ICommand.h"
+#include "utils/Dialogs.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QTableWidget>
@@ -462,15 +463,10 @@ bool KeybindingTab::validateBinding(const QKeySequence& newKey, const QString& c
     ICommand* cmd = registry.command(existingCommand);
     QString cmdLabel = cmd ? cmd->label() : existingCommand;
 
-    QMessageBox::StandardButton reply = QMessageBox::question(
-      this,
-      tr("Key Already Bound"),
-      tr("The key '%1' is already bound to '%2'.\nDo you want to rebind it to this command?")
-        .arg(keySequenceToString(newKey), cmdLabel),
-      QMessageBox::Yes | QMessageBox::No
-    );
-
-    if (reply != QMessageBox::Yes) {
+    if (!confirm(this, tr("Key Already Bound"),
+                 tr("The key '%1' is already bound to '%2'.\n"
+                    "Do you want to rebind it to this command?")
+                    .arg(keySequenceToString(newKey), cmdLabel))) {
       return false;
     }
 
@@ -508,14 +504,9 @@ void KeybindingTab::onClearBinding() {
 }
 
 void KeybindingTab::onResetToDefaults() {
-  QMessageBox::StandardButton reply = QMessageBox::question(
-    this,
-    tr("Reset to Defaults"),
-    tr("Are you sure you want to reset all keybindings to their default values?\nThis will discard all custom keybindings."),
-    QMessageBox::Yes | QMessageBox::No
-  );
-
-  if (reply == QMessageBox::Yes) {
+  if (confirm(this, tr("Reset to Defaults"),
+              tr("Are you sure you want to reset all keybindings to their "
+                 "default values?\nThis will discard all custom keybindings."))) {
     m_pendingChanges.clear();
 
     // Load defaults temporarily to show in table

@@ -7,6 +7,7 @@
 #include "HistoryDialog.h"
 #include "../keybinding/ICommand.h"
 #include "../core/DirectoryHistory.h"
+#include "../utils/Dialogs.h"
 #include <QStackedWidget>
 #include <QVBoxLayout>
 #include <QKeyEvent>
@@ -510,15 +511,8 @@ void MainWindow::closeEvent(QCloseEvent* event) {
 
   // Show confirmation dialog if enabled
   if (settings.confirmOnExit()) {
-    QMessageBox::StandardButton reply = QMessageBox::question(
-      this,
-      tr("Confirm Exit"),
-      tr("Are you sure you want to exit farman?"),
-      QMessageBox::Yes | QMessageBox::No,
-      QMessageBox::No
-    );
-
-    if (reply != QMessageBox::Yes) {
+    if (!confirm(this, tr("Confirm Exit"),
+                 tr("Are you sure you want to exit farman?"))) {
       event->ignore();
       return;
     }
