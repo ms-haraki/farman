@@ -1,7 +1,9 @@
 #include "FileListPane.h"
 #include "FileListDelegate.h"
+#include "ClickableLabel.h"
 #include "model/FileListModel.h"
 #include "settings/Settings.h"
+#include "core/BookmarkManager.h"
 #include "types.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -10,12 +12,17 @@
 #include <QTableView>
 #include <QHeaderView>
 #include <QStyle>
+#include <QInputDialog>
+#include <QLineEdit>
+#include <QDir>
+#include <QFileInfo>
 
 namespace Farman {
 
 FileListPane::FileListPane(QWidget* parent)
   : QWidget(parent)
   , m_pathLabel(nullptr)
+  , m_bookmarkLabel(nullptr)
   , m_folderButton(nullptr)
   , m_view(nullptr)
   , m_sortFilterStatusLabel(nullptr)
@@ -23,6 +30,9 @@ FileListPane::FileListPane(QWidget* parent)
   , m_delegate(nullptr) {
 
   setupUi();
+
+  connect(&BookmarkManager::instance(), &BookmarkManager::bookmarksChanged,
+          this, &FileListPane::refreshBookmarkIndicator);
 }
 
 FileListPane::~FileListPane() = default;
@@ -37,6 +47,16 @@ void FileListPane::setupUi() {
   QHBoxLayout* pathLayout = new QHBoxLayout(pathWidget);
   pathLayout->setContentsMargins(0, 0, 0, 0);
   pathLayout->setSpacing(0);
+
+  // ブックマーク登録/解除トグル用の★ラベル。常に表示。
+  // QLabel 派生にすることで隣の pathLabel と同じ高さ・paddingに揃う。
+  // 登録状態はスタイルシートで色分けする（refreshBookmarkIndicator）。
+  m_bookmarkLabel = new ClickableLabel(this);
+  m_bookmarkLabel->setText(QStringLiteral("★"));
+  m_bookmarkLabel->setCursor(Qt::PointingHandCursor);
+  connect(m_bookmarkLabel, &ClickableLabel::clicked,
+          this, &FileListPane::onBookmarkButtonClicked);
+  pathLayout->addWidget(m_bookmarkLabel, 0);
 
   m_pathLabel = new QLabel(this);
   pathLayout->addWidget(m_pathLabel, 1);
@@ -105,6 +125,11 @@ void FileListPane::refreshAppearance() {
   if (m_pathLabel)    m_pathLabel->setStyleSheet(pathStyle);
   if (m_folderButton) m_folderButton->setStyleSheet(buttonStyle);
   if (m_view)         m_view->viewport()->update();  // cursor 再描画
+
+  // ブックマークボタンは登録状態で色が変わるため、実スタイル適用は
+  // refreshBookmarkIndicator() 側で行う。背景色だけは揃えておきたいので
+  // ここで呼び出しておく。
+  refreshBookmarkIndicator();
 }
 
 QString FileListPane::currentPath() const {
@@ -115,6 +140,7 @@ bool FileListPane::setPath(const QString& path) {
   bool result = m_model->setPath(path);
   if (result) {
     m_pathLabel->setText(m_model->currentPath());
+    refreshBookmarkIndicator();
     // カーソルを先頭に移動
     if (m_model->rowCount() > 0) {
       m_view->setCurrentIndex(m_model->index(0, 0));
@@ -222,6 +248,70 @@ void FileListPane::onFolderButtonClicked() {
 
 void FileListPane::onCurrentChanged(const QModelIndex& current, const QModelIndex& previous) {
   emit currentChanged(current, previous);
+}
+
+void FileListPane::refreshBookmarkIndicator() {
+  if (!m_bookmarkLabel) return;
+  const QString path = currentPath();
+  const bool marked = !path.isEmpty() && BookmarkManager::instance().contains(path);
+
+  const QColor bg = Settings::instance().pathBackground();
+  // 登録済み: ゴールド / 未登録: 背景に溶け込むグレーで無効化表示。
+  // padding は pathLabel と揃え、left だけ広めにしてアイコン然と見せる。
+  const QString color = marked ? QStringLiteral("#d4a017")
+                               : QStringLiteral("#bdbdbd");
+  const QString style = QString(
+    "QLabel { color: %1; background-color: %2; padding: 2px 2px 2px 5px; }")
+    .arg(color, bg.name());
+  m_bookmarkLabel->setStyleSheet(style);
+
+  // デフォルトブックマークは削除不可のため tooltip を分ける
+  bool isDefault = false;
+  if (marked) {
+    const int idx = BookmarkManager::instance().findByPath(path);
+    if (idx >= 0) {
+      const QList<Bookmark> all = BookmarkManager::instance().bookmarks();
+      if (idx < all.size()) isDefault = all[idx].isDefault;
+    }
+  }
+  QString tip;
+  if (!marked)         tip = tr("Add bookmark for this directory");
+  else if (isDefault)  tip = tr("Default bookmark (cannot be removed)");
+  else                 tip = tr("Remove bookmark for this directory");
+  m_bookmarkLabel->setToolTip(tip);
+}
+
+void FileListPane::onBookmarkButtonClicked() {
+  toggleBookmarkForCurrentPath();
+}
+
+void FileListPane::toggleBookmarkForCurrentPath() {
+  const QString path = currentPath();
+  if (path.isEmpty()) return;
+
+  const int existing = BookmarkManager::instance().findByPath(path);
+  if (existing >= 0) {
+    // 登録済み → 即削除
+    BookmarkManager::instance().removeAt(existing);
+    return;
+  }
+
+  // 未登録 → 名前入力ダイアログ（デフォルト名はパスの末尾）
+  QString defaultName;
+  if (path == QDir::homePath()) {
+    defaultName = tr("Home");
+  } else {
+    defaultName = QFileInfo(path).fileName();
+    if (defaultName.isEmpty()) defaultName = path;
+  }
+
+  bool ok = false;
+  const QString name = QInputDialog::getText(
+    this, tr("Add Bookmark"),
+    tr("Name for %1:").arg(path),
+    QLineEdit::Normal, defaultName, &ok);
+  if (!ok) return;
+  BookmarkManager::instance().add(name, path);
 }
 
 void FileListPane::onHeaderClicked(int section) {

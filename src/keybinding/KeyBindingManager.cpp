@@ -101,6 +101,10 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     // View
     { QKeySequence(Qt::Key_F3), "view.file" },
 
+    // Bookmark
+    { QKeySequence(Qt::Key_B),            "bookmark.toggle" },
+    { QKeySequence(Qt::CTRL | Qt::Key_B), "bookmark.list"   },
+
     // Application
     { QKeySequence(Qt::Key_F9),           "app.settings" },
     { QKeySequence(Qt::Key_F10),          "app.quit"     },

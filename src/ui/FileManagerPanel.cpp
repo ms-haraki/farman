@@ -155,6 +155,13 @@ bool FileManagerPanel::navigatePane(PaneType paneType, const QString& path) {
   return pane->setPath(path);
 }
 
+bool FileManagerPanel::navigateActivePaneTo(const QString& path) {
+  if (path.isEmpty()) return false;
+  if (!navigatePane(m_activePane, path)) return false;
+  updatePathSignal();
+  return true;
+}
+
 bool FileManagerPanel::handleKeyEvent(QKeyEvent* event) {
   // Ctrl+U (Windows/Linux) or Cmd+U (Mac) で1ペイン/2ペイン切り替え
   if ((event->modifiers() & Qt::ControlModifier || event->modifiers() & Qt::MetaModifier)

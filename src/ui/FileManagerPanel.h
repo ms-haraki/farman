@@ -49,6 +49,9 @@ public:
   // アクティブペインのソート・フィルタ編集ダイアログを開く
   void openSortFilterDialog();
 
+  // 任意のパスへアクティブペインを遷移させる（失敗時は false）
+  bool navigateActivePaneTo(const QString& path);
+
 signals:
   void pathChanged(const QString& leftPath, const QString& rightPath);
   void fileActivated(const QString& filePath);

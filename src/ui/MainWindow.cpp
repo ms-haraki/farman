@@ -3,6 +3,7 @@
 #include "FileListPane.h"
 #include "ViewerPanel.h"
 #include "SettingsDialog.h"
+#include "BookmarkListDialog.h"
 #include "../keybinding/ICommand.h"
 #include <QStackedWidget>
 #include <QVBoxLayout>
@@ -415,6 +416,33 @@ void MainWindow::registerCommands() {
       m_fileManagerPanel->handleKeyEvent(&event);
     },
     "view"
+  ));
+
+  // Bookmark commands
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "bookmark.toggle",
+    "Toggle Bookmark",
+    [this]() {
+      m_fileManagerPanel->activePane()->toggleBookmarkForCurrentPath();
+    },
+    "bookmark"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "bookmark.list",
+    "Bookmarks...",
+    [this]() {
+      BookmarkListDialog dlg(this);
+      if (dlg.exec() == QDialog::Accepted) {
+        const QString path = dlg.selectedPath();
+        if (!path.isEmpty()) {
+          m_fileManagerPanel->navigateActivePaneTo(path);
+        }
+      }
+      // ダイアログ閉じた後もアクティブペインにフォーカスを戻す
+      m_fileManagerPanel->activePane()->view()->setFocus();
+    },
+    "bookmark"
   ));
 }
 

@@ -1,6 +1,8 @@
 #include "Settings.h"
 #include <QStandardPaths>
 #include <QDir>
+#include <QFileInfo>
+#include <QFileInfoList>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -223,6 +225,14 @@ void Settings::setCursorLoop(bool loop) {
   m_cursorLoop = loop;
 }
 
+QList<Bookmark> Settings::bookmarks() const {
+  return m_bookmarks;
+}
+
+void Settings::setBookmarks(const QList<Bookmark>& list) {
+  m_bookmarks = list;
+}
+
 QString Settings::autoRenameTemplate() const {
   return m_autoRenameTemplate;
 }
@@ -277,6 +287,49 @@ QPoint Settings::lastWindowPosition() const {
 
 void Settings::setLastWindowPosition(const QPoint& pos) {
   m_lastWindowPosition = pos;
+}
+
+// macOS / Windows / Linux 共通のデフォルトブックマークを返す。
+// 存在するパスのみを含め、isDefault=true を付与する（= 削除不可）。
+// macOS のルート "/" は実用性が低いため除外。必要な /Volumes/* や
+// クラウドマウントは動的検出 (Detected locations) で扱う。
+static QList<Bookmark> buildDefaultBookmarks() {
+  QList<Bookmark> list;
+
+  auto addIfExists = [&](const QString& name, const QString& path) {
+    if (!path.isEmpty() && QDir(path).exists()) {
+      Bookmark b;
+      b.name      = name;
+      b.path      = path;
+      b.isDefault = true;
+      list.append(b);
+    }
+  };
+
+  addIfExists(QObject::tr("Home"),
+              QStandardPaths::writableLocation(QStandardPaths::HomeLocation));
+  addIfExists(QObject::tr("Desktop"),
+              QStandardPaths::writableLocation(QStandardPaths::DesktopLocation));
+  addIfExists(QObject::tr("Documents"),
+              QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
+  addIfExists(QObject::tr("Downloads"),
+              QStandardPaths::writableLocation(QStandardPaths::DownloadLocation));
+  addIfExists(QObject::tr("Pictures"),
+              QStandardPaths::writableLocation(QStandardPaths::PicturesLocation));
+  addIfExists(QObject::tr("Music"),
+              QStandardPaths::writableLocation(QStandardPaths::MusicLocation));
+  addIfExists(QObject::tr("Movies"),
+              QStandardPaths::writableLocation(QStandardPaths::MoviesLocation));
+
+  // ドライブは macOS の "/" を除きデフォルトに含める（Windows の C:/ 等を想定）。
+  const QFileInfoList drives = QDir::drives();
+  for (const QFileInfo& fi : drives) {
+    const QString path = fi.absoluteFilePath();
+    if (path == QStringLiteral("/")) continue;
+    addIfExists(path, path);
+  }
+
+  return list;
 }
 
 // Helper functions for JSON conversion
@@ -488,6 +541,9 @@ void Settings::load() {
   QFile file(filePath);
   if (!file.exists()) {
     qDebug() << "Settings::load: settings file not found, using defaults:" << filePath;
+    // 完全に初回起動なのでデフォルトブックマークを注入して完了とする。
+    m_bookmarks = buildDefaultBookmarks();
+    m_defaultBookmarksInstalled = true;
     return;
   }
 
@@ -506,6 +562,7 @@ void Settings::load() {
   }
 
   QJsonObject root = doc.object();
+  const int fileVersion = root.value("version").toInt(1);
 
   // Load appearance settings
   QJsonObject appearance = root.value("appearance").toObject();
@@ -617,6 +674,7 @@ void Settings::load() {
   m_confirmOnExit = behavior.value("confirmOnExit").toBool(false);
   m_cursorLoop = behavior.value("cursorLoop").toBool(false);
   m_autoRenameTemplate = behavior.value("autoRenameTemplate").toString(" ({n})");
+  m_defaultBookmarksInstalled = behavior.value("defaultBookmarksInstalled").toBool(false);
 
   // Per-pane 初期表示ディレクトリ。旧 restoreLastPath が残っていれば
   // LastSession/Default にマップして互換性を保つ。
@@ -693,6 +751,51 @@ void Settings::load() {
     }
   }
 
+  // Load bookmarks
+  m_bookmarks.clear();
+  const QList<Bookmark> defaults = buildDefaultBookmarks();
+  QJsonArray bmArr = root.value("bookmarks").toArray();
+  for (const QJsonValue& val : bmArr) {
+    if (!val.isObject()) continue;
+    QJsonObject obj = val.toObject();
+    Bookmark b;
+    b.name = obj.value("name").toString();
+    b.path = obj.value("path").toString();
+    if (obj.contains("isDefault")) {
+      b.isDefault = obj.value("isDefault").toBool(false);
+    } else {
+      // 旧フォーマット: isDefault フィールドなし。現行デフォルトリストに
+      // パスが含まれていれば、デフォルトとして扱う（削除不可に昇格）。
+      for (const Bookmark& d : defaults) {
+        if (d.path == b.path) { b.isDefault = true; break; }
+      }
+    }
+    if (!b.path.isEmpty()) m_bookmarks.append(b);
+  }
+
+  // version < 2: 旧 Farman で Root ("/") が自動注入されたことがあるため除去。
+  // ユーザーが明示的に追加した可能性もあるが、現行仕様では Root をデフォルトに
+  // 含めないため、一律撤去する（必要なら再度手動追加できる）。
+  if (fileVersion < 2) {
+    for (int i = m_bookmarks.size() - 1; i >= 0; --i) {
+      if (m_bookmarks[i].path == QStringLiteral("/")) {
+        m_bookmarks.removeAt(i);
+      }
+    }
+  }
+
+  // 初回のみ: デフォルトブックマークを既存リストにマージ（重複パスはスキップ）。
+  if (!m_defaultBookmarksInstalled) {
+    for (const Bookmark& d : defaults) {
+      bool dup = false;
+      for (const Bookmark& b : m_bookmarks) {
+        if (b.path == d.path) { dup = true; break; }
+      }
+      if (!dup) m_bookmarks.append(d);
+    }
+    m_defaultBookmarksInstalled = true;
+  }
+
   qDebug() << "Settings::load: loaded settings from" << filePath;
   emit settingsChanged();
 }
@@ -710,7 +813,7 @@ void Settings::save() const {
   QString filePath = configPath + "/settings.json";
 
   QJsonObject root;
-  root["version"] = 1;
+  root["version"] = 2;
 
   // Save appearance settings
   QJsonObject appearance;
@@ -764,6 +867,7 @@ void Settings::save() const {
   behavior["confirmOnExit"] = m_confirmOnExit;
   behavior["cursorLoop"] = m_cursorLoop;
   behavior["autoRenameTemplate"] = m_autoRenameTemplate;
+  behavior["defaultBookmarksInstalled"] = m_defaultBookmarksInstalled;
   root["behavior"] = behavior;
 
   // Per-pane 初期表示ディレクトリ
@@ -819,6 +923,17 @@ void Settings::save() const {
     overrides[it.key()] = paneSettingsToJson(it.value());
   }
   root["pathOverrides"] = overrides;
+
+  // Save bookmarks
+  QJsonArray bmArr;
+  for (const Bookmark& b : m_bookmarks) {
+    QJsonObject obj;
+    obj["name"] = b.name;
+    obj["path"] = b.path;
+    if (b.isDefault) obj["isDefault"] = true;
+    bmArr.append(obj);
+  }
+  root["bookmarks"] = bmArr;
 
   QJsonDocument doc(root);
   QByteArray data = doc.toJson(QJsonDocument::Indented);

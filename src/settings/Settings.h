@@ -7,8 +7,18 @@
 #include <QMap>
 #include <QSize>
 #include <QPoint>
+#include <QList>
 
 namespace Farman {
+
+// ブックマーク（お気に入りディレクトリ）1件
+struct Bookmark {
+  QString name;
+  QString path;
+  // 初回起動で自動注入されるデフォルト（Home/Documents 等）は true。
+  // この印が付いたブックマークは削除禁止。Rename/Move は許可。
+  bool    isDefault = false;
+};
 
 // ファイル種別ごとのカラーリング設定
 struct ColorRule {
@@ -95,6 +105,10 @@ public:
   bool cursorLoop()                     const;
   void setCursorLoop(bool loop);
 
+  // ── ブックマーク ─────────────────────────
+  QList<Bookmark> bookmarks() const;
+  void            setBookmarks(const QList<Bookmark>& list);
+
   // コピー／移動の「自動リネーム」で使うサフィックステンプレート。
   // "{n}" がカウンタのプレースホルダ。未指定なら " ({n})" を補う。
   QString autoRenameTemplate()          const;
@@ -152,6 +166,10 @@ private:
   bool             m_confirmOnExit   = false;
   bool             m_cursorLoop      = false;
   QString          m_autoRenameTemplate = QStringLiteral(" ({n})");
+  QList<Bookmark>  m_bookmarks;
+  // 初回起動時のデフォルトブックマーク注入を一度きりに制限するためのフラグ。
+  // false のままの設定ファイルを読むと、既存ブックマークにマージしてから true にする。
+  bool             m_defaultBookmarksInstalled = false;
 
   // Window settings
   WindowSizeMode     m_windowSizeMode     = WindowSizeMode::Default;
