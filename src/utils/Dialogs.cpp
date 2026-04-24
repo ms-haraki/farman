@@ -112,7 +112,7 @@ QString inputText(QWidget* parent,
   QDialog dlg(parent);
   dlg.setWindowTitle(title);
   dlg.setModal(true);
-  dlg.resize(320, 0);
+  dlg.resize(480, 0);
 
   auto* layout = new QVBoxLayout(&dlg);
 
@@ -125,16 +125,20 @@ QString inputText(QWidget* parent,
   edit->selectAll();
   layout->addWidget(edit);
 
-  auto* buttonBox = new QDialogButtonBox(
-    QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
-  auto* okBtn     = buttonBox->button(QDialogButtonBox::Ok);
-  auto* cancelBtn = buttonBox->button(QDialogButtonBox::Cancel);
-  applyAltShortcut(okBtn,     Qt::Key_O);
+  // 他のダイアログ（ConfirmDialog など）と同じ見た目にするため、
+  // QDialogButtonBox ではなく自前の QPushButton を右寄せで配置する。
+  auto* btnLayout = new QHBoxLayout();
+  btnLayout->addStretch(1);
+  auto* cancelBtn = new QPushButton(QObject::tr("Cancel"), &dlg);
+  auto* okBtn     = new QPushButton(QObject::tr("OK"),     &dlg);
   applyAltShortcut(cancelBtn, Qt::Key_X);
+  applyAltShortcut(okBtn,     Qt::Key_O);
   okBtn->setDefault(true);
-  QObject::connect(buttonBox, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
-  QObject::connect(buttonBox, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
-  layout->addWidget(buttonBox);
+  btnLayout->addWidget(cancelBtn);
+  btnLayout->addWidget(okBtn);
+  layout->addLayout(btnLayout);
+  QObject::connect(okBtn,     &QPushButton::clicked, &dlg, &QDialog::accept);
+  QObject::connect(cancelBtn, &QPushButton::clicked, &dlg, &QDialog::reject);
 
   // Tab: 入力欄 → Cancel → OK（実行系が最後）
   QWidget::setTabOrder(edit,      cancelBtn);

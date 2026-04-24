@@ -1,6 +1,7 @@
 #include "FileListPane.h"
 #include "FileListDelegate.h"
 #include "ClickableLabel.h"
+#include "BookmarkEditDialog.h"
 #include "model/FileListModel.h"
 #include "settings/Settings.h"
 #include "core/BookmarkManager.h"
@@ -297,7 +298,7 @@ void FileListPane::toggleBookmarkForCurrentPath() {
     return;
   }
 
-  // 未登録 → 名前入力ダイアログ（デフォルト名はパスの末尾）
+  // 未登録 → BookmarkEditDialog で追加（Edit と同じフォーム、パスも編集可能）
   QString defaultName;
   if (path == QDir::homePath()) {
     defaultName = tr("Home");
@@ -306,13 +307,10 @@ void FileListPane::toggleBookmarkForCurrentPath() {
     if (defaultName.isEmpty()) defaultName = path;
   }
 
-  bool ok = false;
-  const QString name = inputText(
-    this, tr("Add Bookmark"),
-    tr("Name for %1:").arg(path),
-    defaultName, &ok);
-  if (!ok) return;
-  BookmarkManager::instance().add(name, path);
+  BookmarkEditDialog dlg(defaultName, path, this);
+  dlg.setWindowTitle(tr("Add Bookmark"));
+  if (dlg.exec() != QDialog::Accepted) return;
+  BookmarkManager::instance().add(dlg.name(), dlg.path());
 }
 
 void FileListPane::onHeaderClicked(int section) {
