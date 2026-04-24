@@ -61,6 +61,11 @@ void FileListPane::setupUi() {
   pathLayout->addWidget(m_bookmarkLabel, 0);
 
   m_pathLabel = new QLabel(this);
+  // パスが長くてもペイン幅を押し広げないよう、水平方向の推奨幅は無視させる。
+  // テキストは end を elide で表示して親幅に収まるようにする。
+  m_pathLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+  m_pathLabel->setMinimumWidth(0);
+  m_pathLabel->setTextFormat(Qt::PlainText);
   pathLayout->addWidget(m_pathLabel, 1);
 
   m_folderButton = new QToolButton(this);
