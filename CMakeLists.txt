@@ -29,6 +29,7 @@ qt_add_executable(farman
   src/ui/BookmarkListDialog.cpp
   src/ui/BookmarkEditDialog.cpp
   src/ui/HistoryDialog.cpp
+  src/ui/SearchDialog.cpp
   src/ui/ClickableLabel.cpp
   src/core/FileItem.cpp
   src/core/BookmarkManager.cpp
@@ -38,6 +39,7 @@ qt_add_executable(farman
   src/core/workers/CopyWorker.cpp
   src/core/workers/MoveWorker.cpp
   src/core/workers/RemoveWorker.cpp
+  src/core/workers/SearchWorker.cpp
   src/model/FileListModel.cpp
   src/viewer/ViewerDispatcher.cpp
   src/viewer/TextViewerWindow.cpp

@@ -13,6 +13,7 @@
 #include "core/workers/RemoveWorker.h"
 #include "settings/Settings.h"
 #include "utils/Dialogs.h"
+#include <QFileInfo>
 #include <QVBoxLayout>
 #include <QSplitter>
 #include <QFileDialog>
@@ -173,7 +174,30 @@ const DirectoryHistory& FileManagerPanel::history(PaneType pane) const {
 
 bool FileManagerPanel::navigateActivePaneTo(const QString& path) {
   if (path.isEmpty()) return false;
-  if (!navigatePane(m_activePane, path)) return false;
+
+  // パスがファイルなら、その親ディレクトリへ遷移したうえでカーソルを
+  // そのファイルに合わせる。ディレクトリならそのまま遷移。
+  QFileInfo info(path);
+  QString dirPath = path;
+  QString fileName;
+  if (info.exists() && !info.isDir()) {
+    dirPath  = info.absolutePath();
+    fileName = info.fileName();
+  }
+
+  if (!navigatePane(m_activePane, dirPath)) return false;
+
+  if (!fileName.isEmpty()) {
+    FileListPane* pane = activePane();
+    FileListModel* model = pane->model();
+    for (int i = 0; i < model->rowCount(); ++i) {
+      const FileItem* item = model->itemAt(i);
+      if (item && item->name() == fileName) {
+        pane->view()->setCurrentIndex(model->index(i, 0));
+        break;
+      }
+    }
+  }
   updatePathSignal();
   return true;
 }

@@ -99,8 +99,9 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::Key_K), "file.mkdir"   },
     { QKeySequence(Qt::Key_D), "file.delete"  },
     { QKeySequence(Qt::Key_R), "file.rename"  },
-    { QKeySequence(Qt::Key_N), "file.newfile"   },
+    { QKeySequence(Qt::Key_N), "file.newfile"    },
     { QKeySequence(Qt::Key_A), "file.attributes" },
+    { QKeySequence(Qt::Key_F), "file.search"     },
 
     // View
     { QKeySequence(Qt::Key_F3), "view.file" },

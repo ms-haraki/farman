@@ -5,6 +5,7 @@
 #include "SettingsDialog.h"
 #include "BookmarkListDialog.h"
 #include "HistoryDialog.h"
+#include "SearchDialog.h"
 #include "../keybinding/ICommand.h"
 #include "../core/DirectoryHistory.h"
 #include "../utils/Dialogs.h"
@@ -417,6 +418,23 @@ void MainWindow::registerCommands() {
     "Change Attributes",
     [this]() {
       m_fileManagerPanel->changeAttributes();
+    },
+    "file"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "file.search",
+    "Search Files...",
+    [this]() {
+      const QString start = m_fileManagerPanel->activePane()->currentPath();
+      SearchDialog dlg(start, this);
+      if (dlg.exec() == QDialog::Accepted) {
+        const QString picked = dlg.selectedPath();
+        if (!picked.isEmpty()) {
+          m_fileManagerPanel->navigateActivePaneTo(picked);
+        }
+      }
+      m_fileManagerPanel->activePane()->view()->setFocus();
     },
     "file"
   ));
