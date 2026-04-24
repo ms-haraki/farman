@@ -413,6 +413,15 @@ void MainWindow::registerCommands() {
   ));
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
+    "file.attributes",
+    "Change Attributes",
+    [this]() {
+      m_fileManagerPanel->changeAttributes();
+    },
+    "file"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.rename",
     "Rename",
     [this]() {

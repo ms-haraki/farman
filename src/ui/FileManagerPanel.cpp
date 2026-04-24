@@ -4,6 +4,7 @@
 #include "SortFilterDialog.h"
 #include "TransferConfirmDialog.h"
 #include "OverwriteDialog.h"
+#include "AttributesDialog.h"
 #include "model/FileListModel.h"
 #include "core/FileItem.h"
 #include "core/workers/CopyWorker.h"
@@ -940,6 +941,46 @@ void FileManagerPanel::createFile() {
   }
 
   srcPane->view()->setFocus();
+}
+
+void FileManagerPanel::changeAttributes() {
+  FileListPane* srcPane = activePane();
+  FileListModel* model = srcPane->model();
+
+  // 選択 or カレントのファイル/ディレクトリのパスを収集
+  QStringList paths = model->selectedFilePaths();
+  if (paths.isEmpty()) {
+    QModelIndex currentIndex = srcPane->view()->currentIndex();
+    if (currentIndex.isValid()) {
+      const FileItem* item = model->itemAt(currentIndex);
+      if (item && !item->isDotDot()) {
+        paths.append(item->absolutePath());
+      }
+    }
+  }
+  if (paths.isEmpty()) return;
+
+  AttributesDialog dlg(paths, this);
+  if (dlg.exec() == QDialog::Accepted) {
+    // カーソルが乗っていたファイル名を控えてからリフレッシュし、同名の行を再選択
+    QString currentName;
+    const QModelIndex currentIdx = srcPane->view()->currentIndex();
+    if (currentIdx.isValid()) {
+      const FileItem* item = model->itemAt(currentIdx);
+      if (item) currentName = item->name();
+    }
+    model->refresh();
+    if (!currentName.isEmpty()) {
+      for (int i = 0; i < model->rowCount(); ++i) {
+        const FileItem* item = model->itemAt(i);
+        if (item && item->name() == currentName) {
+          srcPane->view()->setCurrentIndex(model->index(i, 0));
+          break;
+        }
+      }
+    }
+    srcPane->view()->setFocus();
+  }
 }
 
 void FileManagerPanel::openSortFilterDialog() {

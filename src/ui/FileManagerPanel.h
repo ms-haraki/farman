@@ -47,6 +47,7 @@ public:
   void createDirectory();
   void createFile();
   void renameItem();
+  void changeAttributes();
 
   // アクティブペインのソート・フィルタ編集ダイアログを開く
   void openSortFilterDialog();
