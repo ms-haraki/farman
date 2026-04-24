@@ -5,6 +5,7 @@
 #include "TransferConfirmDialog.h"
 #include "OverwriteDialog.h"
 #include "AttributesDialog.h"
+#include "DeleteConfirmDialog.h"
 #include "model/FileListModel.h"
 #include "core/FileItem.h"
 #include "core/workers/CopyWorker.h"
@@ -785,12 +786,15 @@ void FileManagerPanel::deleteSelectedFiles() {
     message = tr("Are you sure you want to delete %1 items?").arg(selectedFiles.size());
   }
 
-  if (!confirm(this, tr("Confirm Delete"), message)) {
+  DeleteConfirmDialog confirmDlg(
+    message, Settings::instance().defaultDeleteToTrash(), this);
+  if (confirmDlg.exec() != QDialog::Accepted) {
     return;
   }
+  const bool toTrash = confirmDlg.toTrash();
 
   // Create worker and dialog
-  RemoveWorker* worker = new RemoveWorker(selectedFiles, true, this);  // true = to trash
+  RemoveWorker* worker = new RemoveWorker(selectedFiles, toTrash, this);
   ProgressDialog* dialog = new ProgressDialog(tr("Deleting files..."), this);
   dialog->setWorker(worker);
 

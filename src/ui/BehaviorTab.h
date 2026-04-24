@@ -53,6 +53,7 @@ private:
 
   // File operation settings
   QLineEdit*  m_autoRenameTemplateEdit;
+  QCheckBox*  m_defaultDeleteToTrashCheck;
 
   // Startup / Behavior settings
   QComboBox*   m_leftInitialPathModeCombo;

@@ -122,6 +122,11 @@ public:
   QString autoRenameTemplate()          const;
   void    setAutoRenameTemplate(const QString& tmpl);
 
+  // 削除時にゴミ箱へ送るのが既定か（false なら完全削除が既定）。
+  // 削除確認ダイアログで都度切替可能。
+  bool    defaultDeleteToTrash()        const;
+  void    setDefaultDeleteToTrash(bool toTrash);
+
   // ── ウィンドウ設定 ──────────────────────
   WindowSizeMode     windowSizeMode()     const;
   void               setWindowSizeMode(WindowSizeMode mode);
@@ -176,6 +181,7 @@ private:
   bool             m_persistHistory  = false;
   QStringList      m_paneHistory[static_cast<int>(PaneType::Count)];
   QString          m_autoRenameTemplate = QStringLiteral(" ({n})");
+  bool             m_defaultDeleteToTrash = true;
   QList<Bookmark>  m_bookmarks;
   // 初回起動時のデフォルトブックマーク注入を一度きりに制限するためのフラグ。
   // false のままの設定ファイルを読むと、既存ブックマークにマージしてから true にする。

@@ -42,9 +42,15 @@ void RemoveWorker::run() {
 
     bool removeSuccess = false;
     if (m_toTrash) {
-      // TODO: Implement trash functionality using platform-specific APIs
-      // For now, fall back to permanent deletion
-      removeSuccess = removeEntry(path);
+      // Qt 5.15+ の QFile::moveToTrash は OS のゴミ箱 API を呼ぶ
+      // （macOS は ~/.Trash/、Windows は Recycle Bin）。
+      // ディレクトリもそのまま移動できる。
+      if (!QFile::moveToTrash(path)) {
+        emit errorOccurred(path, "Failed to move to trash");
+        removeSuccess = false;
+      } else {
+        removeSuccess = true;
+      }
     } else {
       removeSuccess = removeEntry(path);
     }

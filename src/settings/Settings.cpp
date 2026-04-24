@@ -261,6 +261,14 @@ void Settings::setAutoRenameTemplate(const QString& tmpl) {
   m_autoRenameTemplate = tmpl;
 }
 
+bool Settings::defaultDeleteToTrash() const {
+  return m_defaultDeleteToTrash;
+}
+
+void Settings::setDefaultDeleteToTrash(bool toTrash) {
+  m_defaultDeleteToTrash = toTrash;
+}
+
 WindowSizeMode Settings::windowSizeMode() const {
   return m_windowSizeMode;
 }
@@ -695,6 +703,7 @@ void Settings::load() {
   m_cursorLoop = behavior.value("cursorLoop").toBool(false);
   m_persistHistory = behavior.value("persistHistory").toBool(false);
   m_autoRenameTemplate = behavior.value("autoRenameTemplate").toString(" ({n})");
+  m_defaultDeleteToTrash = behavior.value("defaultDeleteToTrash").toBool(true);
   m_defaultBookmarksInstalled = behavior.value("defaultBookmarksInstalled").toBool(false);
 
   // ペイン履歴（ON の時のみ読む。OFF の時は必ず空にする）
@@ -907,6 +916,7 @@ void Settings::save() const {
   behavior["cursorLoop"] = m_cursorLoop;
   behavior["persistHistory"] = m_persistHistory;
   behavior["autoRenameTemplate"] = m_autoRenameTemplate;
+  behavior["defaultDeleteToTrash"] = m_defaultDeleteToTrash;
   behavior["defaultBookmarksInstalled"] = m_defaultBookmarksInstalled;
   root["behavior"] = behavior;
 

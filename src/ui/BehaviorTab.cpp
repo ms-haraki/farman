@@ -33,6 +33,7 @@ BehaviorTab::BehaviorTab(const QString& leftCurrentPath,
   , m_cursorLoopCheck(nullptr)
   , m_persistHistoryCheck(nullptr)
   , m_autoRenameTemplateEdit(nullptr)
+  , m_defaultDeleteToTrashCheck(nullptr)
   , m_leftInitialPathModeCombo(nullptr)
   , m_leftCustomPathEdit(nullptr)
   , m_leftBrowseButton(nullptr)
@@ -137,25 +138,50 @@ void BehaviorTab::setupUi() {
   m_cursorLoopCheck->setToolTip(
     tr("Pressing Down on the last row moves the cursor to the top, "
        "and Up on the first row moves it to the bottom"));
-  navigationLayout->addWidget(m_cursorLoopCheck);
 
   m_persistHistoryCheck = new QCheckBox(tr("Persist directory history across sessions"), this);
   m_persistHistoryCheck->setToolTip(
     tr("Save each pane's recent directory list on exit and restore it on next launch"));
-  navigationLayout->addWidget(m_persistHistoryCheck);
+
+  // 2 列均等幅の Grid に左寄せで並べる
+  QGridLayout* navGrid = new QGridLayout();
+  navGrid->setColumnStretch(0, 1);
+  navGrid->setColumnStretch(1, 1);
+  navGrid->addWidget(m_cursorLoopCheck,     0, 0, Qt::AlignLeft);
+  navGrid->addWidget(m_persistHistoryCheck, 0, 1, Qt::AlignLeft);
+  navigationLayout->addLayout(navGrid);
 
   mainLayout->addWidget(navigationGroup);
 
-  // File operation settings
+  // File operation settings（auto-rename suffix と trash 既定を 2 列均等で横並び）
   QGroupBox* fileOpsGroup = new QGroupBox(tr("File Operations"), this);
-  QFormLayout* fileOpsLayout = new QFormLayout(fileOpsGroup);
+  QGridLayout* fileOpsLayout = new QGridLayout(fileOpsGroup);
+  fileOpsLayout->setColumnStretch(0, 1);
+  fileOpsLayout->setColumnStretch(1, 1);
 
   m_autoRenameTemplateEdit = new QLineEdit(this);
   m_autoRenameTemplateEdit->setToolTip(
     tr("Default suffix template for auto-rename on copy/move conflicts. "
        "Use {n} as the counter placeholder (e.g., ' ({n})' → 'foo (1).txt')."));
   m_autoRenameTemplateEdit->setPlaceholderText(QStringLiteral(" ({n})"));
-  fileOpsLayout->addRow(tr("Auto-rename suffix:"), m_autoRenameTemplateEdit);
+  m_autoRenameTemplateEdit->setMaximumWidth(160);
+
+  m_defaultDeleteToTrashCheck = new QCheckBox(tr("Move to Trash by default when deleting"), this);
+  m_defaultDeleteToTrashCheck->setToolTip(
+    tr("Pre-selects the Trash option in the delete confirmation dialog. "
+       "Uncheck to default to permanent delete. The choice can still be "
+       "overridden in the dialog per operation."));
+
+  // 左カラム: ラベル + 入力欄をまとめて 1 セルに
+  QWidget* renameCell = new QWidget(this);
+  QHBoxLayout* renameCellLayout = new QHBoxLayout(renameCell);
+  renameCellLayout->setContentsMargins(0, 0, 0, 0);
+  renameCellLayout->addWidget(new QLabel(tr("Auto-rename suffix:"), this));
+  renameCellLayout->addWidget(m_autoRenameTemplateEdit);
+  renameCellLayout->addStretch(1);
+
+  fileOpsLayout->addWidget(renameCell,                  0, 0, Qt::AlignLeft);
+  fileOpsLayout->addWidget(m_defaultDeleteToTrashCheck, 0, 1, Qt::AlignLeft);
 
   mainLayout->addWidget(fileOpsGroup);
 
@@ -345,6 +371,7 @@ void BehaviorTab::loadSettings() {
 
   // File operations
   m_autoRenameTemplateEdit->setText(settings.autoRenameTemplate());
+  m_defaultDeleteToTrashCheck->setChecked(settings.defaultDeleteToTrash());
 
   // Startup settings
   auto selectModeByData = [](QComboBox* combo, int value) {
@@ -442,6 +469,7 @@ void BehaviorTab::save() {
 
   // Save file operation settings
   settings.setAutoRenameTemplate(m_autoRenameTemplateEdit->text());
+  settings.setDefaultDeleteToTrash(m_defaultDeleteToTrashCheck->isChecked());
 
   // Save startup settings
   settings.setInitialPathMode(
