@@ -4,6 +4,7 @@
 #include "model/FileListModel.h"
 #include "settings/Settings.h"
 #include "core/BookmarkManager.h"
+#include "utils/Dialogs.h"
 #include "types.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -306,10 +307,10 @@ void FileListPane::toggleBookmarkForCurrentPath() {
   }
 
   bool ok = false;
-  const QString name = QInputDialog::getText(
+  const QString name = inputText(
     this, tr("Add Bookmark"),
     tr("Name for %1:").arg(path),
-    QLineEdit::Normal, defaultName, &ok);
+    defaultName, &ok);
   if (!ok) return;
   BookmarkManager::instance().add(name, path);
 }

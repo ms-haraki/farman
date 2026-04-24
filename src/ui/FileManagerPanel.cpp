@@ -850,12 +850,11 @@ void FileManagerPanel::createDirectory() {
   QString currentPath = srcPane->currentPath();
 
   // Ask for directory name
-  bool ok;
-  QString dirName = QInputDialog::getText(
+  bool ok = false;
+  QString dirName = inputText(
     this,
     tr("Create Directory"),
     tr("Enter directory name:"),
-    QLineEdit::Normal,
     QString(),
     &ok
   );
@@ -966,12 +965,11 @@ void FileManagerPanel::renameItem() {
   QString oldPath = item->absolutePath();
 
   // Ask for new name
-  bool ok;
-  QString newName = QInputDialog::getText(
+  bool ok = false;
+  QString newName = inputText(
     this,
     tr("Rename"),
     tr("Enter new name:"),
-    QLineEdit::Normal,
     oldName,
     &ok
   );

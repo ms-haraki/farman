@@ -337,9 +337,9 @@ void BookmarkListDialog::onRename() {
   if (info.sourceIndex < 0 || info.sourceIndex >= list.size()) return;
 
   bool ok = false;
-  const QString newName = QInputDialog::getText(
+  const QString newName = inputText(
     this, tr("Rename Bookmark"),
-    tr("Name:"), QLineEdit::Normal,
+    tr("Name:"),
     list[info.sourceIndex].name, &ok);
   if (!ok) return;
   BookmarkManager::instance().rename(info.sourceIndex, newName);

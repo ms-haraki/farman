@@ -3,7 +3,9 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QPushButton>
+#include <QDialogButtonBox>
 #include <QKeyEvent>
 #include <QKeySequence>
 
@@ -100,6 +102,49 @@ void applyAltShortcut(QPushButton* btn, Qt::Key key) {
   }
   btn->setShortcut(seq);
   btn->setFocusPolicy(Qt::StrongFocus);
+}
+
+QString inputText(QWidget* parent,
+                  const QString& title,
+                  const QString& label,
+                  const QString& defaultValue,
+                  bool* ok) {
+  QDialog dlg(parent);
+  dlg.setWindowTitle(title);
+  dlg.setModal(true);
+  dlg.resize(320, 0);
+
+  auto* layout = new QVBoxLayout(&dlg);
+
+  auto* labelWidget = new QLabel(label, &dlg);
+  labelWidget->setWordWrap(true);
+  layout->addWidget(labelWidget);
+
+  auto* edit = new QLineEdit(defaultValue, &dlg);
+  edit->setFocusPolicy(Qt::StrongFocus);
+  edit->selectAll();
+  layout->addWidget(edit);
+
+  auto* buttonBox = new QDialogButtonBox(
+    QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+  auto* okBtn     = buttonBox->button(QDialogButtonBox::Ok);
+  auto* cancelBtn = buttonBox->button(QDialogButtonBox::Cancel);
+  applyAltShortcut(okBtn,     Qt::Key_O);
+  applyAltShortcut(cancelBtn, Qt::Key_X);
+  okBtn->setDefault(true);
+  QObject::connect(buttonBox, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+  QObject::connect(buttonBox, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+  layout->addWidget(buttonBox);
+
+  // Tab: 入力欄 → Cancel → OK（実行系が最後）
+  QWidget::setTabOrder(edit,      cancelBtn);
+  QWidget::setTabOrder(cancelBtn, okBtn);
+
+  edit->setFocus();
+
+  const bool accepted = dlg.exec() == QDialog::Accepted;
+  if (ok) *ok = accepted;
+  return accepted ? edit->text() : QString();
 }
 
 } // namespace Farman
