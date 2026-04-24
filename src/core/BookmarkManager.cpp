@@ -43,6 +43,16 @@ void BookmarkManager::rename(int index, const QString& newName) {
   setBookmarks(list);
 }
 
+void BookmarkManager::edit(int index, const QString& newName, const QString& newPath) {
+  QList<Bookmark> list = bookmarks();
+  if (index < 0 || index >= list.size()) return;
+  if (list[index].isDefault) return;  // デフォルトは編集不可
+  if (newPath.isEmpty()) return;
+  list[index].name = newName;
+  list[index].path = newPath;
+  setBookmarks(list);
+}
+
 void BookmarkManager::move(int from, int to) {
   QList<Bookmark> list = bookmarks();
   if (from < 0 || from >= list.size()) return;

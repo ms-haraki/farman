@@ -1,4 +1,5 @@
 #include "BookmarkListDialog.h"
+#include "BookmarkEditDialog.h"
 #include "core/BookmarkManager.h"
 #include "settings/Settings.h"
 #include "utils/Dialogs.h"
@@ -59,7 +60,7 @@ BookmarkListDialog::BookmarkListDialog(QWidget* parent)
   : QDialog(parent)
   , m_table(nullptr)
   , m_goButton(nullptr)
-  , m_renameButton(nullptr)
+  , m_editButton(nullptr)
   , m_deleteButton(nullptr)
   , m_upButton(nullptr)
   , m_downButton(nullptr) {
@@ -87,6 +88,8 @@ void BookmarkListDialog::setupUi() {
   m_table->horizontalHeader()->setStretchLastSection(true);
   m_table->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Interactive);
   m_table->setShowGrid(false);
+  // Tab はボタンへ抜けさせる。行選択は上下キーで行う。
+  m_table->setTabKeyNavigation(false);
 
   connect(m_table, &QTableWidget::itemDoubleClicked,
           this, [this](QTableWidgetItem*) { onGo(); });
@@ -96,14 +99,15 @@ void BookmarkListDialog::setupUi() {
 
   QHBoxLayout* btnLayout = new QHBoxLayout();
   m_goButton     = new QPushButton(tr("Go"),     this);
-  m_renameButton = new QPushButton(tr("Rename"), this);
+  m_editButton   = new QPushButton(tr("Edit"),   this);
   m_deleteButton = new QPushButton(tr("Delete"), this);
   m_upButton     = new QPushButton(tr("↑"),      this);
   m_downButton   = new QPushButton(tr("↓"),      this);
   QPushButton* closeButton = new QPushButton(tr("Close"), this);
 
   applyAltShortcut(m_goButton,     Qt::Key_G);
-  applyAltShortcut(m_renameButton, Qt::Key_R);
+  // macOS では Option+E が dead key（acute accent）に予約されているため T を使う
+  applyAltShortcut(m_editButton,   Qt::Key_T);
   applyAltShortcut(m_deleteButton, Qt::Key_D);
   applyAltShortcut(m_upButton,     Qt::Key_Up);
   applyAltShortcut(m_downButton,   Qt::Key_Down);
@@ -114,14 +118,14 @@ void BookmarkListDialog::setupUi() {
   m_downButton->setToolTip(tr("Move selected bookmark down"));
 
   connect(m_goButton,     &QPushButton::clicked, this, &BookmarkListDialog::onGo);
-  connect(m_renameButton, &QPushButton::clicked, this, &BookmarkListDialog::onRename);
+  connect(m_editButton,   &QPushButton::clicked, this, &BookmarkListDialog::onEdit);
   connect(m_deleteButton, &QPushButton::clicked, this, &BookmarkListDialog::onDelete);
   connect(m_upButton,     &QPushButton::clicked, this, &BookmarkListDialog::onMoveUp);
   connect(m_downButton,   &QPushButton::clicked, this, &BookmarkListDialog::onMoveDown);
   connect(closeButton,    &QPushButton::clicked, this, &QDialog::reject);
 
   btnLayout->addWidget(m_goButton);
-  btnLayout->addWidget(m_renameButton);
+  btnLayout->addWidget(m_editButton);
   btnLayout->addWidget(m_deleteButton);
   btnLayout->addWidget(m_upButton);
   btnLayout->addWidget(m_downButton);
@@ -130,11 +134,11 @@ void BookmarkListDialog::setupUi() {
 
   mainLayout->addLayout(btnLayout);
 
-  // Tab 順: table → Rename → Delete → ↑ → ↓ → Close → Go。
+  // Tab 順: table → Edit → Delete → ↑ → ↓ → Close → Go。
   // accept を呼ぶ Go を最後に配置して誤操作を防ぐ。
   m_table->setFocusPolicy(Qt::StrongFocus);
-  setTabOrder(m_table,        m_renameButton);
-  setTabOrder(m_renameButton, m_deleteButton);
+  setTabOrder(m_table,        m_editButton);
+  setTabOrder(m_editButton,   m_deleteButton);
   setTabOrder(m_deleteButton, m_upButton);
   setTabOrder(m_upButton,     m_downButton);
   setTabOrder(m_downButton,   closeButton);
@@ -297,7 +301,7 @@ void BookmarkListDialog::onSelectionChanged() {
 
   // Rename は User のみ、Delete も User のみ、Move は同セクション内のみ
   if (m_goButton)     m_goButton->setEnabled(canGo);
-  if (m_renameButton) m_renameButton->setEnabled(isUser);
+  if (m_editButton)   m_editButton->setEnabled(isUser);
   if (m_deleteButton) m_deleteButton->setEnabled(isUser);
 
   bool canUp = false, canDown = false;
@@ -330,19 +334,16 @@ void BookmarkListDialog::onGo() {
   accept();
 }
 
-void BookmarkListDialog::onRename() {
+void BookmarkListDialog::onEdit() {
   const RowInfo info = currentRowInfo();
-  if (info.type != RowInfo::Type::User) return;  // Default/Detected はリネーム不可
+  if (info.type != RowInfo::Type::User) return;  // Default/Detected は編集不可
   const QList<Bookmark> list = BookmarkManager::instance().bookmarks();
   if (info.sourceIndex < 0 || info.sourceIndex >= list.size()) return;
 
-  bool ok = false;
-  const QString newName = inputText(
-    this, tr("Rename Bookmark"),
-    tr("Name:"),
-    list[info.sourceIndex].name, &ok);
-  if (!ok) return;
-  BookmarkManager::instance().rename(info.sourceIndex, newName);
+  const Bookmark& b = list[info.sourceIndex];
+  BookmarkEditDialog dlg(b.name, b.path, this);
+  if (dlg.exec() != QDialog::Accepted) return;
+  BookmarkManager::instance().edit(info.sourceIndex, dlg.name(), dlg.path());
 }
 
 void BookmarkListDialog::onDelete() {

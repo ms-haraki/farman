@@ -10,9 +10,9 @@ class QPushButton;
 namespace Farman {
 
 // ブックマーク一覧ダイアログ。単一テーブル内で3セクションを表示:
-//   1. 固定ブックマーク (isDefault=true): Rename/Move 可、Delete 不可
-//   2. "Detected locations" セパレータ + 動的検出した場所: Go のみ可
-//   3. 任意ブックマーク (isDefault=false): Rename/Delete/Move 可
+//   1. 固定ブックマーク (isDefault=true): Go のみ（削除・編集・並び替え不可）
+//   2. 動的検出した場所（Detected locations）: Go のみ
+//   3. 任意ブックマーク (isDefault=false): Go/Edit/Delete/並び替え 可
 // OK（ダブルクリック／Go）で選択中のパスを確定して閉じる。
 class BookmarkListDialog : public QDialog {
   Q_OBJECT
@@ -25,7 +25,7 @@ public:
 
 private slots:
   void onGo();
-  void onRename();
+  void onEdit();
   void onDelete();
   void onMoveUp();
   void onMoveDown();
@@ -48,7 +48,7 @@ private:
 
   QTableWidget*    m_table;
   QPushButton*     m_goButton;
-  QPushButton*     m_renameButton;
+  QPushButton*     m_editButton;
   QPushButton*     m_deleteButton;
   QPushButton*     m_upButton;
   QPushButton*     m_downButton;

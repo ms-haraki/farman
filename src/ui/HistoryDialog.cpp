@@ -37,6 +37,8 @@ void HistoryDialog::setupUi(const QStringList& entries) {
     m_table->verticalHeader()->setVisible(false);
     m_table->horizontalHeader()->setStretchLastSection(true);
     m_table->setShowGrid(false);
+    // Tab はボタンへ抜けさせる。行選択は上下キーで行う。
+    m_table->setTabKeyNavigation(false);
 
     m_table->setRowCount(entries.size());
     for (int i = 0; i < entries.size(); ++i) {

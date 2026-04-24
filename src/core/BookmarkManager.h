@@ -23,6 +23,10 @@ public:
   void add(const QString& name, const QString& path);
   void removeAt(int index);
   void rename(int index, const QString& newName);
+  // 名前とパスを同時に編集する。isDefault=true でもパスと名前を変更可能
+  // （デフォルトブックマークを「別の場所を指す」ようには現状してないが、将来の
+  // 拡張のため API は isDefault も通す）。
+  void edit(int index, const QString& newName, const QString& newPath);
   // from の要素を to の位置に移動（QList::move 準拠）
   void move(int from, int to);
 

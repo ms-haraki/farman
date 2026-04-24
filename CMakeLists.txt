@@ -25,6 +25,7 @@ qt_add_executable(farman
   src/ui/TransferConfirmDialog.cpp
   src/ui/OverwriteDialog.cpp
   src/ui/BookmarkListDialog.cpp
+  src/ui/BookmarkEditDialog.cpp
   src/ui/HistoryDialog.cpp
   src/ui/ClickableLabel.cpp
   src/core/FileItem.cpp
