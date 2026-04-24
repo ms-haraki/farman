@@ -1,5 +1,6 @@
 #include "TransferConfirmDialog.h"
 #include "settings/Settings.h"
+#include "utils/Dialogs.h"
 #include <QVBoxLayout>
 #include <QFormLayout>
 #include <QLabel>
@@ -10,6 +11,8 @@
 #include <QPushButton>
 #include <QGroupBox>
 #include <QFileInfo>
+#include <QKeyEvent>
+#include <QKeySequence>
 
 namespace Farman {
 
@@ -54,15 +57,21 @@ void TransferConfirmDialog::setupUi(Operation op,
   itemsLayout->addWidget(list);
   mainLayout->addWidget(itemsGroup, 1);
 
-  // Overwrite mode
+  // Overwrite mode。ラベルに Alt+キーをネイティブ表記で明記する。
+  // macOS では「⌥O」、Windows / Linux では「Alt+O」のような表示になる。
+  const QString altO =
+    QKeySequence(Qt::ALT | Qt::Key_O).toString(QKeySequence::NativeText);
+  const QString altS =
+    QKeySequence(Qt::ALT | Qt::Key_S).toString(QKeySequence::NativeText);
+
   QFormLayout* overwriteForm = new QFormLayout();
   m_overwriteModeCombo = new QComboBox(this);
   m_overwriteModeCombo->addItem(tr("Ask"),            static_cast<int>(OverwriteMode::Ask));
   m_overwriteModeCombo->addItem(tr("Auto-overwrite"), static_cast<int>(OverwriteMode::AutoOverwrite));
   m_overwriteModeCombo->addItem(tr("Auto-rename"),    static_cast<int>(OverwriteMode::AutoRename));
   m_overwriteModeCombo->setToolTip(
-    tr("How to handle files that already exist at the destination"));
-  overwriteForm->addRow(tr("On overwrite:"), m_overwriteModeCombo);
+    tr("How to handle files that already exist at the destination."));
+  overwriteForm->addRow(tr("On overwrite (%1):").arg(altO), m_overwriteModeCombo);
 
   // Auto-rename テンプレート: AutoRename モード時のみ有効
   m_autoRenameEdit = new QLineEdit(this);
@@ -70,7 +79,7 @@ void TransferConfirmDialog::setupUi(Operation op,
   m_autoRenameEdit->setToolTip(
     tr("Suffix appended to rename conflicting files. "
        "Use {n} as the counter placeholder (e.g., ' ({n})' → 'foo (1).txt')."));
-  overwriteForm->addRow(tr("Rename suffix:"), m_autoRenameEdit);
+  overwriteForm->addRow(tr("Rename suffix (%1):").arg(altS), m_autoRenameEdit);
   auto updateEditEnabled = [this]() {
     const auto mode = static_cast<OverwriteMode>(
       m_overwriteModeCombo->currentData().toInt());
@@ -85,11 +94,52 @@ void TransferConfirmDialog::setupUi(Operation op,
   // Buttons
   m_buttonBox = new QDialogButtonBox(
     QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-  m_buttonBox->button(QDialogButtonBox::Ok)->setText(
-    op == Copy ? tr("Copy") : tr("Move"));
+  auto* okBtn     = m_buttonBox->button(QDialogButtonBox::Ok);
+  auto* cancelBtn = m_buttonBox->button(QDialogButtonBox::Cancel);
+  okBtn->setText(op == Copy ? tr("Copy") : tr("Move"));
+  applyAltShortcut(okBtn,     op == Copy ? Qt::Key_C : Qt::Key_M);
+  applyAltShortcut(cancelBtn, Qt::Key_X);
+  okBtn->setDefault(true);
   connect(m_buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
   connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
   mainLayout->addWidget(m_buttonBox);
+
+  // Tab ナビゲーション: items → combobox → rename suffix → Cancel → Copy/Move。
+  // 実行系ボタンを最後に置くことで Tab 連打による誤操作を防ぐ。
+  list->setFocusPolicy(Qt::StrongFocus);
+  m_overwriteModeCombo->setFocusPolicy(Qt::StrongFocus);
+  m_autoRenameEdit->setFocusPolicy(Qt::StrongFocus);
+  setTabOrder(list, m_overwriteModeCombo);
+  setTabOrder(m_overwriteModeCombo, m_autoRenameEdit);
+  setTabOrder(m_autoRenameEdit, cancelBtn);
+  setTabOrder(cancelBtn, okBtn);
+}
+
+void TransferConfirmDialog::keyPressEvent(QKeyEvent* event) {
+  // Alt+ラベル文字 で対応フィールドにフォーカス移動（Windows 風）。
+  // QLabel::setBuddy だけだと macOS で動かないことがあるため、明示的に処理する。
+  if (event->modifiers() & Qt::AltModifier) {
+    switch (event->key()) {
+      case Qt::Key_O:
+        if (m_overwriteModeCombo) {
+          m_overwriteModeCombo->setFocus();
+          m_overwriteModeCombo->showPopup();
+        }
+        event->accept();
+        return;
+      case Qt::Key_S:
+        if (m_autoRenameEdit && m_autoRenameEdit->isEnabled()) {
+          m_autoRenameEdit->setFocus();
+          m_autoRenameEdit->selectAll();
+        }
+        event->accept();
+        return;
+      default:
+        break;
+    }
+  }
+
+  QDialog::keyPressEvent(event);
 }
 
 OverwriteMode TransferConfirmDialog::overwriteMode() const {

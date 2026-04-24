@@ -4,6 +4,7 @@
 #include "BehaviorTab.h"
 #include "settings/Settings.h"
 #include "keybinding/KeyBindingManager.h"
+#include "utils/Dialogs.h"
 #include <QVBoxLayout>
 #include <QTabWidget>
 #include <QDialogButtonBox>
@@ -93,11 +94,19 @@ void SettingsDialog::setupUi() {
     QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Apply,
     this
   );
+  auto* okBtn     = m_buttonBox->button(QDialogButtonBox::Ok);
+  auto* cancelBtn = m_buttonBox->button(QDialogButtonBox::Cancel);
+  auto* applyBtn  = m_buttonBox->button(QDialogButtonBox::Apply);
+  applyAltShortcut(okBtn,     Qt::Key_O);
+  applyAltShortcut(cancelBtn, Qt::Key_X);
+  applyAltShortcut(applyBtn,  Qt::Key_A);
+  // 誤操作防止のため Cancel → Apply → OK の順で Tab が回るようにする
+  setTabOrder(cancelBtn, applyBtn);
+  setTabOrder(applyBtn,  okBtn);
 
   connect(m_buttonBox, &QDialogButtonBox::accepted, this, &SettingsDialog::onOk);
   connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
-  connect(m_buttonBox->button(QDialogButtonBox::Apply), &QPushButton::clicked,
-          this, &SettingsDialog::onApply);
+  connect(applyBtn, &QPushButton::clicked, this, &SettingsDialog::onApply);
 
   mainLayout->addWidget(m_buttonBox);
 

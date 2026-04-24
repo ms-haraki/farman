@@ -69,6 +69,7 @@ qt_add_executable(test_worker
   src/core/workers/CopyWorker.cpp
   src/core/workers/MoveWorker.cpp
   src/ui/ProgressDialog.cpp
+  src/utils/Dialogs.cpp
 )
 
 target_include_directories(test_worker PRIVATE

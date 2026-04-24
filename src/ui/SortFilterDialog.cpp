@@ -1,4 +1,5 @@
 #include "SortFilterDialog.h"
+#include "utils/Dialogs.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -8,6 +9,7 @@
 #include <QLineEdit>
 #include <QLabel>
 #include <QDialogButtonBox>
+#include <QPushButton>
 #include <QRegularExpression>
 
 namespace Farman {
@@ -131,6 +133,12 @@ void SortFilterDialog::setupUi(const QString& directoryPath,
 
   // ── Buttons ──
   m_buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+  auto* okBtn     = m_buttonBox->button(QDialogButtonBox::Ok);
+  auto* cancelBtn = m_buttonBox->button(QDialogButtonBox::Cancel);
+  applyAltShortcut(okBtn,     Qt::Key_O);
+  applyAltShortcut(cancelBtn, Qt::Key_X);
+  // 誤操作防止のため実行系（OK）を Tab 順で最後に配置
+  setTabOrder(cancelBtn, okBtn);
   connect(m_buttonBox, &QDialogButtonBox::accepted, this, &SortFilterDialog::onAccepted);
   connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
   mainLayout->addWidget(m_buttonBox);

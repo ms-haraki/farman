@@ -102,6 +102,13 @@ void BookmarkListDialog::setupUi() {
   m_downButton   = new QPushButton(tr("↓"),      this);
   QPushButton* closeButton = new QPushButton(tr("Close"), this);
 
+  applyAltShortcut(m_goButton,     Qt::Key_G);
+  applyAltShortcut(m_renameButton, Qt::Key_R);
+  applyAltShortcut(m_deleteButton, Qt::Key_D);
+  applyAltShortcut(m_upButton,     Qt::Key_Up);
+  applyAltShortcut(m_downButton,   Qt::Key_Down);
+  applyAltShortcut(closeButton,    Qt::Key_C);
+
   m_goButton->setDefault(true);
   m_upButton->setToolTip(tr("Move selected bookmark up"));
   m_downButton->setToolTip(tr("Move selected bookmark down"));
@@ -122,6 +129,16 @@ void BookmarkListDialog::setupUi() {
   btnLayout->addWidget(closeButton);
 
   mainLayout->addLayout(btnLayout);
+
+  // Tab 順: table → Rename → Delete → ↑ → ↓ → Close → Go。
+  // accept を呼ぶ Go を最後に配置して誤操作を防ぐ。
+  m_table->setFocusPolicy(Qt::StrongFocus);
+  setTabOrder(m_table,        m_renameButton);
+  setTabOrder(m_renameButton, m_deleteButton);
+  setTabOrder(m_deleteButton, m_upButton);
+  setTabOrder(m_upButton,     m_downButton);
+  setTabOrder(m_downButton,   closeButton);
+  setTabOrder(closeButton,    m_goButton);
 
   onSelectionChanged();
 }

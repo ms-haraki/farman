@@ -1,4 +1,5 @@
 #include "ProgressDialog.h"
+#include "utils/Dialogs.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFileInfo>
@@ -41,7 +42,8 @@ void ProgressDialog::setupUI(const QString& operationName) {
   QHBoxLayout* buttonLayout = new QHBoxLayout();
   buttonLayout->addStretch();
 
-  m_cancelButton = new QPushButton("Cancel", this);
+  m_cancelButton = new QPushButton(tr("Cancel"), this);
+  applyAltShortcut(m_cancelButton, Qt::Key_X);
   connect(m_cancelButton, &QPushButton::clicked, this, &ProgressDialog::onCancel);
   buttonLayout->addWidget(m_cancelButton);
 
@@ -98,7 +100,7 @@ void ProgressDialog::onCancel() {
   if (m_worker) {
     m_worker->requestCancel();
     m_cancelButton->setEnabled(false);
-    m_cancelButton->setText("Cancelling...");
+    m_cancelButton->setText(tr("Cancelling..."));
   }
 }
 

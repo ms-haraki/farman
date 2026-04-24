@@ -1,4 +1,5 @@
 #include "HistoryDialog.h"
+#include "utils/Dialogs.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QTableWidget>
@@ -52,8 +53,11 @@ void HistoryDialog::setupUi(const QStringList& entries) {
 
   QHBoxLayout* btnLayout = new QHBoxLayout();
   m_goButton = new QPushButton(tr("Go"), this);
-  m_goButton->setDefault(true);
   QPushButton* closeButton = new QPushButton(tr("Close"), this);
+
+  applyAltShortcut(m_goButton,  Qt::Key_G);
+  applyAltShortcut(closeButton, Qt::Key_C);
+  m_goButton->setDefault(true);
 
   connect(m_goButton,  &QPushButton::clicked, this, &HistoryDialog::onGo);
   connect(closeButton, &QPushButton::clicked, this, &QDialog::reject);
@@ -62,6 +66,14 @@ void HistoryDialog::setupUi(const QStringList& entries) {
   btnLayout->addWidget(m_goButton);
   btnLayout->addWidget(closeButton);
   mainLayout->addLayout(btnLayout);
+
+  // Tab 順: table（あれば）→ Close → Go。
+  // accept を呼ぶ Go を最後に配置して誤操作を防ぐ。
+  if (m_table) {
+    m_table->setFocusPolicy(Qt::StrongFocus);
+    setTabOrder(m_table, closeButton);
+  }
+  setTabOrder(closeButton, m_goButton);
 
   onSelectionChanged();
 }

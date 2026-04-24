@@ -32,6 +32,9 @@ public:
   OverwriteMode overwriteMode() const;
   QString       autoRenameTemplate() const;
 
+protected:
+  void keyPressEvent(QKeyEvent* event) override;
+
 private:
   void setupUi(Operation op,
                const QString&     sourceDir,

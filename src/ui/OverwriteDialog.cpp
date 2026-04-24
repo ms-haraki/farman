@@ -1,13 +1,19 @@
 #include "OverwriteDialog.h"
+#include "utils/Dialogs.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFormLayout>
 #include <QLabel>
 #include <QLineEdit>
-#include <QPushButton>
+#include <QRadioButton>
+#include <QButtonGroup>
+#include <QGroupBox>
 #include <QDialogButtonBox>
+#include <QPushButton>
 #include <QTimer>
 #include <QFileInfo>
+#include <QKeyEvent>
+#include <QKeySequence>
 
 namespace Farman {
 
@@ -15,17 +21,18 @@ OverwriteDialog::OverwriteDialog(const QString& srcPath,
                                  const QString& dstPath,
                                  QWidget* parent)
   : QDialog(parent)
+  , m_overwriteRadio(nullptr)
+  , m_renameRadio(nullptr)
+  , m_skipRadio(nullptr)
   , m_renameEdit(nullptr)
-  , m_overwriteButton(nullptr)
-  , m_renameButton(nullptr)
-  , m_cancelButton(nullptr)
+  , m_buttonBox(nullptr)
   , m_originalName(QFileInfo(dstPath).fileName()) {
   setupUi(srcPath, dstPath);
 }
 
 void OverwriteDialog::setupUi(const QString& srcPath, const QString& dstPath) {
   setWindowTitle(tr("File Exists"));
-  resize(520, 0);
+  resize(540, 0);
 
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
@@ -39,70 +46,158 @@ void OverwriteDialog::setupUi(const QString& srcPath, const QString& dstPath) {
   pathForm->addRow(tr("Destination:"), new QLabel(dstPath, this));
   mainLayout->addLayout(pathForm);
 
-  // Rename 用テキスト欄（初期値は元のファイル名）
-  QHBoxLayout* renameRow = new QHBoxLayout();
-  renameRow->addWidget(new QLabel(tr("Rename to:"), this));
+  // ── Action 選択 ──
+  const QString altO = QKeySequence(Qt::ALT | Qt::Key_O).toString(QKeySequence::NativeText);
+  const QString altR = QKeySequence(Qt::ALT | Qt::Key_R).toString(QKeySequence::NativeText);
+  const QString altS = QKeySequence(Qt::ALT | Qt::Key_S).toString(QKeySequence::NativeText);
+  const QString altN = QKeySequence(Qt::ALT | Qt::Key_N).toString(QKeySequence::NativeText);
+
+  QGroupBox* actionGroup = new QGroupBox(tr("Action"), this);
+  QVBoxLayout* actionLayout = new QVBoxLayout(actionGroup);
+
+  m_overwriteRadio = new QRadioButton(tr("Overwrite the existing file (%1)").arg(altO), this);
+  m_renameRadio    = new QRadioButton(tr("Rename to (%1):").arg(altR), this);
+  m_skipRadio      = new QRadioButton(tr("Skip this file (%1)").arg(altS), this);
+
+  actionLayout->addWidget(m_overwriteRadio);
+
+  // Rename ラジオ + ファイル名入力欄を水平に並べる
+  QWidget* renameRow = new QWidget(this);
+  QHBoxLayout* renameRowLayout = new QHBoxLayout(renameRow);
+  renameRowLayout->setContentsMargins(0, 0, 0, 0);
+  renameRowLayout->addWidget(m_renameRadio);
   m_renameEdit = new QLineEdit(this);
   m_renameEdit->setText(m_originalName);
   m_renameEdit->setPlaceholderText(tr("New filename"));
+  m_renameEdit->setToolTip(tr("Alt+N to focus this field"));
+  renameRowLayout->addWidget(m_renameEdit, 1);
+  actionLayout->addWidget(renameRow);
+
+  actionLayout->addWidget(m_skipRadio);
+  mainLayout->addWidget(actionGroup);
+
+  // 初期選択: Rename（ユーザーが競合を解決する意図が強いケース）
+  m_renameRadio->setChecked(true);
+
+  QButtonGroup* group = new QButtonGroup(this);
+  group->addButton(m_overwriteRadio);
+  group->addButton(m_renameRadio);
+  group->addButton(m_skipRadio);
+  connect(group, &QButtonGroup::buttonClicked,
+          this, [this](QAbstractButton*) { onActionChanged(); });
+
   connect(m_renameEdit, &QLineEdit::textChanged,
           this, &OverwriteDialog::onRenameTextChanged);
-  renameRow->addWidget(m_renameEdit, 1);
-  mainLayout->addLayout(renameRow);
+  // Rename 欄に入力している時点で「Rename を選んでいる」と推定してラジオを合わせる
+  connect(m_renameEdit, &QLineEdit::textEdited,
+          this, [this](const QString&) {
+            m_renameRadio->setChecked(true);
+            onActionChanged();
+          });
 
-  // カーソル初期位置: 拡張子の手前（ファイル名部分の末尾）
-  // dot-file 保護のため、先頭 '.' は無視して最初の '.' を区切りに。
+  // カーソル位置: 拡張子の手前（dot-file 保護のため先頭 '.' は無視）
   int extPos = -1;
   for (int i = 1; i < m_originalName.length(); ++i) {
     if (m_originalName[i] == QLatin1Char('.')) { extPos = i; break; }
   }
   const int cursorPos = (extPos > 0) ? extPos : m_originalName.length();
-  // show 後に focus + select による全選択が発動することがあるので、
-  // イベントループを回してから確実にカーソル位置を設定する。
   QTimer::singleShot(0, m_renameEdit, [this, cursorPos]() {
     m_renameEdit->setFocus();
     m_renameEdit->deselect();
     m_renameEdit->setCursorPosition(cursorPos);
   });
 
-  // ボタン
-  QHBoxLayout* buttonRow = new QHBoxLayout();
-  m_overwriteButton = new QPushButton(tr("Overwrite"), this);
-  m_renameButton    = new QPushButton(tr("Rename"),    this);
-  m_cancelButton    = new QPushButton(tr("Cancel"),    this);
-  connect(m_overwriteButton, &QPushButton::clicked, this, &OverwriteDialog::onOverwrite);
-  connect(m_renameButton,    &QPushButton::clicked, this, &OverwriteDialog::onRename);
-  connect(m_cancelButton,    &QPushButton::clicked, this, &OverwriteDialog::onCancel);
-  buttonRow->addStretch();
-  buttonRow->addWidget(m_overwriteButton);
-  buttonRow->addWidget(m_renameButton);
-  buttonRow->addWidget(m_cancelButton);
-  mainLayout->addLayout(buttonRow);
+  // ── OK / Cancel ──
+  m_buttonBox = new QDialogButtonBox(
+    QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+  auto* okBtn     = m_buttonBox->button(QDialogButtonBox::Ok);
+  auto* cancelBtn = m_buttonBox->button(QDialogButtonBox::Cancel);
+  applyAltShortcut(okBtn,     Qt::Key_K);  // "OK" の Alt+O は Overwrite ラジオで使用中
+  applyAltShortcut(cancelBtn, Qt::Key_X);
+  okBtn->setDefault(true);
+  connect(m_buttonBox, &QDialogButtonBox::accepted, this, &OverwriteDialog::onAccepted);
+  connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
+  mainLayout->addWidget(m_buttonBox);
 
-  // 初期状態: Rename ボタンは元のファイル名と同じなので無効
+  // Tab 順: Overwrite → Rename ラジオ → Rename 入力 → Skip → Cancel → OK
+  m_overwriteRadio->setFocusPolicy(Qt::StrongFocus);
+  m_renameRadio->setFocusPolicy(Qt::StrongFocus);
+  m_skipRadio->setFocusPolicy(Qt::StrongFocus);
+  m_renameEdit->setFocusPolicy(Qt::StrongFocus);
+  setTabOrder(m_overwriteRadio, m_renameRadio);
+  setTabOrder(m_renameRadio,    m_renameEdit);
+  setTabOrder(m_renameEdit,     m_skipRadio);
+  setTabOrder(m_skipRadio,      cancelBtn);
+  setTabOrder(cancelBtn,        okBtn);
+
+  onActionChanged();
   onRenameTextChanged(m_renameEdit->text());
 }
 
-void OverwriteDialog::onOverwrite() {
-  m_decision.action = OverwriteDecision::Action::Overwrite;
+void OverwriteDialog::keyPressEvent(QKeyEvent* event) {
+  // Alt+O/R/S でラジオを切替、Alt+N で Rename 入力にフォーカス移動。
+  if (event->modifiers() & Qt::AltModifier) {
+    switch (event->key()) {
+      case Qt::Key_O:
+        m_overwriteRadio->setChecked(true);
+        onActionChanged();
+        event->accept();
+        return;
+      case Qt::Key_R:
+        m_renameRadio->setChecked(true);
+        onActionChanged();
+        event->accept();
+        return;
+      case Qt::Key_S:
+        m_skipRadio->setChecked(true);
+        onActionChanged();
+        event->accept();
+        return;
+      case Qt::Key_N:
+        m_renameRadio->setChecked(true);
+        onActionChanged();
+        m_renameEdit->setFocus();
+        m_renameEdit->selectAll();
+        event->accept();
+        return;
+      default: break;
+    }
+  }
+  QDialog::keyPressEvent(event);
+}
+
+void OverwriteDialog::onActionChanged() {
+  m_renameEdit->setEnabled(m_renameRadio->isChecked());
+  updateOkButtonState();
+}
+
+void OverwriteDialog::onRenameTextChanged(const QString& /*text*/) {
+  updateOkButtonState();
+}
+
+void OverwriteDialog::updateOkButtonState() {
+  if (!m_buttonBox) return;
+  auto* okBtn = m_buttonBox->button(QDialogButtonBox::Ok);
+  if (!okBtn) return;
+  bool ok = true;
+  if (m_renameRadio->isChecked()) {
+    const QString trimmed = m_renameEdit->text().trimmed();
+    // 空 or 元と同じ名前は不可
+    ok = !trimmed.isEmpty() && trimmed != m_originalName;
+  }
+  okBtn->setEnabled(ok);
+}
+
+void OverwriteDialog::onAccepted() {
+  if (m_overwriteRadio->isChecked()) {
+    m_decision.action = OverwriteDecision::Action::Overwrite;
+  } else if (m_renameRadio->isChecked()) {
+    m_decision.action  = OverwriteDecision::Action::Rename;
+    m_decision.newName = m_renameEdit->text().trimmed();
+  } else {
+    m_decision.action = OverwriteDecision::Action::Cancel;
+  }
   accept();
-}
-
-void OverwriteDialog::onRename() {
-  m_decision.action  = OverwriteDecision::Action::Rename;
-  m_decision.newName = m_renameEdit->text().trimmed();
-  accept();
-}
-
-void OverwriteDialog::onCancel() {
-  m_decision.action = OverwriteDecision::Action::Cancel;
-  reject();
-}
-
-void OverwriteDialog::onRenameTextChanged(const QString& text) {
-  const QString trimmed = text.trimmed();
-  // 空文字 or 元と同じ名前は無効
-  m_renameButton->setEnabled(!trimmed.isEmpty() && trimmed != m_originalName);
 }
 
 } // namespace Farman
