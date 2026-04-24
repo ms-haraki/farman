@@ -6,6 +6,10 @@
 #include "OverwriteDialog.h"
 #include "AttributesDialog.h"
 #include "DeleteConfirmDialog.h"
+#include "CreateArchiveDialog.h"
+#include "ExtractArchiveDialog.h"
+#include "core/workers/ArchiveCreateWorker.h"
+#include "core/workers/ArchiveExtractWorker.h"
 #include "model/FileListModel.h"
 #include "core/FileItem.h"
 #include "core/workers/CopyWorker.h"
@@ -1009,6 +1013,159 @@ void FileManagerPanel::changeAttributes() {
     }
     srcPane->view()->setFocus();
   }
+}
+
+void FileManagerPanel::createArchive() {
+  FileListPane* srcPane  = activePane();
+  FileListPane* destPane = (m_activePane == PaneType::Left) ? m_rightPane : m_leftPane;
+  FileListModel* srcModel = srcPane->model();
+
+  // 選択ファイル or カレント
+  QStringList paths = srcModel->selectedFilePaths();
+  if (paths.isEmpty()) {
+    QModelIndex currentIndex = srcPane->view()->currentIndex();
+    if (currentIndex.isValid()) {
+      const FileItem* item = srcModel->itemAt(currentIndex);
+      if (item && !item->isDotDot()) paths.append(item->absolutePath());
+    }
+  }
+  if (paths.isEmpty()) return;
+
+  // 既定の出力先は圧縮対象と同じディレクトリ（アクティブペインのカレント）
+  CreateArchiveDialog dlg(paths, srcPane->currentPath(), this);
+  if (dlg.exec() != QDialog::Accepted) return;
+
+  QString     outputPath = dlg.outputPath();
+  const auto  format     = dlg.format();
+
+  if (outputPath.isEmpty()) return;
+
+  // 既存ファイルがある場合はリネーム入力を求める。キャンセル（空 or reject）で中止。
+  while (QFileInfo::exists(outputPath)) {
+    const QString currentName = QFileInfo(outputPath).fileName();
+    bool ok = false;
+    const QString newName = inputText(
+      this, tr("File Exists"),
+      tr("'%1' already exists. Enter a different name:").arg(currentName),
+      currentName, &ok);
+    if (!ok || newName.trimmed().isEmpty()) return;
+    outputPath = QDir(QFileInfo(outputPath).absolutePath())
+                   .absoluteFilePath(newName.trimmed());
+  }
+
+  ArchiveCreateWorker* worker = new ArchiveCreateWorker(
+    outputPath, format, paths, this);
+  ProgressDialog* dialog = new ProgressDialog(tr("Creating archive..."), this);
+  dialog->setWorker(worker);
+
+  connect(worker, &WorkerBase::finished, this,
+    [this, dialog, srcPane, destPane, outputPath](bool /*ok*/) {
+    dialog->accept();
+    // 出力先が src/dest どちらかのペインと一致していれば refresh してカーソル移動
+    const QString outputDir = QFileInfo(outputPath).absolutePath();
+    const QString fileName  = QFileInfo(outputPath).fileName();
+    auto refreshIfMatches = [&](FileListPane* pane) {
+      if (pane->currentPath() != outputDir) return;
+      pane->setPath(outputDir);
+      FileListModel* model = pane->model();
+      for (int i = 0; i < model->rowCount(); ++i) {
+        const FileItem* item = model->itemAt(i);
+        if (item && item->name() == fileName) {
+          pane->view()->setCurrentIndex(model->index(i, 0));
+          break;
+        }
+      }
+    };
+    refreshIfMatches(srcPane);
+    refreshIfMatches(destPane);
+    activePane()->view()->setFocus();
+  });
+  worker->start();
+  dialog->exec();
+}
+
+void FileManagerPanel::extractArchive() {
+  FileListPane* srcPane  = activePane();
+  FileListPane* destPane = (m_activePane == PaneType::Left) ? m_rightPane : m_leftPane;
+  FileListModel* srcModel = srcPane->model();
+
+  QModelIndex currentIndex = srcPane->view()->currentIndex();
+  if (!currentIndex.isValid()) return;
+  const FileItem* item = srcModel->itemAt(currentIndex);
+  if (!item || item->isDir() || item->isDotDot()) {
+    QMessageBox::information(
+      this, tr("Extract Archive"),
+      tr("Select an archive file to extract."));
+    return;
+  }
+
+  const QString archivePath = item->absolutePath();
+  // 展開先の既定はアーカイブと同じディレクトリ
+  const QString defaultDir = QFileInfo(archivePath).absolutePath();
+
+  ExtractArchiveDialog dlg(archivePath, defaultDir, this);
+  if (dlg.exec() != QDialog::Accepted) return;
+
+  const QString outputDir = dlg.outputDirectory();
+  if (outputDir.isEmpty()) return;
+
+  // アーカイブ名から拡張子を剥がしてベース名を作る
+  QString baseName = QFileInfo(archivePath).fileName();
+  static const QStringList kKnownExts = {
+    QStringLiteral(".tar.gz"),  QStringLiteral(".tar.bz2"),
+    QStringLiteral(".tar.xz"),  QStringLiteral(".tgz"),
+    QStringLiteral(".tbz2"),    QStringLiteral(".txz"),
+    QStringLiteral(".tar"),     QStringLiteral(".zip"),
+  };
+  for (const QString& e : kKnownExts) {
+    if (baseName.endsWith(e, Qt::CaseInsensitive)) {
+      baseName.chop(e.size());
+      break;
+    }
+  }
+  if (baseName.isEmpty()) baseName = QStringLiteral("extracted");
+
+  // サブディレクトリを確定。既存ならリネーム入力、キャンセルで中止。
+  QString targetDir = QDir(outputDir).absoluteFilePath(baseName);
+  while (QFileInfo::exists(targetDir)) {
+    bool ok = false;
+    const QString newName = inputText(
+      this, tr("Directory Exists"),
+      tr("'%1' already exists. Enter a different name:").arg(baseName),
+      baseName, &ok);
+    if (!ok || newName.trimmed().isEmpty()) return;
+    baseName  = newName.trimmed();
+    targetDir = QDir(outputDir).absoluteFilePath(baseName);
+  }
+
+  ArchiveExtractWorker* worker = new ArchiveExtractWorker(
+    archivePath, targetDir, this);
+  ProgressDialog* dialog = new ProgressDialog(tr("Extracting archive..."), this);
+  dialog->setWorker(worker);
+
+  connect(worker, &WorkerBase::finished, this,
+    [this, dialog, srcPane, destPane, outputDir, baseName](bool /*ok*/) {
+    dialog->accept();
+    // 展開したサブディレクトリを含む親ディレクトリと一致するペインを refresh し、
+    // サブディレクトリ名にカーソルを合わせる
+    auto refreshIfMatches = [&](FileListPane* pane) {
+      if (pane->currentPath() != outputDir) return;
+      pane->setPath(outputDir);
+      FileListModel* model = pane->model();
+      for (int i = 0; i < model->rowCount(); ++i) {
+        const FileItem* item = model->itemAt(i);
+        if (item && item->name() == baseName) {
+          pane->view()->setCurrentIndex(model->index(i, 0));
+          break;
+        }
+      }
+    };
+    refreshIfMatches(srcPane);
+    refreshIfMatches(destPane);
+    activePane()->view()->setFocus();
+  });
+  worker->start();
+  dialog->exec();
 }
 
 void FileManagerPanel::openSortFilterDialog() {

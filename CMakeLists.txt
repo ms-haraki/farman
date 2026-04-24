@@ -9,6 +9,12 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
+# Homebrew の libarchive は keg-only なので明示的にパスを通す
+if(APPLE AND EXISTS /opt/homebrew/opt/libarchive)
+  list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/opt/libarchive)
+endif()
+find_package(LibArchive REQUIRED)
+
 qt_add_executable(farman
   src/main.cpp
   src/ui/MainWindow.cpp
@@ -30,6 +36,8 @@ qt_add_executable(farman
   src/ui/BookmarkEditDialog.cpp
   src/ui/HistoryDialog.cpp
   src/ui/SearchDialog.cpp
+  src/ui/CreateArchiveDialog.cpp
+  src/ui/ExtractArchiveDialog.cpp
   src/ui/ClickableLabel.cpp
   src/core/FileItem.cpp
   src/core/BookmarkManager.cpp
@@ -40,6 +48,8 @@ qt_add_executable(farman
   src/core/workers/MoveWorker.cpp
   src/core/workers/RemoveWorker.cpp
   src/core/workers/SearchWorker.cpp
+  src/core/workers/ArchiveCreateWorker.cpp
+  src/core/workers/ArchiveExtractWorker.cpp
   src/model/FileListModel.cpp
   src/viewer/ViewerDispatcher.cpp
   src/viewer/TextViewerWindow.cpp
@@ -65,6 +75,7 @@ target_include_directories(farman PRIVATE
 target_link_libraries(farman PRIVATE
   Qt6::Core
   Qt6::Widgets
+  LibArchive::LibArchive
 )
 
 # Test executable for Worker functionality

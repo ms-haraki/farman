@@ -440,6 +440,20 @@ void MainWindow::registerCommands() {
   ));
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
+    "file.pack",
+    "Create Archive",
+    [this]() { m_fileManagerPanel->createArchive(); },
+    "file"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "file.unpack",
+    "Extract Archive",
+    [this]() { m_fileManagerPanel->extractArchive(); },
+    "file"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.rename",
     "Rename",
     [this]() {

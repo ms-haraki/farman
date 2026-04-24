@@ -48,6 +48,8 @@ public:
   void createFile();
   void renameItem();
   void changeAttributes();
+  void createArchive();
+  void extractArchive();
 
   // アクティブペインのソート・フィルタ編集ダイアログを開く
   void openSortFilterDialog();

@@ -102,6 +102,8 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::Key_N), "file.newfile"    },
     { QKeySequence(Qt::Key_A), "file.attributes" },
     { QKeySequence(Qt::Key_F), "file.search"     },
+    { QKeySequence(Qt::Key_P), "file.pack"       },
+    { QKeySequence(Qt::Key_U), "file.unpack"     },
 
     // View
     { QKeySequence(Qt::Key_F3), "view.file" },
