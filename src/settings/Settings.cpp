@@ -269,6 +269,14 @@ void Settings::setDefaultDeleteToTrash(bool toTrash) {
   m_defaultDeleteToTrash = toTrash;
 }
 
+QStringList Settings::searchExcludeDirs() const {
+  return m_searchExcludeDirs;
+}
+
+void Settings::setSearchExcludeDirs(const QStringList& patterns) {
+  m_searchExcludeDirs = patterns;
+}
+
 WindowSizeMode Settings::windowSizeMode() const {
   return m_windowSizeMode;
 }
@@ -704,6 +712,14 @@ void Settings::load() {
   m_persistHistory = behavior.value("persistHistory").toBool(false);
   m_autoRenameTemplate = behavior.value("autoRenameTemplate").toString(" ({n})");
   m_defaultDeleteToTrash = behavior.value("defaultDeleteToTrash").toBool(true);
+  if (behavior.contains("searchExcludeDirs")) {
+    m_searchExcludeDirs.clear();
+    const QJsonArray arr = behavior.value("searchExcludeDirs").toArray();
+    for (const QJsonValue& v : arr) {
+      const QString s = v.toString();
+      if (!s.isEmpty()) m_searchExcludeDirs.append(s);
+    }
+  }
   m_defaultBookmarksInstalled = behavior.value("defaultBookmarksInstalled").toBool(false);
 
   // ペイン履歴（ON の時のみ読む。OFF の時は必ず空にする）
@@ -917,6 +933,11 @@ void Settings::save() const {
   behavior["persistHistory"] = m_persistHistory;
   behavior["autoRenameTemplate"] = m_autoRenameTemplate;
   behavior["defaultDeleteToTrash"] = m_defaultDeleteToTrash;
+  {
+    QJsonArray arr;
+    for (const QString& p : m_searchExcludeDirs) arr.append(p);
+    behavior["searchExcludeDirs"] = arr;
+  }
   behavior["defaultBookmarksInstalled"] = m_defaultBookmarksInstalled;
   root["behavior"] = behavior;
 

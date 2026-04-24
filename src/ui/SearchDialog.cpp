@@ -1,5 +1,6 @@
 #include "SearchDialog.h"
 #include "core/workers/SearchWorker.h"
+#include "settings/Settings.h"
 #include "utils/Dialogs.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -35,6 +36,7 @@ SearchDialog::SearchDialog(const QString& initialPath, QWidget* parent)
   , m_pathEdit(nullptr)
   , m_browseButton(nullptr)
   , m_patternEdit(nullptr)
+  , m_excludeEdit(nullptr)
   , m_subdirsCheck(nullptr)
   , m_searchButton(nullptr)
   , m_resultsTable(nullptr)
@@ -57,6 +59,7 @@ void SearchDialog::setupUi(const QString& initialPath) {
   const QString altP = QKeySequence(Qt::ALT | Qt::Key_P).toString(QKeySequence::NativeText);
   const QString altM = QKeySequence(Qt::ALT | Qt::Key_M).toString(QKeySequence::NativeText);
   const QString altS = QKeySequence(Qt::ALT | Qt::Key_S).toString(QKeySequence::NativeText);
+  const QString altX = QKeySequence(Qt::ALT | Qt::Key_X).toString(QKeySequence::NativeText);
 
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
@@ -82,6 +85,16 @@ void SearchDialog::setupUi(const QString& initialPath) {
   m_patternEdit->setPlaceholderText(tr("e.g. *.txt *.cpp (space-separated, empty for all)"));
   m_patternEdit->setFocusPolicy(Qt::StrongFocus);
   form->addRow(tr("Name pattern (%1):").arg(altM), m_patternEdit);
+
+  // Exclude dirs
+  m_excludeEdit = new QLineEdit(this);
+  m_excludeEdit->setText(Settings::instance().searchExcludeDirs().join(QLatin1Char(' ')));
+  m_excludeEdit->setPlaceholderText(tr("e.g. .* node_modules (space-separated)"));
+  m_excludeEdit->setToolTip(
+    tr("Directory names (glob) to skip when recursing. Default comes "
+       "from Settings → Behavior. Changes here apply to this search only."));
+  m_excludeEdit->setFocusPolicy(Qt::StrongFocus);
+  form->addRow(tr("Exclude dirs (%1):").arg(altX), m_excludeEdit);
 
   // Include subdirectories
   m_subdirsCheck = new QCheckBox(tr("Include subdirectories (%1)").arg(altS), this);
@@ -138,10 +151,11 @@ void SearchDialog::setupUi(const QString& initialPath) {
   // 結果テーブル上のキー入力を eventFilter で先取りする。
   m_resultsTable->installEventFilter(this);
 
-  // Tab 順: path → browse → pattern → subdirs → Search → table → Close
+  // Tab 順: path → browse → pattern → exclude → subdirs → Search → table → Close
   setTabOrder(m_pathEdit,      m_browseButton);
   setTabOrder(m_browseButton,  m_patternEdit);
-  setTabOrder(m_patternEdit,   m_subdirsCheck);
+  setTabOrder(m_patternEdit,   m_excludeEdit);
+  setTabOrder(m_excludeEdit,   m_subdirsCheck);
   setTabOrder(m_subdirsCheck,  m_searchButton);
   setTabOrder(m_searchButton,  m_resultsTable);
   setTabOrder(m_resultsTable,  m_closeButton);
@@ -173,6 +187,11 @@ void SearchDialog::keyPressEvent(QKeyEvent* event) {
       case Qt::Key_M:
         m_patternEdit->setFocus();
         m_patternEdit->selectAll();
+        event->accept();
+        return;
+      case Qt::Key_X:
+        m_excludeEdit->setFocus();
+        m_excludeEdit->selectAll();
         event->accept();
         return;
       case Qt::Key_S:
@@ -210,18 +229,19 @@ void SearchDialog::startSearch() {
   if (rootPath.isEmpty()) return;
 
   // パターン: 空白で分割
-  const QString patternText = m_patternEdit->text().trimmed();
-  QStringList patterns;
-  if (!patternText.isEmpty()) {
-    patterns = patternText.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
-  }
+  auto splitPatterns = [](const QString& text) {
+    return text.trimmed().split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+  };
+  const QStringList patterns        = splitPatterns(m_patternEdit->text());
+  const QStringList excludePatterns = splitPatterns(m_excludeEdit->text());
   const bool includeSubdirs = m_subdirsCheck->isChecked();
 
   // 結果テーブルをクリア
   m_resultsTable->setRowCount(0);
   m_statusLabel->setText(tr("Searching..."));
 
-  m_worker = new SearchWorker(rootPath, patterns, includeSubdirs, this);
+  m_worker = new SearchWorker(rootPath, patterns, excludePatterns,
+                              includeSubdirs, this);
   connect(m_worker, &SearchWorker::resultFound, this, &SearchDialog::onResultFound);
   connect(m_worker, &WorkerBase::finished,      this, &SearchDialog::onFinished);
   m_searching = true;

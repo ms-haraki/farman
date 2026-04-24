@@ -54,6 +54,7 @@ private:
   // File operation settings
   QLineEdit*  m_autoRenameTemplateEdit;
   QCheckBox*  m_defaultDeleteToTrashCheck;
+  QLineEdit*  m_searchExcludeDirsEdit;
 
   // Startup / Behavior settings
   QComboBox*   m_leftInitialPathModeCombo;

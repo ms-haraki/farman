@@ -127,6 +127,11 @@ public:
   bool    defaultDeleteToTrash()        const;
   void    setDefaultDeleteToTrash(bool toTrash);
 
+  // ファイル検索の除外ディレクトリ（ディレクトリ名の glob パターンのリスト）。
+  // 検索ダイアログの初期値に使われ、ダイアログ上で一時的に編集できる。
+  QStringList searchExcludeDirs()       const;
+  void        setSearchExcludeDirs(const QStringList& patterns);
+
   // ── ウィンドウ設定 ──────────────────────
   WindowSizeMode     windowSizeMode()     const;
   void               setWindowSizeMode(WindowSizeMode mode);
@@ -182,6 +187,7 @@ private:
   QStringList      m_paneHistory[static_cast<int>(PaneType::Count)];
   QString          m_autoRenameTemplate = QStringLiteral(" ({n})");
   bool             m_defaultDeleteToTrash = true;
+  QStringList      m_searchExcludeDirs    = { QStringLiteral(".*") };
   QList<Bookmark>  m_bookmarks;
   // 初回起動時のデフォルトブックマーク注入を一度きりに制限するためのフラグ。
   // false のままの設定ファイルを読むと、既存ブックマークにマージしてから true にする。

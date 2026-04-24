@@ -1,5 +1,6 @@
 #include "BehaviorTab.h"
 #include "settings/Settings.h"
+#include <QRegularExpression>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -34,6 +35,7 @@ BehaviorTab::BehaviorTab(const QString& leftCurrentPath,
   , m_persistHistoryCheck(nullptr)
   , m_autoRenameTemplateEdit(nullptr)
   , m_defaultDeleteToTrashCheck(nullptr)
+  , m_searchExcludeDirsEdit(nullptr)
   , m_leftInitialPathModeCombo(nullptr)
   , m_leftCustomPathEdit(nullptr)
   , m_leftBrowseButton(nullptr)
@@ -182,6 +184,21 @@ void BehaviorTab::setupUi() {
 
   fileOpsLayout->addWidget(renameCell,                  0, 0, Qt::AlignLeft);
   fileOpsLayout->addWidget(m_defaultDeleteToTrashCheck, 0, 1, Qt::AlignLeft);
+
+  // Search 除外ディレクトリ（2 列をまたいで横長に）
+  m_searchExcludeDirsEdit = new QLineEdit(this);
+  m_searchExcludeDirsEdit->setToolTip(
+    tr("Directory names (glob, space-separated) to skip when searching.\n"
+       "Used as the initial value in the Search dialog's Exclude dirs field."));
+  m_searchExcludeDirsEdit->setPlaceholderText(tr("e.g. .* node_modules build"));
+
+  QWidget* excludeCell = new QWidget(this);
+  QHBoxLayout* excludeCellLayout = new QHBoxLayout(excludeCell);
+  excludeCellLayout->setContentsMargins(0, 0, 0, 0);
+  excludeCellLayout->addWidget(new QLabel(tr("Search exclude dirs:"), this));
+  excludeCellLayout->addWidget(m_searchExcludeDirsEdit, 1);
+
+  fileOpsLayout->addWidget(excludeCell, 1, 0, 1, 2);
 
   mainLayout->addWidget(fileOpsGroup);
 
@@ -372,6 +389,7 @@ void BehaviorTab::loadSettings() {
   // File operations
   m_autoRenameTemplateEdit->setText(settings.autoRenameTemplate());
   m_defaultDeleteToTrashCheck->setChecked(settings.defaultDeleteToTrash());
+  m_searchExcludeDirsEdit->setText(settings.searchExcludeDirs().join(QLatin1Char(' ')));
 
   // Startup settings
   auto selectModeByData = [](QComboBox* combo, int value) {
@@ -470,6 +488,11 @@ void BehaviorTab::save() {
   // Save file operation settings
   settings.setAutoRenameTemplate(m_autoRenameTemplateEdit->text());
   settings.setDefaultDeleteToTrash(m_defaultDeleteToTrashCheck->isChecked());
+  {
+    const QStringList excludeList = m_searchExcludeDirsEdit->text().trimmed()
+      .split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+    settings.setSearchExcludeDirs(excludeList);
+  }
 
   // Save startup settings
   settings.setInitialPathMode(

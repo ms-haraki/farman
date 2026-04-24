@@ -48,6 +48,7 @@ private:
   QLineEdit*    m_pathEdit;
   QPushButton*  m_browseButton;
   QLineEdit*    m_patternEdit;
+  QLineEdit*    m_excludeEdit;
   QCheckBox*    m_subdirsCheck;
   QPushButton*  m_searchButton;
   QTableWidget* m_resultsTable;
