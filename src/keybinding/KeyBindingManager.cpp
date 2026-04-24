@@ -94,11 +94,12 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::Key_F4),              "pane.sort_filter"   },
 
     // File operations — 簡略キーボードでも打てる一文字キーをデフォルトに
-    { QKeySequence(Qt::Key_C), "file.copy"   },
-    { QKeySequence(Qt::Key_M), "file.move"   },
-    { QKeySequence(Qt::Key_K), "file.mkdir"  },
-    { QKeySequence(Qt::Key_D), "file.delete" },
-    { QKeySequence(Qt::Key_R), "file.rename" },
+    { QKeySequence(Qt::Key_C), "file.copy"    },
+    { QKeySequence(Qt::Key_M), "file.move"    },
+    { QKeySequence(Qt::Key_K), "file.mkdir"   },
+    { QKeySequence(Qt::Key_D), "file.delete"  },
+    { QKeySequence(Qt::Key_R), "file.rename"  },
+    { QKeySequence(Qt::Key_N), "file.newfile" },
 
     // View
     { QKeySequence(Qt::Key_F3), "view.file" },

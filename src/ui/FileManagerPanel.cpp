@@ -891,6 +891,57 @@ void FileManagerPanel::createDirectory() {
   srcPane->view()->setFocus();
 }
 
+void FileManagerPanel::createFile() {
+  FileListPane* srcPane = activePane();
+  QString currentPath = srcPane->currentPath();
+
+  bool ok = false;
+  QString fileName = inputText(
+    this,
+    tr("Create File"),
+    tr("Enter file name:"),
+    QString(),
+    &ok
+  );
+
+  if (!ok || fileName.isEmpty()) {
+    return;
+  }
+
+  const QString newFilePath = currentPath + "/" + fileName;
+  if (QFileInfo::exists(newFilePath)) {
+    QMessageBox::critical(
+      this, tr("Error"),
+      tr("A file or directory with the name '%1' already exists.").arg(fileName)
+    );
+    return;
+  }
+
+  // 空ファイルを作成
+  QFile file(newFilePath);
+  if (!file.open(QIODevice::WriteOnly)) {
+    QMessageBox::critical(
+      this, tr("Error"),
+      tr("Failed to create file: %1").arg(fileName)
+    );
+    return;
+  }
+  file.close();
+
+  // リフレッシュして新規ファイルにカーソルを移動
+  srcPane->setPath(currentPath);
+  FileListModel* model = srcPane->model();
+  for (int i = 0; i < model->rowCount(); ++i) {
+    const FileItem* item = model->itemAt(i);
+    if (item && item->name() == fileName) {
+      srcPane->view()->setCurrentIndex(model->index(i, 0));
+      break;
+    }
+  }
+
+  srcPane->view()->setFocus();
+}
+
 void FileManagerPanel::openSortFilterDialog() {
   FileListPane* pane = activePane();
   const QString path = pane->currentPath();

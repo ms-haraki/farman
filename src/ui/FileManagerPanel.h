@@ -45,6 +45,7 @@ public:
   void moveSelectedFiles();
   void deleteSelectedFiles();
   void createDirectory();
+  void createFile();
   void renameItem();
 
   // アクティブペインのソート・フィルタ編集ダイアログを開く
