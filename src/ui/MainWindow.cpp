@@ -306,9 +306,8 @@ void MainWindow::registerCommands() {
     "select.toggle",
     "Toggle Selection",
     [this]() {
-      // カーソル据え置きで選択トグル。handleInsertKey の挙動。
-      QKeyEvent event(QEvent::KeyPress, Qt::Key_Insert, Qt::NoModifier);
-      m_fileManagerPanel->handleKeyEvent(&event);
+      // カーソル据え置きで選択トグル。
+      m_fileManagerPanel->toggleSelection();
     },
     "selection"
   ));

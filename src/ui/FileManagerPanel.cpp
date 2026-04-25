@@ -319,10 +319,6 @@ bool FileManagerPanel::handleKeyEvent(QKeyEvent* event) {
       handleSpaceKey();
       return true;
 
-    case Qt::Key_Insert:
-      handleInsertKey();
-      return true;
-
     case Qt::Key_Asterisk:
       handleAsteriskKey();
       return true;
@@ -426,7 +422,7 @@ void FileManagerPanel::handleSpaceKey() {
   }
 }
 
-void FileManagerPanel::handleInsertKey() {
+void FileManagerPanel::toggleSelection() {
   FileListPane* pane = activePane();
   FileListModel* model = pane->model();
 

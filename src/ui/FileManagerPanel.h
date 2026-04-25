@@ -61,6 +61,10 @@ public:
   DirectoryHistory&       history(PaneType pane);
   const DirectoryHistory& history(PaneType pane) const;
 
+  // ── 選択操作（コマンドから直接呼ばれる） ─────────
+  // カーソル行を選択トグル（カーソル据え置き）
+  void toggleSelection();
+
 signals:
   void pathChanged(const QString& leftPath, const QString& rightPath);
   void fileActivated(const QString& filePath);
@@ -76,7 +80,6 @@ private:
   void handleEnterKey();
   void handleBackspaceKey();
   void handleSpaceKey();
-  void handleInsertKey();
   void handleAsteriskKey();
   void handleSelectAllKey();
   void handleTabKey();
