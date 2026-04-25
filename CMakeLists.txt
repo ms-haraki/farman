@@ -54,8 +54,11 @@ qt_add_executable(farman
   src/viewer/ViewerDispatcher.cpp
   src/viewer/TextViewerWindow.cpp
   src/viewer/ImageViewerWindow.cpp
+  src/viewer/BinaryView.cpp
+  src/viewer/BinaryViewerWindow.cpp
   src/viewer/TextViewerPlugin.cpp
   src/viewer/ImageViewerPlugin.cpp
+  src/viewer/BinaryViewerPlugin.cpp
   src/keybinding/ICommand.cpp
   src/keybinding/CommandRegistry.cpp
   src/keybinding/KeyBindingManager.cpp

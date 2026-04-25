@@ -23,7 +23,7 @@ public:
   IViewerPlugin* resolvePlugin(const QString& filePath) const;
 
   // ビュアーウィジェットを生成して返す
-  // 対応ビュアーがない場合は HexViewer にフォールバック
+  // 対応ビュアーがない場合は BinaryViewer にフォールバック
   QWidget* createViewer(
     const QString& filePath,
     QWidget*       parent = nullptr

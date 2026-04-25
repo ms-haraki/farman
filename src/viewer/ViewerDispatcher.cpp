@@ -1,6 +1,7 @@
 #include "ViewerDispatcher.h"
 #include "TextViewerPlugin.h"
 #include "ImageViewerPlugin.h"
+#include "BinaryViewerPlugin.h"
 #include <QFileInfo>
 #include <QMimeDatabase>
 #include <QPluginLoader>
@@ -19,6 +20,8 @@ void ViewerDispatcher::registerBuiltins() {
   // Register built-in viewers
   registerPlugin(std::make_shared<TextViewerPlugin>());
   registerPlugin(std::make_shared<ImageViewerPlugin>());
+  // フォールバック (canHandle が false なので resolvePlugin では選ばれない)
+  registerPlugin(std::make_shared<BinaryViewerPlugin>());
 }
 
 void ViewerDispatcher::loadPlugins(const QDir& pluginDir) {
@@ -91,7 +94,12 @@ QWidget* ViewerDispatcher::createViewer(
     return plugin->createViewer(filePath, parent);
   }
 
-  // No viewer found - could fallback to hex viewer in future
+  // どのビュアーも対応しない場合は Binary ビュアーへフォールバック
+  for (const auto& p : m_plugins) {
+    if (p->pluginId() == QLatin1String("binary_viewer")) {
+      return p->createViewer(filePath, parent);
+    }
+  }
   return nullptr;
 }
 

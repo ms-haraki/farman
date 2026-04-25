@@ -1,4 +1,5 @@
 #include "ViewerPanel.h"
+#include "viewer/BinaryView.h"
 #include <QVBoxLayout>
 #include <QTextEdit>
 #include <QLabel>
@@ -8,6 +9,8 @@
 #include <QTextStream>
 #include <QPixmap>
 #include <QFileInfo>
+#include <QMimeDatabase>
+#include <QMimeType>
 #include <QResizeEvent>
 
 namespace Farman {
@@ -17,7 +20,8 @@ ViewerPanel::ViewerPanel(QWidget* parent)
   , m_stack(nullptr)
   , m_textEdit(nullptr)
   , m_imageScrollArea(nullptr)
-  , m_imageLabel(nullptr) {
+  , m_imageLabel(nullptr)
+  , m_binaryView(nullptr) {
 
   setupUi();
 }
@@ -48,6 +52,10 @@ void ViewerPanel::setupUi() {
 
   m_imageScrollArea->setWidget(m_imageLabel);
   m_stack->addWidget(m_imageScrollArea);
+
+  // ===== Binary Viewer (fallback) =====
+  m_binaryView = new BinaryView(this);
+  m_stack->addWidget(m_binaryView);
 }
 
 bool ViewerPanel::openFile(const QString& filePath) {
@@ -60,16 +68,27 @@ bool ViewerPanel::openFile(const QString& filePath) {
     return false;
   }
 
-  QString extension = fileInfo.suffix().toLower();
+  const QString extension = fileInfo.suffix().toLower();
 
-  // 画像ファイル判定
-  QStringList imageExtensions = {"png", "jpg", "jpeg", "gif", "bmp", "svg", "webp", "ico", "tiff", "tif"};
-  if (imageExtensions.contains(extension)) {
+  // 画像ファイル判定 (拡張子 or MIME)
+  static const QStringList imageExtensions = {
+    "png", "jpg", "jpeg", "gif", "bmp", "svg", "webp", "ico", "tiff", "tif"};
+  QMimeDatabase mimeDb;
+  const QMimeType mime = mimeDb.mimeTypeForFile(filePath);
+  const QString mimeName = mime.name();
+
+  if (imageExtensions.contains(extension) || mimeName.startsWith(QLatin1String("image/"))) {
     return openImageFile(filePath);
-  } else {
-    // デフォルトはテキストファイルとして開く
+  }
+
+  // テキスト判定: MIME が text/* または text/plain 派生
+  // (TextViewerPlugin と分散しないよう将来 Settings 化予定 — Phase 4)
+  if (mimeName.startsWith(QLatin1String("text/")) || mime.inherits(QStringLiteral("text/plain"))) {
     return openTextFile(filePath);
   }
+
+  // それ以外はバイナリビュアーへフォールバック
+  return openBinaryFile(filePath);
 }
 
 bool ViewerPanel::openTextFile(const QString& filePath) {
@@ -111,6 +130,17 @@ bool ViewerPanel::openImageFile(const QString& filePath) {
   return true;
 }
 
+bool ViewerPanel::openBinaryFile(const QString& filePath) {
+  if (!m_binaryView->loadFile(filePath)) {
+    return false;
+  }
+
+  m_stack->setCurrentWidget(m_binaryView);
+  m_currentFilePath = filePath;
+  emit fileOpened(filePath);
+  return true;
+}
+
 void ViewerPanel::updateImageScale() {
   if (m_originalPixmap.isNull()) {
     return;
@@ -144,6 +174,7 @@ void ViewerPanel::clear() {
   m_textEdit->clear();
   m_imageLabel->clear();
   m_originalPixmap = QPixmap();
+  m_binaryView->clear();
   m_currentFilePath.clear();
   emit fileClosed();
 }

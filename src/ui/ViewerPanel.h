@@ -9,6 +9,8 @@ class QStackedWidget;
 
 namespace Farman {
 
+class BinaryView;
+
 class ViewerPanel : public QWidget {
   Q_OBJECT
 
@@ -36,12 +38,14 @@ private:
   void setupUi();
   bool openTextFile(const QString& filePath);
   bool openImageFile(const QString& filePath);
+  bool openBinaryFile(const QString& filePath);
   void updateImageScale();
 
   QStackedWidget* m_stack;
   QTextEdit* m_textEdit;
   QScrollArea* m_imageScrollArea;
   QLabel* m_imageLabel;
+  BinaryView* m_binaryView;
 
   QString m_currentFilePath;
   QPixmap m_originalPixmap;  // 元の画像サイズを保持
