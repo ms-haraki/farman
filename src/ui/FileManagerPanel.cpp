@@ -327,6 +327,32 @@ bool FileManagerPanel::handleKeyEvent(QKeyEvent* event) {
       break;
   }
 
+  // 印字可能な文字キー: Shift キー押下時のみ頭文字検索を発動させる
+  // (Qt 標準の keyboardSearch は短時間内の入力を蓄積するため連打時に挙動が崩れる)
+  if (!event->text().isEmpty()) {
+    const QChar ch = event->text().at(0);
+    if (ch.isPrint()) {
+      if (event->modifiers() & Qt::ShiftModifier) {
+        const int rowCount = model->rowCount();
+        if (rowCount > 0) {
+          const int startRow = pane->view()->currentIndex().isValid()
+                                   ? pane->view()->currentIndex().row()
+                                   : -1;
+          for (int i = 1; i <= rowCount; ++i) {
+            const int row = (startRow + i) % rowCount;
+            const QString name = model->data(model->index(row, 0), Qt::DisplayRole).toString();
+            if (name.startsWith(ch, Qt::CaseInsensitive)) {
+              pane->view()->setCurrentIndex(model->index(row, 0));
+              break;
+            }
+          }
+        }
+      }
+      // Shift の有無に関わらず文字キーは消費 (Qt 標準の検索を発動させない)
+      return true;
+    }
+  }
+
   return false;
 }
 
