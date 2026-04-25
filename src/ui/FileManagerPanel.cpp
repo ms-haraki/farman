@@ -341,7 +341,14 @@ bool FileManagerPanel::handleKeyEvent(QKeyEvent* event) {
           for (int i = 1; i <= rowCount; ++i) {
             const int row = (startRow + i) % rowCount;
             const QString name = model->data(model->index(row, 0), Qt::DisplayRole).toString();
-            if (name.startsWith(ch, Qt::CaseInsensitive)) {
+            bool match = name.startsWith(ch, Qt::CaseInsensitive);
+            // ドットから始まるファイル/ディレクトリ (.gitignore, .claude 等) は
+            // 設定で有効な場合のみ 2 文字目もマッチ対象にする
+            if (!match && Settings::instance().typeAheadIncludeDotfiles()
+                && name.size() >= 2 && name.at(0) == QLatin1Char('.')) {
+              match = name.at(1).toLower() == ch.toLower();
+            }
+            if (match) {
               pane->view()->setCurrentIndex(model->index(row, 0));
               break;
             }

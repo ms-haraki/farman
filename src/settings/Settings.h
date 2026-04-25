@@ -105,6 +105,10 @@ public:
   bool cursorLoop()                     const;
   void setCursorLoop(bool loop);
 
+  // Shift+文字キーによる頭文字検索でドットファイル/ディレクトリの 2 文字目もマッチさせるか
+  bool typeAheadIncludeDotfiles()       const;
+  void setTypeAheadIncludeDotfiles(bool include);
+
   // ディレクトリ履歴を終了時に保存し、起動時に復元するか
   bool persistHistory()                 const;
   void setPersistHistory(bool persist);
@@ -183,6 +187,7 @@ private:
 
   bool             m_confirmOnExit   = false;
   bool             m_cursorLoop      = false;
+  bool             m_typeAheadIncludeDotfiles = true;
   bool             m_persistHistory  = false;
   QStringList      m_paneHistory[static_cast<int>(PaneType::Count)];
   QString          m_autoRenameTemplate = QStringLiteral(" ({n})");

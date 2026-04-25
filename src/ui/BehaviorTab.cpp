@@ -32,6 +32,7 @@ BehaviorTab::BehaviorTab(const QString& leftCurrentPath,
   , m_sortCaseSensitiveCheck(nullptr)
   , m_showHiddenCheck(nullptr)
   , m_cursorLoopCheck(nullptr)
+  , m_typeAheadDotfilesCheck(nullptr)
   , m_persistHistoryCheck(nullptr)
   , m_autoRenameTemplateEdit(nullptr)
   , m_defaultDeleteToTrashCheck(nullptr)
@@ -145,12 +146,19 @@ void BehaviorTab::setupUi() {
   m_persistHistoryCheck->setToolTip(
     tr("Save each pane's recent directory list on exit and restore it on next launch"));
 
+  m_typeAheadDotfilesCheck = new QCheckBox(
+    tr("Match dotfile second character with Shift+key"), this);
+  m_typeAheadDotfilesCheck->setToolTip(
+    tr("When navigating with Shift+letter, match the character after the leading "
+       "dot for files/directories starting with '.' (e.g. Shift+G jumps to .gitignore)"));
+
   // 2 列均等幅の Grid に左寄せで並べる
   QGridLayout* navGrid = new QGridLayout();
   navGrid->setColumnStretch(0, 1);
   navGrid->setColumnStretch(1, 1);
-  navGrid->addWidget(m_cursorLoopCheck,     0, 0, Qt::AlignLeft);
-  navGrid->addWidget(m_persistHistoryCheck, 0, 1, Qt::AlignLeft);
+  navGrid->addWidget(m_cursorLoopCheck,        0, 0, Qt::AlignLeft);
+  navGrid->addWidget(m_persistHistoryCheck,    0, 1, Qt::AlignLeft);
+  navGrid->addWidget(m_typeAheadDotfilesCheck, 1, 0, 1, 2, Qt::AlignLeft);
   navigationLayout->addLayout(navGrid);
 
   mainLayout->addWidget(navigationGroup);
@@ -385,6 +393,7 @@ void BehaviorTab::loadSettings() {
   // Navigation settings
   m_cursorLoopCheck->setChecked(settings.cursorLoop());
   m_persistHistoryCheck->setChecked(settings.persistHistory());
+  m_typeAheadDotfilesCheck->setChecked(settings.typeAheadIncludeDotfiles());
 
   // File operations
   m_autoRenameTemplateEdit->setText(settings.autoRenameTemplate());
@@ -484,6 +493,7 @@ void BehaviorTab::save() {
   // Save navigation settings
   settings.setCursorLoop(m_cursorLoopCheck->isChecked());
   settings.setPersistHistory(m_persistHistoryCheck->isChecked());
+  settings.setTypeAheadIncludeDotfiles(m_typeAheadDotfilesCheck->isChecked());
 
   // Save file operation settings
   settings.setAutoRenameTemplate(m_autoRenameTemplateEdit->text());

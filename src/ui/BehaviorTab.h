@@ -50,6 +50,7 @@ private:
   QCheckBox*  m_showHiddenCheck;
   QCheckBox*  m_cursorLoopCheck;
   QCheckBox*  m_persistHistoryCheck;
+  QCheckBox*  m_typeAheadDotfilesCheck;
 
   // File operation settings
   QLineEdit*  m_autoRenameTemplateEdit;

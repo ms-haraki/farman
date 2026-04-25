@@ -225,6 +225,14 @@ void Settings::setCursorLoop(bool loop) {
   m_cursorLoop = loop;
 }
 
+bool Settings::typeAheadIncludeDotfiles() const {
+  return m_typeAheadIncludeDotfiles;
+}
+
+void Settings::setTypeAheadIncludeDotfiles(bool include) {
+  m_typeAheadIncludeDotfiles = include;
+}
+
 bool Settings::persistHistory() const {
   return m_persistHistory;
 }
@@ -709,6 +717,7 @@ void Settings::load() {
   QJsonObject behavior = root.value("behavior").toObject();
   m_confirmOnExit = behavior.value("confirmOnExit").toBool(false);
   m_cursorLoop = behavior.value("cursorLoop").toBool(false);
+  m_typeAheadIncludeDotfiles = behavior.value("typeAheadIncludeDotfiles").toBool(true);
   m_persistHistory = behavior.value("persistHistory").toBool(false);
   m_autoRenameTemplate = behavior.value("autoRenameTemplate").toString(" ({n})");
   m_defaultDeleteToTrash = behavior.value("defaultDeleteToTrash").toBool(true);
@@ -930,6 +939,7 @@ void Settings::save() const {
   QJsonObject behavior;
   behavior["confirmOnExit"] = m_confirmOnExit;
   behavior["cursorLoop"] = m_cursorLoop;
+  behavior["typeAheadIncludeDotfiles"] = m_typeAheadIncludeDotfiles;
   behavior["persistHistory"] = m_persistHistory;
   behavior["autoRenameTemplate"] = m_autoRenameTemplate;
   behavior["defaultDeleteToTrash"] = m_defaultDeleteToTrash;
