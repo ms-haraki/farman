@@ -82,16 +82,16 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::Key_Backspace), "navigate.parent"    },
 
     // Selection
-    // 名前通りの動作に合わせる: Space が「選択して下に移動」、Insert が「カーソル据え置き」。
-    { QKeySequence(Qt::Key_Space),           "select.toggle_and_down" },
-    { QKeySequence(Qt::Key_Insert),          "select.toggle"          },
-    { QKeySequence(Qt::Key_Asterisk),        "select.invert"          },
+    // 名前通りの動作に合わせる: Space が「選択して下に移動」、Shift+Space が「カーソル据え置き」。
+    { QKeySequence(Qt::Key_Space),                  "select.toggle_and_down" },
+    { QKeySequence(Qt::SHIFT | Qt::Key_Space),      "select.toggle"          },
+    { QKeySequence(Qt::Key_I),               "select.invert"          },
     { QKeySequence(Qt::CTRL | Qt::Key_A),    "select.all"             },
 
     // Pane
     { QKeySequence(Qt::Key_Tab),             "pane.switch"        },
     { QKeySequence(Qt::CTRL | Qt::Key_O),    "pane.toggle_single" },
-    { QKeySequence(Qt::Key_F4),              "pane.sort_filter"   },
+    { QKeySequence(Qt::Key_S),               "pane.sort_filter"   },
 
     // File operations — 簡略キーボードでも打てる一文字キーをデフォルトに
     { QKeySequence(Qt::Key_C), "file.copy"    },
@@ -106,14 +106,14 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::Key_U), "file.unpack"     },
 
     // View
-    { QKeySequence(Qt::Key_F3), "view.file" },
+    { QKeySequence(Qt::Key_V), "view.file" },
 
     // Bookmark
     { QKeySequence(Qt::Key_B),            "bookmark.toggle" },
     { QKeySequence(Qt::CTRL | Qt::Key_B), "bookmark.list"   },
 
-    // History (macOS では Cmd+H が OS の Hide と衝突するため Shift を足す)
-    { QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_H), "history.show" },
+    // History
+    { QKeySequence(Qt::Key_H), "history.show" },
 
     // Application
     { QKeySequence(Qt::Key_F9),           "app.settings" },
@@ -157,7 +157,15 @@ void KeyBindingManager::loadFromSettings() {
   // version < 2: ファイル操作キーの大幅再編（F5-F8 -> c/m/k/d 等）が入ったため、
   // 古い設定は破棄して新デフォルトを入れ直す。ユーザーがカスタムしていた場合は
   // Settings の Keybindings タブで再設定してもらう。
-  if (version < 2) {
+  // version < 3: F3 -> v (view.file)、F4 -> s (pane.sort_filter) のデフォルト
+  // 変更。ファンクションキーが無い簡易キーボードに対応するため。同様に強制リセット。
+  // version < 4: select.invert のデフォルトを * から i に変更。`*` は Shift+8 で
+  // 入力するため macOS ネイティブメニュー上で modifier がうまく扱えず表示が崩れる。
+  // version < 5: select.toggle のデフォルトを Insert から Shift+Space に変更。
+  // Mac キーボードに Insert キーが無いため、Mac でも打てるキーに置き換え。
+  // version < 6: history.show のデフォルトを Ctrl+Shift+H から h に変更。
+  // 単キーで打てるほうが操作的に楽。
+  if (version < 6) {
     qDebug() << "KeyBindingManager: migrating bindings from version" << version;
     loadDefaults();
     saveToSettings();
@@ -215,7 +223,7 @@ void KeyBindingManager::saveToSettings() const {
 
   QJsonObject root;
   root["bindings"] = bindings;
-  root["version"] = 2;
+  root["version"] = 6;
 
   QJsonDocument doc(root);
   QString jsonData = QString::fromUtf8(doc.toJson(QJsonDocument::Indented));

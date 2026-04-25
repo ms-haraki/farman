@@ -36,6 +36,8 @@ private:
   void showViewer(const QString& filePath);
   void showSettingsDialog();
   void registerCommands();
+  void createMenus();
+  void showAboutDialog();
 
   QStackedWidget* m_stack;
   FileManagerPanel* m_fileManagerPanel;

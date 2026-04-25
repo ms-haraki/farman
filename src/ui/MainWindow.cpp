@@ -16,6 +16,9 @@
 #include <QTableView>
 #include <QApplication>
 #include <QMessageBox>
+#include <QMenuBar>
+#include <QMenu>
+#include <QAction>
 
 namespace Farman {
 
@@ -35,6 +38,9 @@ MainWindow::MainWindow(QWidget* parent)
 
   // Load keybindings
   KeyBindingManager::instance().loadFromSettings();
+
+  // メニューバーはキーバインドが確定した後に作る（右端にショートカットを表示するため）
+  createMenus();
 
   // 履歴は永続化が ON の場合のみ、初期パス読み込みの前に復元しておく。
   // loadInitialPath() が navigatePane() を呼び、現在パスが履歴の先頭に自然に入る。
@@ -537,6 +543,127 @@ void MainWindow::registerCommands() {
     },
     "history"
   ));
+}
+
+void MainWindow::createMenus() {
+  QMenuBar* bar = menuBar();
+
+  // コマンドIDとラベルから QAction を作る。現在のキーバインドをショートカットとして
+  // 設定し、メニュー右側に表示する。triggered は CommandRegistry 経由で実行するので
+  // キー操作とメニュークリックで同じパスを通る。
+  //
+  // global=false のショートカットは FileManagerPanel スコープに限定する。
+  // c / m / d のような 1 文字キーがビュアー表示中に意図せず発火するのを防ぐため。
+  // macOS のネイティブメニューでは Insert キーが特殊な Unicode 字形（⎀, U+2380）
+  // に変換されるが、Mac の標準フォントでは描画できず文字化けしたように見える。
+  // 加えて Mac キーボードには Insert キーが無いので、メニュー上に表示する意味も薄い。
+  // そういうキーが含まれる QKeySequence はメニューには出さない（eventFilter 経由の
+  // キー操作は引き続き効くので機能は失われない）。
+  auto isMenuDisplayable = [](const QKeySequence& seq) {
+#ifdef Q_OS_MACOS
+    for (int i = 0; i < seq.count(); ++i) {
+      const Qt::Key k = seq[i].key();
+      if (k == Qt::Key_Insert) return false;
+    }
+#else
+    Q_UNUSED(seq);
+#endif
+    return true;
+  };
+
+  auto addCmd = [this, isMenuDisplayable](QMenu* menu, const QString& id, const QString& label,
+                                          bool global = false) -> QAction* {
+    QAction* action = new QAction(label, this);
+    const QList<QKeySequence> keys = KeyBindingManager::instance().keysForCommand(id);
+    if (!keys.isEmpty() && isMenuDisplayable(keys.first())) {
+      action->setShortcut(keys.first());
+      if (!global) {
+        action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+        m_fileManagerPanel->addAction(action);
+      }
+    }
+    connect(action, &QAction::triggered, this, [id]() {
+      CommandRegistry::instance().execute(id);
+    });
+    menu->addAction(action);
+    return action;
+  };
+
+  // File
+  QMenu* fileMenu = bar->addMenu(tr("&File"));
+  addCmd(fileMenu, "file.newfile",    tr("New File"));
+  addCmd(fileMenu, "file.mkdir",      tr("New Directory"));
+  addCmd(fileMenu, "file.rename",     tr("Rename"));
+  fileMenu->addSeparator();
+  addCmd(fileMenu, "file.copy",       tr("Copy"));
+  addCmd(fileMenu, "file.move",       tr("Move"));
+  addCmd(fileMenu, "file.delete",     tr("Delete"));
+  fileMenu->addSeparator();
+  addCmd(fileMenu, "file.attributes", tr("Change Attributes..."));
+  fileMenu->addSeparator();
+  addCmd(fileMenu, "file.pack",       tr("Create Archive..."));
+  addCmd(fileMenu, "file.unpack",     tr("Extract Archive..."));
+  fileMenu->addSeparator();
+  // Ctrl+Q はウィンドウ全体（ビュアー表示中でも）効くべきなので global=true
+  QAction* quitAction = addCmd(fileMenu, "app.quit", tr("Quit"), /*global=*/true);
+  // macOS ではアプリケーションメニューに自動で移動する
+  quitAction->setMenuRole(QAction::QuitRole);
+
+  // Edit（macOS では "Start Dictation" / "Auto Fill" 等のシステム項目が自動で
+  // 追加されるが、慣例的な名前のほうがわかりやすいので Edit のまま）
+  QMenu* editMenu = bar->addMenu(tr("&Edit"));
+  addCmd(editMenu, "select.all",             tr("Select All"));
+  addCmd(editMenu, "select.invert",          tr("Invert Selection"));
+  addCmd(editMenu, "select.toggle",          tr("Toggle Selection"));
+  addCmd(editMenu, "select.toggle_and_down", tr("Toggle and Move Down"));
+
+  // View
+  QMenu* viewMenu = bar->addMenu(tr("&View"));
+  addCmd(viewMenu, "pane.switch", tr("Switch Pane"));
+  // Single Pane はトグル状態をチェックマークで表示する。キー操作・メニュー操作・
+  // 設定経由など複数の経路でモードが変わるため、メニューを開く直前に最新状態に
+  // 同期する（aboutToShow）。
+  QAction* singlePaneAction = addCmd(viewMenu, "pane.toggle_single", tr("Single Pane"));
+  singlePaneAction->setCheckable(true);
+  singlePaneAction->setChecked(m_fileManagerPanel->isSinglePaneMode());
+  connect(viewMenu, &QMenu::aboutToShow, this, [this, singlePaneAction]() {
+    singlePaneAction->setChecked(m_fileManagerPanel->isSinglePaneMode());
+  });
+  addCmd(viewMenu, "pane.sort_filter", tr("Sort && Filter..."));
+  viewMenu->addSeparator();
+  addCmd(viewMenu, "view.file", tr("View File"));
+
+  // Go
+  QMenu* goMenu = bar->addMenu(tr("&Go"));
+  addCmd(goMenu, "navigate.parent", tr("Parent Directory"));
+  addCmd(goMenu, "navigate.home",   tr("Jump to Top"));
+  addCmd(goMenu, "navigate.end",    tr("Jump to Bottom"));
+  goMenu->addSeparator();
+  addCmd(goMenu, "file.search",     tr("Search Files..."));
+  addCmd(goMenu, "history.show",    tr("History..."));
+
+  // Bookmarks
+  QMenu* bookmarksMenu = bar->addMenu(tr("&Bookmarks"));
+  addCmd(bookmarksMenu, "bookmark.toggle", tr("Toggle Bookmark"));
+  addCmd(bookmarksMenu, "bookmark.list",   tr("Bookmarks..."));
+
+  // Help
+  QMenu* helpMenu = bar->addMenu(tr("&Help"));
+  // Settings はビュアー表示中でも開けるように global=true
+  QAction* settingsAction = addCmd(helpMenu, "app.settings", tr("Settings..."), /*global=*/true);
+  // macOS ではアプリケーションメニューの Preferences に移動する
+  settingsAction->setMenuRole(QAction::PreferencesRole);
+  QAction* aboutAction = new QAction(tr("About farman..."), this);
+  aboutAction->setMenuRole(QAction::AboutRole);
+  connect(aboutAction, &QAction::triggered, this, &MainWindow::showAboutDialog);
+  helpMenu->addAction(aboutAction);
+}
+
+void MainWindow::showAboutDialog() {
+  QMessageBox::about(this, tr("About farman"),
+    tr("<b>farman</b> - File Manager<br><br>"
+       "A keyboard-driven Qt6 file manager inspired by "
+       "Total Commander / Double Commander."));
 }
 
 void MainWindow::showSettingsDialog() {
