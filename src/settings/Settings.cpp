@@ -286,6 +286,23 @@ void   Settings::setTextViewerSelectedBackground(const QColor& c)   { m_textView
 void   Settings::setTextViewerLineNumberForeground(const QColor& c) { m_textViewerLineNumberFg = c; }
 void   Settings::setTextViewerLineNumberBackground(const QColor& c) { m_textViewerLineNumberBg = c; }
 
+int   Settings::imageViewerZoomPercent() const { return m_imageViewerZoomPercent; }
+void  Settings::setImageViewerZoomPercent(int percent) {
+  m_imageViewerZoomPercent = qBound(1, percent, 1000);
+}
+bool  Settings::imageViewerFitToWindow() const { return m_imageViewerFitToWindow; }
+void  Settings::setImageViewerFitToWindow(bool fit) { m_imageViewerFitToWindow = fit; }
+bool  Settings::imageViewerAnimation() const { return m_imageViewerAnimation; }
+void  Settings::setImageViewerAnimation(bool on) { m_imageViewerAnimation = on; }
+ImageTransparencyMode Settings::imageViewerTransparencyMode() const { return m_imageViewerTransparencyMode; }
+void  Settings::setImageViewerTransparencyMode(ImageTransparencyMode mode) { m_imageViewerTransparencyMode = mode; }
+QColor Settings::imageViewerSolidColor() const { return m_imageViewerSolidColor; }
+void   Settings::setImageViewerSolidColor(const QColor& c) { m_imageViewerSolidColor = c; }
+QColor Settings::imageViewerCheckerColor1() const { return m_imageViewerCheckerColor1; }
+void   Settings::setImageViewerCheckerColor1(const QColor& c) { m_imageViewerCheckerColor1 = c; }
+QColor Settings::imageViewerCheckerColor2() const { return m_imageViewerCheckerColor2; }
+void   Settings::setImageViewerCheckerColor2(const QColor& c) { m_imageViewerCheckerColor2 = c; }
+
 BinaryViewerUnit Settings::binaryViewerUnit() const {
   return m_binaryViewerUnit;
 }
@@ -883,6 +900,34 @@ void Settings::load() {
   loadColor("lineNumberFg", m_textViewerLineNumberFg);
   loadColor("lineNumberBg", m_textViewerLineNumberBg);
 
+  // Load image viewer settings
+  QJsonObject imageViewer = root.value("imageViewer").toObject();
+  m_imageViewerZoomPercent = qBound(1, imageViewer.value("zoomPercent").toInt(100), 1000);
+  m_imageViewerFitToWindow = imageViewer.value("fitToWindow").toBool(false);
+  m_imageViewerAnimation   = imageViewer.value("animation").toBool(false);
+  {
+    const QString modeStr = imageViewer.value("transparencyMode").toString();
+    m_imageViewerTransparencyMode = (modeStr == QLatin1String("solidColor"))
+                                      ? ImageTransparencyMode::SolidColor
+                                      : ImageTransparencyMode::Checker;
+  }
+  // 旧スキーマ (backgroundColor) との後方互換: solidColor 未保存ならそちらから読む
+  if (imageViewer.contains("solidColor")) {
+    QColor c(imageViewer.value("solidColor").toString());
+    if (c.isValid()) m_imageViewerSolidColor = c;
+  } else if (imageViewer.contains("backgroundColor")) {
+    QColor c(imageViewer.value("backgroundColor").toString());
+    if (c.isValid()) m_imageViewerSolidColor = c;
+  }
+  if (imageViewer.contains("checkerColor1")) {
+    QColor c(imageViewer.value("checkerColor1").toString());
+    if (c.isValid()) m_imageViewerCheckerColor1 = c;
+  }
+  if (imageViewer.contains("checkerColor2")) {
+    QColor c(imageViewer.value("checkerColor2").toString());
+    if (c.isValid()) m_imageViewerCheckerColor2 = c;
+  }
+
   // Load binary viewer settings
   QJsonObject binaryViewer = root.value("binaryViewer").toObject();
   m_binaryViewerUnit     = bytesToBinaryViewerUnit(binaryViewer.value("unitBytes").toInt(1));
@@ -1138,6 +1183,19 @@ void Settings::save() const {
   textViewer["lineNumberFg"]    = m_textViewerLineNumberFg.name(QColor::HexArgb);
   textViewer["lineNumberBg"]    = m_textViewerLineNumberBg.name(QColor::HexArgb);
   root["textViewer"] = textViewer;
+
+  // Save image viewer settings
+  QJsonObject imageViewer;
+  imageViewer["zoomPercent"]      = m_imageViewerZoomPercent;
+  imageViewer["fitToWindow"]      = m_imageViewerFitToWindow;
+  imageViewer["animation"]        = m_imageViewerAnimation;
+  imageViewer["transparencyMode"] = (m_imageViewerTransparencyMode == ImageTransparencyMode::SolidColor)
+                                     ? QStringLiteral("solidColor")
+                                     : QStringLiteral("checker");
+  imageViewer["solidColor"]       = m_imageViewerSolidColor.name(QColor::HexArgb);
+  imageViewer["checkerColor1"]    = m_imageViewerCheckerColor1.name(QColor::HexArgb);
+  imageViewer["checkerColor2"]    = m_imageViewerCheckerColor2.name(QColor::HexArgb);
+  root["imageViewer"] = imageViewer;
 
   // Save binary viewer settings
   QJsonObject binaryViewer;

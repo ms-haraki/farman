@@ -100,6 +100,12 @@ enum class CursorShape {
   RowBackground // 行全体の背景色を変える
 };
 
+// 画像ビュアーの透明部分の表示方法
+enum class ImageTransparencyMode {
+  SolidColor, // 指定した背景色で塗りつぶす
+  Checker     // 市松模様 (チェック柄) で表示する
+};
+
 // バイナリビュアーの 16 進ダンプ単位
 enum class BinaryViewerUnit {
   Byte1,

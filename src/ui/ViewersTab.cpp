@@ -7,9 +7,11 @@
 #include <QFontDialog>
 #include <QFormLayout>
 #include <QGridLayout>
+#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QTabWidget>
 #include <QVBoxLayout>
 
@@ -135,11 +137,79 @@ QWidget* ViewersTab::buildTextViewerPage() {
 
 QWidget* ViewersTab::buildImageViewerPage() {
   QWidget* page = new QWidget(this);
-  QVBoxLayout* layout = new QVBoxLayout(page);
-  QLabel* note = new QLabel(tr("Image viewer settings are not yet implemented."), page);
-  note->setStyleSheet("color: palette(mid); padding: 8px;");
-  layout->addWidget(note);
-  layout->addStretch();
+  QVBoxLayout* outer = new QVBoxLayout(page);
+
+  // 上段: Zoom / Fit / Animation
+  QFormLayout* form = new QFormLayout();
+
+  m_imageZoomCombo = new QComboBox(page);
+  m_imageZoomCombo->setEditable(true);
+  for (int p : { 25, 50, 75, 100, 200 }) {
+    m_imageZoomCombo->addItem(QString::number(p) + QLatin1Char('%'), p);
+  }
+  m_imageZoomCombo->setToolTip(tr("Default zoom factor (used when 'Fit to window' is off)"));
+  form->addRow(tr("Zoom:"), m_imageZoomCombo);
+
+  m_imageFitToWindowCheck = new QCheckBox(tr("Fit image to window"), page);
+  m_imageFitToWindowCheck->setToolTip(
+    tr("Scale the image to fit within the viewer; zoom factor is ignored while this is on."));
+  form->addRow(QString(), m_imageFitToWindowCheck);
+
+  m_imageAnimationCheck = new QCheckBox(tr("Play animation (GIF / APNG / WebP)"), page);
+  form->addRow(QString(), m_imageAnimationCheck);
+
+  outer->addLayout(form);
+
+  // 色ボタン生成のヘルパー
+  auto makeColorButton = [this, page](QColor& storedValue, const QString& dialogTitle) -> QPushButton* {
+    QPushButton* btn = new QPushButton(page);
+    btn->setFixedWidth(120);
+    connect(btn, &QPushButton::clicked, this, [this, &storedValue, btn, dialogTitle]() {
+      QColor picked = QColorDialog::getColor(
+        storedValue.isValid() ? storedValue : QColor(Qt::white),
+        this, dialogTitle, QColorDialog::ShowAlphaChannel);
+      if (picked.isValid()) {
+        storedValue = picked;
+        btn->setStyleSheet(QString("background-color: %1; color: %2;")
+          .arg(picked.name(),
+               picked.lightness() > 128 ? "black" : "white"));
+        btn->setText(picked.name());
+      }
+    });
+    return btn;
+  };
+
+  // ── Transparency セクション ────────────────
+  QGroupBox* transparencyGroup = new QGroupBox(tr("Transparency"), page);
+  QVBoxLayout* transparencyLayout = new QVBoxLayout(transparencyGroup);
+
+  // Checker (色 2 つ)
+  QGroupBox* checkerGroup = new QGroupBox(transparencyGroup);
+  QHBoxLayout* checkerRow = new QHBoxLayout(checkerGroup);
+  m_imageTransparencyCheckerRadio = new QRadioButton(tr("Checker"), checkerGroup);
+  checkerRow->addWidget(m_imageTransparencyCheckerRadio);
+  m_imageCheckerColor1Button = makeColorButton(m_imageCheckerColor1Value, tr("Checker Color 1"));
+  m_imageCheckerColor2Button = makeColorButton(m_imageCheckerColor2Value, tr("Checker Color 2"));
+  checkerRow->addWidget(new QLabel(tr("Color 1:"), checkerGroup));
+  checkerRow->addWidget(m_imageCheckerColor1Button);
+  checkerRow->addWidget(new QLabel(tr("Color 2:"), checkerGroup));
+  checkerRow->addWidget(m_imageCheckerColor2Button);
+  checkerRow->addStretch();
+  transparencyLayout->addWidget(checkerGroup);
+
+  // Solid Color (色 1 つ)
+  QGroupBox* solidGroup = new QGroupBox(transparencyGroup);
+  QHBoxLayout* solidRow = new QHBoxLayout(solidGroup);
+  m_imageTransparencySolidRadio = new QRadioButton(tr("Solid Color"), solidGroup);
+  solidRow->addWidget(m_imageTransparencySolidRadio);
+  m_imageSolidColorButton = makeColorButton(m_imageSolidColorValue, tr("Solid Color"));
+  solidRow->addWidget(new QLabel(tr("Color:"), solidGroup));
+  solidRow->addWidget(m_imageSolidColorButton);
+  solidRow->addStretch();
+  transparencyLayout->addWidget(solidGroup);
+
+  outer->addWidget(transparencyGroup);
+  outer->addStretch();
   return page;
 }
 
@@ -230,6 +300,23 @@ void ViewersTab::loadSettings() {
   applyButton(m_textLineNumberFgButton, m_textLineNumberFgValue);
   applyButton(m_textLineNumberBgButton, m_textLineNumberBgValue);
 
+  // Image viewer
+  m_imageZoomCombo->setCurrentText(QString::number(settings.imageViewerZoomPercent()) + QLatin1Char('%'));
+  m_imageFitToWindowCheck->setChecked(settings.imageViewerFitToWindow());
+  m_imageAnimationCheck->setChecked(settings.imageViewerAnimation());
+
+  if (settings.imageViewerTransparencyMode() == ImageTransparencyMode::SolidColor) {
+    m_imageTransparencySolidRadio->setChecked(true);
+  } else {
+    m_imageTransparencyCheckerRadio->setChecked(true);
+  }
+  m_imageCheckerColor1Value = settings.imageViewerCheckerColor1();
+  m_imageCheckerColor2Value = settings.imageViewerCheckerColor2();
+  m_imageSolidColorValue    = settings.imageViewerSolidColor();
+  applyButton(m_imageCheckerColor1Button, m_imageCheckerColor1Value);
+  applyButton(m_imageCheckerColor2Button, m_imageCheckerColor2Value);
+  applyButton(m_imageSolidColorButton,    m_imageSolidColorValue);
+
   const int unitBytes = binaryViewerUnitToBytes(settings.binaryViewerUnit());
   for (int i = 0; i < m_binaryUnitCombo->count(); ++i) {
     if (m_binaryUnitCombo->itemData(i).toInt() == unitBytes) {
@@ -266,6 +353,24 @@ void ViewersTab::save() {
   settings.setTextViewerSelectedBackground(m_textSelectedBgValue);
   settings.setTextViewerLineNumberForeground(m_textLineNumberFgValue);
   settings.setTextViewerLineNumberBackground(m_textLineNumberBgValue);
+
+  // Image viewer
+  {
+    QString s = m_imageZoomCombo->currentText().trimmed();
+    if (s.endsWith(QLatin1Char('%'))) s.chop(1);
+    bool ok = false;
+    int v = s.toInt(&ok);
+    if (ok) settings.setImageViewerZoomPercent(v);
+  }
+  settings.setImageViewerFitToWindow(m_imageFitToWindowCheck->isChecked());
+  settings.setImageViewerAnimation(m_imageAnimationCheck->isChecked());
+  settings.setImageViewerTransparencyMode(
+    m_imageTransparencySolidRadio->isChecked()
+      ? ImageTransparencyMode::SolidColor
+      : ImageTransparencyMode::Checker);
+  settings.setImageViewerCheckerColor1(m_imageCheckerColor1Value);
+  settings.setImageViewerCheckerColor2(m_imageCheckerColor2Value);
+  settings.setImageViewerSolidColor(m_imageSolidColorValue);
 
   settings.setBinaryViewerUnit(
     bytesToBinaryViewerUnit(m_binaryUnitCombo->currentData().toInt()));

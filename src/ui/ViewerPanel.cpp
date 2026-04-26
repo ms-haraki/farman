@@ -1,26 +1,18 @@
 #include "ViewerPanel.h"
 #include "viewer/BinaryView.h"
+#include "viewer/ImageView.h"
 #include "viewer/TextView.h"
 #include <QVBoxLayout>
-#include <QLabel>
-#include <QScrollArea>
 #include <QStackedWidget>
-#include <QPixmap>
 #include <QFileInfo>
 #include <QMimeDatabase>
 #include <QMimeType>
-#include <QResizeEvent>
 
 namespace Farman {
 
 ViewerPanel::ViewerPanel(QWidget* parent)
   : QWidget(parent)
-  , m_stack(nullptr)
-  , m_textView(nullptr)
-  , m_imageScrollArea(nullptr)
-  , m_imageLabel(nullptr)
-  , m_binaryView(nullptr) {
-
+{
   setupUi();
 }
 
@@ -38,16 +30,8 @@ void ViewerPanel::setupUi() {
   m_stack->addWidget(m_textView);
 
   // ===== Image Viewer =====
-  m_imageScrollArea = new QScrollArea(this);
-  m_imageScrollArea->setWidgetResizable(false);
-  m_imageScrollArea->setAlignment(Qt::AlignCenter);
-
-  m_imageLabel = new QLabel(this);
-  m_imageLabel->setScaledContents(false);
-  m_imageLabel->setAlignment(Qt::AlignCenter);
-
-  m_imageScrollArea->setWidget(m_imageLabel);
-  m_stack->addWidget(m_imageScrollArea);
+  m_imageView = new ImageView(this);
+  m_stack->addWidget(m_imageView);
 
   // ===== Binary Viewer (fallback) =====
   m_binaryView = new BinaryView(this);
@@ -78,7 +62,6 @@ bool ViewerPanel::openFile(const QString& filePath) {
   }
 
   // テキスト判定: MIME が text/* または text/plain 派生
-  // (TextViewerPlugin と分散しないよう将来 Settings 化予定 — Phase 4)
   if (mimeName.startsWith(QLatin1String("text/")) || mime.inherits(QStringLiteral("text/plain"))) {
     return openTextFile(filePath);
   }
@@ -92,8 +75,6 @@ bool ViewerPanel::openTextFile(const QString& filePath) {
     return false;
   }
   m_stack->setCurrentWidget(m_textView);
-  // MainWindow::showViewer が後段で ViewerPanel->setFocus() を呼ぶので、
-  // ここでフォーカス委譲先 (= 現在ページ) を最新のウィジェットに切り替える
   setFocusProxy(m_textView);
   m_currentFilePath = filePath;
   emit fileOpened(filePath);
@@ -101,19 +82,13 @@ bool ViewerPanel::openTextFile(const QString& filePath) {
 }
 
 bool ViewerPanel::openImageFile(const QString& filePath) {
-  m_originalPixmap = QPixmap(filePath);
-
-  if (m_originalPixmap.isNull()) {
+  if (!m_imageView->loadFile(filePath)) {
     return false;
   }
-
-  updateImageScale();
-
-  m_stack->setCurrentWidget(m_imageScrollArea);
-  setFocusProxy(m_imageScrollArea);
+  m_stack->setCurrentWidget(m_imageView);
+  setFocusProxy(m_imageView);
   m_currentFilePath = filePath;
   emit fileOpened(filePath);
-
   return true;
 }
 
@@ -121,7 +96,6 @@ bool ViewerPanel::openBinaryFile(const QString& filePath) {
   if (!m_binaryView->loadFile(filePath)) {
     return false;
   }
-
   m_stack->setCurrentWidget(m_binaryView);
   setFocusProxy(m_binaryView);
   m_currentFilePath = filePath;
@@ -129,51 +103,12 @@ bool ViewerPanel::openBinaryFile(const QString& filePath) {
   return true;
 }
 
-void ViewerPanel::updateImageScale() {
-  if (m_originalPixmap.isNull()) {
-    return;
-  }
-
-  // Get available size
-  QSize availableSize = m_imageScrollArea->viewport()->size();
-
-  // Calculate scaled size maintaining aspect ratio
-  QSize imageSize = m_originalPixmap.size();
-  QSize scaledSize = imageSize;
-
-  // Only scale down if image is larger than available space
-  if (imageSize.width() > availableSize.width() ||
-      imageSize.height() > availableSize.height()) {
-    scaledSize = imageSize.scaled(availableSize, Qt::KeepAspectRatio);
-  }
-
-  // Set scaled pixmap
-  QPixmap scaledPixmap = m_originalPixmap.scaled(
-    scaledSize,
-    Qt::KeepAspectRatio,
-    Qt::SmoothTransformation
-  );
-
-  m_imageLabel->setPixmap(scaledPixmap);
-  m_imageLabel->resize(scaledPixmap.size());
-}
-
 void ViewerPanel::clear() {
   m_textView->clearContent();
-  m_imageLabel->clear();
-  m_originalPixmap = QPixmap();
+  m_imageView->clearContent();
   m_binaryView->clearContent();
   m_currentFilePath.clear();
   emit fileClosed();
-}
-
-void ViewerPanel::resizeEvent(QResizeEvent* event) {
-  QWidget::resizeEvent(event);
-
-  // 画像表示中の場合はリサイズに応じて再スケール
-  if (m_stack->currentWidget() == m_imageScrollArea) {
-    updateImageScale();
-  }
 }
 
 } // namespace Farman

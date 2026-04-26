@@ -7,6 +7,7 @@
 class QCheckBox;
 class QComboBox;
 class QPushButton;
+class QRadioButton;
 class QTabWidget;
 
 namespace Farman {
@@ -51,6 +52,21 @@ private:
   QColor       m_textSelectedBgValue;
   QColor       m_textLineNumberFgValue;
   QColor       m_textLineNumberBgValue;
+
+  // Image viewer widgets
+  QComboBox*    m_imageZoomCombo               = nullptr;
+  QCheckBox*    m_imageFitToWindowCheck        = nullptr;
+  QCheckBox*    m_imageAnimationCheck          = nullptr;
+  // 透明部分の表示モード (デフォルト) は radio で選択
+  QRadioButton* m_imageTransparencyCheckerRadio = nullptr;
+  QRadioButton* m_imageTransparencySolidRadio   = nullptr;
+  // 各モードの色設定
+  QPushButton*  m_imageCheckerColor1Button     = nullptr;
+  QPushButton*  m_imageCheckerColor2Button     = nullptr;
+  QPushButton*  m_imageSolidColorButton        = nullptr;
+  QColor        m_imageCheckerColor1Value;
+  QColor        m_imageCheckerColor2Value;
+  QColor        m_imageSolidColorValue;
 
   // Binary viewer widgets
   QComboBox*   m_binaryUnitCombo     = nullptr;

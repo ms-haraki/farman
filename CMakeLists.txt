@@ -55,6 +55,7 @@ qt_add_executable(farman
   src/viewer/ViewerDispatcher.cpp
   src/viewer/TextView.cpp
   src/viewer/TextViewerWindow.cpp
+  src/viewer/ImageView.cpp
   src/viewer/ImageViewerWindow.cpp
   src/viewer/BinaryView.cpp
   src/viewer/BinaryViewerWindow.cpp

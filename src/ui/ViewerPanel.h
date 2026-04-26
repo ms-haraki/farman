@@ -1,14 +1,14 @@
 #pragma once
 
+#include <QString>
 #include <QWidget>
 
-class QLabel;
-class QScrollArea;
 class QStackedWidget;
 
 namespace Farman {
 
 class BinaryView;
+class ImageView;
 class TextView;
 
 class ViewerPanel : public QWidget {
@@ -31,24 +31,18 @@ signals:
   void fileOpened(const QString& filePath);
   void fileClosed();
 
-protected:
-  void resizeEvent(QResizeEvent* event) override;
-
 private:
   void setupUi();
   bool openTextFile(const QString& filePath);
   bool openImageFile(const QString& filePath);
   bool openBinaryFile(const QString& filePath);
-  void updateImageScale();
 
-  QStackedWidget* m_stack;
-  TextView*    m_textView;
-  QScrollArea* m_imageScrollArea;
-  QLabel*      m_imageLabel;
-  BinaryView*  m_binaryView;
+  QStackedWidget* m_stack      = nullptr;
+  TextView*       m_textView   = nullptr;
+  ImageView*      m_imageView  = nullptr;
+  BinaryView*     m_binaryView = nullptr;
 
   QString m_currentFilePath;
-  QPixmap m_originalPixmap;  // 元の画像サイズを保持
 };
 
 } // namespace Farman

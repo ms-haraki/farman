@@ -149,6 +149,23 @@ public:
   void    setTextViewerLineNumberForeground(const QColor& c);
   void    setTextViewerLineNumberBackground(const QColor& c);
 
+  // ── 画像ビュアー設定 ───────────────────────
+  int                   imageViewerZoomPercent()       const;
+  void                  setImageViewerZoomPercent(int percent);
+  bool                  imageViewerFitToWindow()       const;
+  void                  setImageViewerFitToWindow(bool fit);
+  bool                  imageViewerAnimation()         const;
+  void                  setImageViewerAnimation(bool on);
+  // 透明部分の表示モード (デフォルト) と各モードの色設定
+  ImageTransparencyMode imageViewerTransparencyMode()  const;
+  void                  setImageViewerTransparencyMode(ImageTransparencyMode mode);
+  QColor                imageViewerSolidColor()        const;
+  void                  setImageViewerSolidColor(const QColor& c);
+  QColor                imageViewerCheckerColor1()     const;
+  void                  setImageViewerCheckerColor1(const QColor& c);
+  QColor                imageViewerCheckerColor2()     const;
+  void                  setImageViewerCheckerColor2(const QColor& c);
+
   // ── バイナリビュアー設定 ───────────────────
   BinaryViewerUnit   binaryViewerUnit()     const;
   void               setBinaryViewerUnit(BinaryViewerUnit unit);
@@ -253,6 +270,15 @@ private:
   QColor             m_textViewerSelectedBg       = QColor(0x31, 0x6A, 0xC5);
   QColor             m_textViewerLineNumberFg     = QColor(Qt::darkGray);
   QColor             m_textViewerLineNumberBg     = QColor(0xF0, 0xF0, 0xF0);
+
+  // Image viewer
+  int                   m_imageViewerZoomPercent      = 100;
+  bool                  m_imageViewerFitToWindow      = false;
+  bool                  m_imageViewerAnimation        = false;
+  ImageTransparencyMode m_imageViewerTransparencyMode = ImageTransparencyMode::Checker;
+  QColor                m_imageViewerSolidColor       = QColor(Qt::white);
+  QColor                m_imageViewerCheckerColor1    = QColor(0xC8, 0xC8, 0xC8);
+  QColor                m_imageViewerCheckerColor2    = QColor(0xF0, 0xF0, 0xF0);
 
   // Binary viewer
   BinaryViewerUnit   m_binaryViewerUnit     = BinaryViewerUnit::Byte1;
