@@ -11,6 +11,7 @@
 #include <QMovie>
 #include <QPainter>
 #include <QPaintEvent>
+#include <QPushButton>
 #include <QResizeEvent>
 #include <QScrollArea>
 #include <QSignalBlocker>
@@ -192,9 +193,11 @@ void ImageView::setupUi() {
   m_fitCheck->setFocusPolicy(Qt::StrongFocus);
   tb->addWidget(m_fitCheck);
 
-  m_animCheck = new QCheckBox(tr("Animation"), toolbar);
-  m_animCheck->setFocusPolicy(Qt::StrongFocus);
-  tb->addWidget(m_animCheck);
+  m_animButton = new QPushButton(toolbar);
+  m_animButton->setCheckable(true);
+  m_animButton->setFocusPolicy(Qt::StrongFocus);
+  m_animButton->setToolTip(tr("Play / stop animation (GIF / WebP)"));
+  tb->addWidget(m_animButton);
 
   tb->addWidget(new QLabel(tr("Transparency:"), toolbar));
   m_transparencyCombo = new QComboBox(toolbar);
@@ -253,8 +256,9 @@ void ImageView::setupUi() {
       m_zoomCombo->setCurrentText(QString::number(m_zoomPercent) + QLatin1Char('%'));
     }
   });
-  connect(m_animCheck, &QCheckBox::toggled, this, [this](bool on) {
+  connect(m_animButton, &QPushButton::toggled, this, [this](bool on) {
     m_animation = on;
+    m_animButton->setText(on ? tr("⏸ Stop") : tr("▶ Play"));
     applyDisplayState();
   });
   connect(m_transparencyCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
@@ -280,8 +284,9 @@ void ImageView::syncFromSettings() {
     m_fitCheck->setChecked(m_fitToWindow);
   }
   {
-    QSignalBlocker b(m_animCheck);
-    m_animCheck->setChecked(m_animation);
+    QSignalBlocker b(m_animButton);
+    m_animButton->setChecked(m_animation);
+    m_animButton->setText(m_animation ? tr("⏸ Stop") : tr("▶ Play"));
   }
   {
     QSignalBlocker b(m_transparencyCombo);

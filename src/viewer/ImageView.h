@@ -9,6 +9,7 @@
 class QCheckBox;
 class QComboBox;
 class QMovie;
+class QPushButton;
 class QScrollArea;
 
 namespace Farman {
@@ -47,10 +48,10 @@ private:
   static bool detectAnimated(const QString& filePath);
 
   // ツールバー
-  QComboBox* m_zoomCombo         = nullptr;
-  QCheckBox* m_fitCheck          = nullptr;
-  QCheckBox* m_animCheck         = nullptr;
-  QComboBox* m_transparencyCombo = nullptr;
+  QComboBox*   m_zoomCombo         = nullptr;
+  QCheckBox*   m_fitCheck          = nullptr;
+  QPushButton* m_animButton        = nullptr;  // checkable: ▶ Play / ⏸ Stop トグル
+  QComboBox*   m_transparencyCombo = nullptr;
 
   // 表示部
   QScrollArea*  m_scrollArea = nullptr;
