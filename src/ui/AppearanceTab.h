@@ -50,8 +50,10 @@ private:
   void updateColorButton(QPushButton* btn, const QColor& color);
 
   // Font settings
-  QPushButton*   m_fontButton;
+  QPushButton*   m_fontButton;          // File list font
   QFont          m_selectedFont;
+  QPushButton*   m_pathFontButton = nullptr;
+  QFont          m_pathFontValue;
 
   // File size format
   QComboBox*     m_fileSizeFormatCombo;

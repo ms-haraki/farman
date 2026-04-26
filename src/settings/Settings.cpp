@@ -23,6 +23,7 @@ Settings& Settings::instance() {
 Settings::Settings(QObject* parent) : QObject(parent) {
   // Initialize with default font
   m_font = QGuiApplication::font();
+  m_pathFont = QGuiApplication::font();
   m_binaryViewerFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
 
   // Initialize pane settings with defaults
@@ -115,6 +116,14 @@ QFont Settings::font() const {
 
 void Settings::setFont(const QFont& font) {
   m_font = font;
+}
+
+QFont Settings::pathFont() const {
+  return m_pathFont;
+}
+
+void Settings::setPathFont(const QFont& font) {
+  m_pathFont = font;
 }
 
 FileSizeFormat Settings::fileSizeFormat() const {
@@ -678,6 +687,13 @@ void Settings::load() {
       m_font.setPointSize(fontObj.value("pointSize").toInt());
     }
   }
+  if (appearance.contains("pathFont")) {
+    QJsonObject fontObj = appearance.value("pathFont").toObject();
+    m_pathFont.setFamily(fontObj.value("family").toString());
+    if (fontObj.contains("pointSize")) {
+      m_pathFont.setPointSize(fontObj.value("pointSize").toInt());
+    }
+  }
 
   m_fileSizeFormat = stringToFileSizeFormat(appearance.value("fileSizeFormat").toString());
   m_dateTimeFormat = appearance.value("dateTimeFormat").toString("yyyy/MM/dd HH:mm:ss");
@@ -967,6 +983,10 @@ void Settings::save() const {
   fontObj["family"] = m_font.family();
   fontObj["pointSize"] = m_font.pointSize();
   appearance["font"] = fontObj;
+  QJsonObject pathFontObj;
+  pathFontObj["family"] = m_pathFont.family();
+  pathFontObj["pointSize"] = m_pathFont.pointSize();
+  appearance["pathFont"] = pathFontObj;
   appearance["fileSizeFormat"] = fileSizeFormatToString(m_fileSizeFormat);
   appearance["dateTimeFormat"] = m_dateTimeFormat;
 

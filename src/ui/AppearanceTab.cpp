@@ -25,42 +25,7 @@ AppearanceTab::AppearanceTab(QWidget* parent)
 void AppearanceTab::setupUi() {
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
-  // Font settings
-  QGroupBox* fontGroup = new QGroupBox(tr("Font"), this);
-  QFormLayout* fontLayout = new QFormLayout(fontGroup);
-
-  m_fontButton = new QPushButton(tr("Select Font..."), this);
-  m_fontButton->setToolTip(tr("Choose the font for the file list"));
-  connect(m_fontButton, &QPushButton::clicked, this, &AppearanceTab::onSelectFont);
-  fontLayout->addRow(tr("Font:"), m_fontButton);
-
-  mainLayout->addWidget(fontGroup);
-
-  // Format settings
-  QGroupBox* formatGroup = new QGroupBox(tr("Display Formats"), this);
-  QFormLayout* formatLayout = new QFormLayout(formatGroup);
-
-  m_fileSizeFormatCombo = new QComboBox(this);
-  m_fileSizeFormatCombo->addItem(tr("Bytes"), static_cast<int>(FileSizeFormat::Bytes));
-  m_fileSizeFormatCombo->addItem(tr("KB/MB/GB (1000)"), static_cast<int>(FileSizeFormat::SI));
-  m_fileSizeFormatCombo->addItem(tr("KiB/MiB/GiB (1024)"), static_cast<int>(FileSizeFormat::IEC));
-  m_fileSizeFormatCombo->addItem(tr("Auto"), static_cast<int>(FileSizeFormat::Auto));
-  m_fileSizeFormatCombo->setToolTip(tr("Choose how file sizes are displayed"));
-  formatLayout->addRow(tr("File Size:"), m_fileSizeFormatCombo);
-
-  m_dateTimeFormatCombo = new QComboBox(this);
-  m_dateTimeFormatCombo->setEditable(true);
-  m_dateTimeFormatCombo->addItem("yyyy/MM/dd HH:mm:ss");
-  m_dateTimeFormatCombo->addItem("yyyy-MM-dd HH:mm:ss");
-  m_dateTimeFormatCombo->addItem("dd/MM/yyyy HH:mm:ss");
-  m_dateTimeFormatCombo->addItem("MM/dd/yyyy HH:mm:ss");
-  m_dateTimeFormatCombo->addItem("yyyy/MM/dd");
-  m_dateTimeFormatCombo->setToolTip(tr("Choose the date/time format (Qt format string)"));
-  formatLayout->addRow(tr("Date/Time:"), m_dateTimeFormatCombo);
-
-  mainLayout->addWidget(formatGroup);
-
-  // 色ボタン生成のヘルパー（Path / Cursor 両方で使う）
+  // 色ボタン生成のヘルパー
   auto makeColorButton = [this](QColor& storedValue, const QString& dialogTitle) -> QPushButton* {
     QPushButton* btn = new QPushButton(this);
     btn->setFixedWidth(100);
@@ -76,31 +41,74 @@ void AppearanceTab::setupUi() {
     return btn;
   };
 
-  // Path と Cursor を横並びのグループに
-  QHBoxLayout* pathCursorRow = new QHBoxLayout();
-
-  // Path colors
+  // ─── Path グループ: フォント + 色 ─────────────────────
   QGroupBox* pathGroup = new QGroupBox(tr("Path"), this);
   QFormLayout* pathForm = new QFormLayout(pathGroup);
+
+  m_pathFontButton = new QPushButton(tr("Select Font..."), this);
+  m_pathFontButton->setToolTip(tr("Choose the font for the path label above each pane"));
+  connect(m_pathFontButton, &QPushButton::clicked, this, [this]() {
+    bool ok = false;
+    const QFont chosen = QFontDialog::getFont(&ok, m_pathFontValue, this, tr("Path Font"));
+    if (ok) {
+      m_pathFontValue = chosen;
+      m_pathFontButton->setText(QString("%1, %2pt")
+        .arg(m_pathFontValue.family())
+        .arg(m_pathFontValue.pointSize()));
+    }
+  });
+  pathForm->addRow(tr("Font:"), m_pathFontButton);
+
   m_pathFgButton = makeColorButton(m_pathFgValue, tr("Path Foreground Color"));
   m_pathBgButton = makeColorButton(m_pathBgValue, tr("Path Background Color"));
   pathForm->addRow(tr("Foreground:"), m_pathFgButton);
   pathForm->addRow(tr("Background:"), m_pathBgButton);
-  pathCursorRow->addWidget(pathGroup);
 
-  // Cursor colors
+  mainLayout->addWidget(pathGroup);
+
+  // ─── File List グループ: フォント + 表示形式 + カーソル + 色 ──
+  QGroupBox* fileListGroup = new QGroupBox(tr("File List"), this);
+  QVBoxLayout* fileListOuter = new QVBoxLayout(fileListGroup);
+
+  // Font + 表示フォーマット
+  QFormLayout* fileListForm = new QFormLayout();
+
+  m_fontButton = new QPushButton(tr("Select Font..."), this);
+  m_fontButton->setToolTip(tr("Choose the font for the file list"));
+  connect(m_fontButton, &QPushButton::clicked, this, &AppearanceTab::onSelectFont);
+  fileListForm->addRow(tr("Font:"), m_fontButton);
+
+  m_fileSizeFormatCombo = new QComboBox(this);
+  m_fileSizeFormatCombo->addItem(tr("Bytes"), static_cast<int>(FileSizeFormat::Bytes));
+  m_fileSizeFormatCombo->addItem(tr("KB/MB/GB (1000)"), static_cast<int>(FileSizeFormat::SI));
+  m_fileSizeFormatCombo->addItem(tr("KiB/MiB/GiB (1024)"), static_cast<int>(FileSizeFormat::IEC));
+  m_fileSizeFormatCombo->addItem(tr("Auto"), static_cast<int>(FileSizeFormat::Auto));
+  m_fileSizeFormatCombo->setToolTip(tr("Choose how file sizes are displayed"));
+  fileListForm->addRow(tr("File Size:"), m_fileSizeFormatCombo);
+
+  m_dateTimeFormatCombo = new QComboBox(this);
+  m_dateTimeFormatCombo->setEditable(true);
+  m_dateTimeFormatCombo->addItem("yyyy/MM/dd HH:mm:ss");
+  m_dateTimeFormatCombo->addItem("yyyy-MM-dd HH:mm:ss");
+  m_dateTimeFormatCombo->addItem("dd/MM/yyyy HH:mm:ss");
+  m_dateTimeFormatCombo->addItem("MM/dd/yyyy HH:mm:ss");
+  m_dateTimeFormatCombo->addItem("yyyy/MM/dd");
+  m_dateTimeFormatCombo->setToolTip(tr("Choose the date/time format (Qt format string)"));
+  fileListForm->addRow(tr("Date/Time:"), m_dateTimeFormatCombo);
+
+  fileListOuter->addLayout(fileListForm);
+
+  // Cursor (行カーソルの色)
   QGroupBox* cursorGroup = new QGroupBox(tr("Cursor"), this);
   QFormLayout* cursorForm = new QFormLayout(cursorGroup);
   m_cursorActiveButton   = makeColorButton(m_cursorActiveValue,   tr("Active Cursor Color"));
   m_cursorInactiveButton = makeColorButton(m_cursorInactiveValue, tr("Inactive Cursor Color"));
   cursorForm->addRow(tr("Active:"),   m_cursorActiveButton);
   cursorForm->addRow(tr("Inactive:"), m_cursorInactiveButton);
-  pathCursorRow->addWidget(cursorGroup);
+  fileListOuter->addWidget(cursorGroup);
 
-  mainLayout->addLayout(pathCursorRow);
-
-  // File List Colors — アクティブ／非アクティブ × 通常／選択の 4 グリッド
-  QGroupBox* categoryGroup = new QGroupBox(tr("File List Colors"), this);
+  // ファイル種別ごとのカラーリング — アクティブ／非アクティブ × 通常／選択の 4 グリッド
+  QGroupBox* categoryGroup = new QGroupBox(tr("Colors"), this);
   QVBoxLayout* categoryOuter = new QVBoxLayout(categoryGroup);
 
   auto buildStateGrid = [this](const QString& title, bool selected, bool inactive) -> QGroupBox* {
@@ -116,14 +124,12 @@ void AppearanceTab::setupUi() {
     return box;
   };
 
-  // Active pane row
   QGroupBox* activeGroup = new QGroupBox(tr("Active Pane"), this);
   QHBoxLayout* activeRow = new QHBoxLayout(activeGroup);
   activeRow->addWidget(buildStateGrid(tr("Normal State"),   false, false));
   activeRow->addWidget(buildStateGrid(tr("Selected State"), true,  false));
   categoryOuter->addWidget(activeGroup);
 
-  // Checkbox
   m_useInactivePaneColorsCheck = new QCheckBox(
     tr("Use custom colors for inactive pane"), this);
   m_useInactivePaneColorsCheck->setToolTip(
@@ -131,7 +137,6 @@ void AppearanceTab::setupUi() {
        "When off, the active colors are used for both panes."));
   categoryOuter->addWidget(m_useInactivePaneColorsCheck);
 
-  // Inactive pane row
   m_inactivePaneGroup = new QGroupBox(tr("Inactive Pane"), this);
   QHBoxLayout* inactiveRow = new QHBoxLayout(m_inactivePaneGroup);
   inactiveRow->addWidget(buildStateGrid(tr("Normal State"),   false, true));
@@ -143,15 +148,19 @@ void AppearanceTab::setupUi() {
     m_inactivePaneGroup->setEnabled(checked);
   });
 
-  mainLayout->addWidget(categoryGroup, /*stretch*/ 1);
+  fileListOuter->addWidget(categoryGroup);
+
+  mainLayout->addWidget(fileListGroup, /*stretch*/ 1);
 }
 
 void AppearanceTab::loadSettings() {
   auto& settings = Settings::instance();
 
-  // Load font
+  // Load fonts
   m_selectedFont = settings.font();
   m_fontButton->setText(QString("%1, %2pt").arg(m_selectedFont.family()).arg(m_selectedFont.pointSize()));
+  m_pathFontValue = settings.pathFont();
+  m_pathFontButton->setText(QString("%1, %2pt").arg(m_pathFontValue.family()).arg(m_pathFontValue.pointSize()));
 
   // Load file size format
   FileSizeFormat fmt = settings.fileSizeFormat();
@@ -285,8 +294,9 @@ void AppearanceTab::updateColorButton(QPushButton* btn, const QColor& color) {
 void AppearanceTab::save() {
   auto& settings = Settings::instance();
 
-  // Save font
+  // Save fonts
   settings.setFont(m_selectedFont);
+  settings.setPathFont(m_pathFontValue);
 
   // Save file size format
   FileSizeFormat fmt = static_cast<FileSizeFormat>(

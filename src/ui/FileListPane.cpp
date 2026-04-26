@@ -129,9 +129,15 @@ void FileListPane::refreshAppearance() {
                               .arg(fg.name(), bg.name());
   const QString buttonStyle = QString("QToolButton { background-color: %1; border: none; padding: 2px; }")
                                 .arg(bg.name());
-  if (m_pathLabel)    m_pathLabel->setStyleSheet(pathStyle);
+  if (m_pathLabel) {
+    m_pathLabel->setStyleSheet(pathStyle);
+    m_pathLabel->setFont(Settings::instance().pathFont());
+  }
   if (m_folderButton) m_folderButton->setStyleSheet(buttonStyle);
-  if (m_view)         m_view->viewport()->update();  // cursor 再描画
+  if (m_view) {
+    m_view->setFont(Settings::instance().font());
+    m_view->viewport()->update();  // cursor 再描画
+  }
 
   // ブックマークボタンは登録状態で色が変わるため、実スタイル適用は
   // refreshBookmarkIndicator() 側で行う。背景色だけは揃えておきたいので

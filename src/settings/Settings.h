@@ -66,8 +66,13 @@ public:
   void         removePathOverride(const QString& path);
 
   // ── 表示設定 ───────────────────────────
+  // ファイルリスト用フォント (旧名 font())
   QFont  font()                        const;
   void   setFont(const QFont& font);
+
+  // パス表示ラベル用フォント
+  QFont  pathFont()                    const;
+  void   setPathFont(const QFont& font);
 
   FileSizeFormat fileSizeFormat()       const;
   void           setFileSizeFormat(FileSizeFormat fmt);
@@ -180,6 +185,7 @@ private:
   PaneSettings     m_paneSettings[static_cast<int>(PaneType::Count)];
   QMap<QString, PaneSettings> m_pathOverrides;
   QFont            m_font;
+  QFont            m_pathFont;
   FileSizeFormat   m_fileSizeFormat  = FileSizeFormat::Auto;
   QString          m_dateTimeFormat  = "yyyy/MM/dd HH:mm:ss";
   QList<ColorRule> m_colorRules;
