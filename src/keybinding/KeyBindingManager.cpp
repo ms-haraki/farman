@@ -116,9 +116,8 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::Key_H), "history.show" },
 
     // Application
-    { QKeySequence(Qt::Key_F9),           "app.settings" },
-    { QKeySequence(Qt::Key_F10),          "app.quit"     },
-    { QKeySequence(Qt::CTRL | Qt::Key_Q), "app.quit"     },
+    { QKeySequence(Qt::CTRL | Qt::Key_Comma), "app.settings" },
+    { QKeySequence(Qt::CTRL | Qt::Key_Q),     "app.quit"     },
   };
 }
 
@@ -165,7 +164,11 @@ void KeyBindingManager::loadFromSettings() {
   // Mac キーボードに Insert キーが無いため、Mac でも打てるキーに置き換え。
   // version < 6: history.show のデフォルトを Ctrl+Shift+H から h に変更。
   // 単キーで打てるほうが操作的に楽。
-  if (version < 6) {
+  // version < 7: app.settings を F9 → Ctrl+, に、app.quit を F10/Ctrl+Q → Q に
+  // 変更し、ファンクションキーを既定から排除。
+  // version < 8: app.quit を Q → Ctrl+Q (macOS では Cmd+Q) に戻す。
+  // OS 標準のショートカットに揃えるため。
+  if (version < 8) {
     qDebug() << "KeyBindingManager: migrating bindings from version" << version;
     loadDefaults();
     saveToSettings();
@@ -223,7 +226,7 @@ void KeyBindingManager::saveToSettings() const {
 
   QJsonObject root;
   root["bindings"] = bindings;
-  root["version"] = 6;
+  root["version"] = 8;
 
   QJsonDocument doc(root);
   QString jsonData = QString::fromUtf8(doc.toJson(QJsonDocument::Indented));
