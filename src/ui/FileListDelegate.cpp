@@ -25,34 +25,38 @@ void FileListDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
   // デフォルトの選択ハイライトも描画しない（カーソル位置の背景色変更を防ぐ）
   opt.state &= ~QStyle::State_Selected;
 
-  // デフォルトの描画（選択状態の背景色などはModelのQt::BackgroundRoleで制御）
+  // カーソル行判定
+  const QAbstractItemView* view = qobject_cast<const QAbstractItemView*>(option.widget);
+  bool isCurrentRow = false;
+  if (view) {
+    const QModelIndex currentIndex = view->currentIndex();
+    isCurrentRow = currentIndex.isValid() && currentIndex.row() == index.row();
+  }
+
+  const Settings& s = Settings::instance();
+  QColor cursorColor = s.cursorColor(m_active);
+  if (!cursorColor.isValid()) {
+    cursorColor = m_active ? Qt::black : Qt::lightGray;
+  }
+
+  // RowBackground 形状の場合、デフォルト描画前に背景を塗っておく
+  if (isCurrentRow && s.cursorShape() == CursorShape::RowBackground) {
+    painter->fillRect(option.rect, cursorColor);
+  }
+
   QStyledItemDelegate::paint(painter, opt, index);
 
-  // カレントアイテム（カーソル）の場合は下線を描画
-  // 全てのカラムで、各カラムの範囲内に下線を描画
-  const QAbstractItemView* view = qobject_cast<const QAbstractItemView*>(option.widget);
-  if (view) {
-    QModelIndex currentIndex = view->currentIndex();
-    if (currentIndex.isValid() && currentIndex.row() == index.row()) {
-      painter->save();
-
-      // 下線の色は Settings のカーソル色（active/inactive）
-      QColor underlineColor = Settings::instance().cursorColor(m_active);
-      if (!underlineColor.isValid()) {
-        underlineColor = m_active ? Qt::black : Qt::lightGray;
-      }
-      QPen pen(underlineColor);
-      pen.setWidth(2);
-      painter->setPen(pen);
-
-      // このカラムの範囲で下線を描画
-      int y = option.rect.bottom();
-      int left = option.rect.left();
-      int right = option.rect.right();
-      painter->drawLine(left, y, right, y);
-
-      painter->restore();
-    }
+  // Underline 形状の場合、行下端に線を描画
+  if (isCurrentRow && s.cursorShape() == CursorShape::Underline) {
+    painter->save();
+    const int thickness = qMax(1, s.cursorThickness());
+    QPen pen(cursorColor);
+    pen.setWidth(thickness);
+    painter->setPen(pen);
+    // 太線が下端からはみ出さないよう中心を内側にオフセット
+    const int y = option.rect.bottom() - thickness / 2;
+    painter->drawLine(option.rect.left(), y, option.rect.right(), y);
+    painter->restore();
   }
 }
 

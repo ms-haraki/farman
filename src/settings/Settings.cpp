@@ -194,6 +194,22 @@ void Settings::setCursorColor(bool active, const QColor& c) {
   else        m_cursorInactiveColor = c;
 }
 
+CursorShape Settings::cursorShape() const {
+  return m_cursorShape;
+}
+
+void Settings::setCursorShape(CursorShape shape) {
+  m_cursorShape = shape;
+}
+
+int Settings::cursorThickness() const {
+  return m_cursorThickness;
+}
+
+void Settings::setCursorThickness(int px) {
+  m_cursorThickness = qBound(1, px, 32);
+}
+
 InitialPathMode Settings::initialPathMode(PaneType pane) const {
   int idx = static_cast<int>(pane);
   if (idx < 0 || idx >= static_cast<int>(PaneType::Count)) {
@@ -785,6 +801,15 @@ void Settings::load() {
     QColor a(cursorColors.value("active").toString());
     if (a.isValid()) m_cursorActiveColor = a;
   }
+  {
+    const QString shapeStr = appearance.value("cursorShape").toString();
+    m_cursorShape = (shapeStr == QLatin1String("rowBackground"))
+                      ? CursorShape::RowBackground
+                      : CursorShape::Underline;
+  }
+  if (appearance.contains("cursorThickness")) {
+    m_cursorThickness = qBound(1, appearance.value("cursorThickness").toInt(2), 32);
+  }
   if (cursorColors.contains("inactive")) {
     QColor i(cursorColors.value("inactive").toString());
     if (i.isValid()) m_cursorInactiveColor = i;
@@ -1025,6 +1050,10 @@ void Settings::save() const {
   cursorColorsJson["active"]   = m_cursorActiveColor.name(QColor::HexArgb);
   cursorColorsJson["inactive"] = m_cursorInactiveColor.name(QColor::HexArgb);
   appearance["cursorColors"] = cursorColorsJson;
+  appearance["cursorShape"] = (m_cursorShape == CursorShape::RowBackground)
+                                ? QStringLiteral("rowBackground")
+                                : QStringLiteral("underline");
+  appearance["cursorThickness"] = m_cursorThickness;
 
   root["appearance"] = appearance;
 

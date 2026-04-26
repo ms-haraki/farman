@@ -10,6 +10,7 @@ class QComboBox;
 class QGroupBox;
 class QCheckBox;
 class QGridLayout;
+class QSpinBox;
 
 namespace Farman {
 
@@ -73,11 +74,13 @@ private:
   QPushButton* m_pathBgButton = nullptr;
   QColor       m_pathFgValue;
   QColor       m_pathBgValue;
-  // Cursor colors
+  // Cursor colors / shape
   QPushButton* m_cursorActiveButton   = nullptr;
   QPushButton* m_cursorInactiveButton = nullptr;
   QColor       m_cursorActiveValue;
   QColor       m_cursorInactiveValue;
+  QComboBox*   m_cursorShapeCombo     = nullptr;
+  QSpinBox*    m_cursorThicknessSpin  = nullptr;
 
   // Pending changes
   QString m_pendingDateTimeFormat;

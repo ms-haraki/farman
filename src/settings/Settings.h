@@ -103,6 +103,12 @@ public:
   QColor           cursorColor(bool active)         const;
   void             setCursorColor(bool active, const QColor& c);
 
+  // カーソル形状 (Underline / RowBackground) と Underline 時の線太さ (px)
+  CursorShape      cursorShape()                    const;
+  void             setCursorShape(CursorShape shape);
+  int              cursorThickness()                const;
+  void             setCursorThickness(int px);
+
   // ── 起動設定 ───────────────────────────
   // ペインごとの初期表示ディレクトリ
   InitialPathMode initialPathMode(PaneType pane)            const;
@@ -200,6 +206,8 @@ private:
   QColor           m_pathBackground       = QColor(0xE0, 0xE0, 0xE0);
   QColor           m_cursorActiveColor    = QColor(Qt::black);
   QColor           m_cursorInactiveColor  = QColor(Qt::lightGray);
+  CursorShape      m_cursorShape          = CursorShape::Underline;
+  int              m_cursorThickness      = 2;  // px (Underline 時のみ)
   // Per-pane 初期表示ディレクトリ（デフォルトは LastSession で従来動作と互換）
   InitialPathMode  m_initialPathMode[static_cast<int>(PaneType::Count)] = {
     InitialPathMode::LastSession,

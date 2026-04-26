@@ -94,6 +94,12 @@ enum class InitialPathMode {
   Custom        // ユーザー指定の固定パス
 };
 
+// ファイルリストのカーソル形状
+enum class CursorShape {
+  Underline,    // 行の下端に横棒を描画 (太さは Settings::cursorThickness で指定)
+  RowBackground // 行全体の背景色を変える
+};
+
 // バイナリビュアーの 16 進ダンプ単位
 enum class BinaryViewerUnit {
   Byte1,

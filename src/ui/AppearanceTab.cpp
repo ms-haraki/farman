@@ -8,6 +8,7 @@
 #include <QComboBox>
 #include <QCheckBox>
 #include <QLabel>
+#include <QSpinBox>
 #include <QFontDialog>
 #include <QColorDialog>
 
@@ -41,9 +42,17 @@ void AppearanceTab::setupUi() {
     return btn;
   };
 
-  // ─── Path グループ: フォント + 色 ─────────────────────
+  // ラベル + ウィジェットを横並びの 1 ペアにまとめるヘルパー
+  auto addPair = [this](QHBoxLayout* row, const QString& labelText, QWidget* w) {
+    QLabel* label = new QLabel(labelText, this);
+    row->addWidget(label);
+    row->addWidget(w);
+    row->addSpacing(12);
+  };
+
+  // ─── Path グループ: Font / Foreground / Background を横並び ───
   QGroupBox* pathGroup = new QGroupBox(tr("Path"), this);
-  QFormLayout* pathForm = new QFormLayout(pathGroup);
+  QHBoxLayout* pathRow = new QHBoxLayout(pathGroup);
 
   m_pathFontButton = new QPushButton(tr("Select Font..."), this);
   m_pathFontButton->setToolTip(tr("Choose the font for the path label above each pane"));
@@ -57,26 +66,57 @@ void AppearanceTab::setupUi() {
         .arg(m_pathFontValue.pointSize()));
     }
   });
-  pathForm->addRow(tr("Font:"), m_pathFontButton);
+  addPair(pathRow, tr("Font:"), m_pathFontButton);
 
   m_pathFgButton = makeColorButton(m_pathFgValue, tr("Path Foreground Color"));
   m_pathBgButton = makeColorButton(m_pathBgValue, tr("Path Background Color"));
-  pathForm->addRow(tr("Foreground:"), m_pathFgButton);
-  pathForm->addRow(tr("Background:"), m_pathBgButton);
-
+  addPair(pathRow, tr("Foreground:"), m_pathFgButton);
+  addPair(pathRow, tr("Background:"), m_pathBgButton);
+  pathRow->addStretch();
   mainLayout->addWidget(pathGroup);
 
-  // ─── File List グループ: フォント + 表示形式 + カーソル + 色 ──
+  // ─── Cursor グループ: Shape / Thickness / Active / Inactive を横並び ─
+  QGroupBox* cursorGroup = new QGroupBox(tr("Cursor"), this);
+  QHBoxLayout* cursorRow = new QHBoxLayout(cursorGroup);
+
+  m_cursorShapeCombo = new QComboBox(this);
+  m_cursorShapeCombo->addItem(tr("Underline"),      static_cast<int>(CursorShape::Underline));
+  m_cursorShapeCombo->addItem(tr("Row Background"), static_cast<int>(CursorShape::RowBackground));
+  m_cursorShapeCombo->setToolTip(
+    tr("Underline: thin line at the bottom of the row.\n"
+       "Row Background: fill the entire row with the cursor color."));
+  addPair(cursorRow, tr("Shape:"), m_cursorShapeCombo);
+
+  m_cursorThicknessSpin = new QSpinBox(this);
+  m_cursorThicknessSpin->setRange(1, 32);
+  m_cursorThicknessSpin->setSuffix(tr(" px"));
+  m_cursorThicknessSpin->setToolTip(tr("Underline thickness in pixels (used only when shape is Underline)"));
+  addPair(cursorRow, tr("Thickness:"), m_cursorThicknessSpin);
+
+  // Underline 以外のときは Thickness を無効化
+  connect(m_cursorShapeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
+    const auto shape = static_cast<CursorShape>(m_cursorShapeCombo->currentData().toInt());
+    m_cursorThicknessSpin->setEnabled(shape == CursorShape::Underline);
+  });
+
+  m_cursorActiveButton   = makeColorButton(m_cursorActiveValue,   tr("Active Cursor Color"));
+  m_cursorInactiveButton = makeColorButton(m_cursorInactiveValue, tr("Inactive Cursor Color"));
+  addPair(cursorRow, tr("Active:"),   m_cursorActiveButton);
+  addPair(cursorRow, tr("Inactive:"), m_cursorInactiveButton);
+  cursorRow->addStretch();
+  mainLayout->addWidget(cursorGroup);
+
+  // ─── File List グループ: フォント/表示形式 + ファイル種別カラー ──
   QGroupBox* fileListGroup = new QGroupBox(tr("File List"), this);
   QVBoxLayout* fileListOuter = new QVBoxLayout(fileListGroup);
 
-  // Font + 表示フォーマット
-  QFormLayout* fileListForm = new QFormLayout();
+  // Font / File Size / Date/Time を横並び
+  QHBoxLayout* fileListRow = new QHBoxLayout();
 
   m_fontButton = new QPushButton(tr("Select Font..."), this);
   m_fontButton->setToolTip(tr("Choose the font for the file list"));
   connect(m_fontButton, &QPushButton::clicked, this, &AppearanceTab::onSelectFont);
-  fileListForm->addRow(tr("Font:"), m_fontButton);
+  addPair(fileListRow, tr("Font:"), m_fontButton);
 
   m_fileSizeFormatCombo = new QComboBox(this);
   m_fileSizeFormatCombo->addItem(tr("Bytes"), static_cast<int>(FileSizeFormat::Bytes));
@@ -84,7 +124,7 @@ void AppearanceTab::setupUi() {
   m_fileSizeFormatCombo->addItem(tr("KiB/MiB/GiB (1024)"), static_cast<int>(FileSizeFormat::IEC));
   m_fileSizeFormatCombo->addItem(tr("Auto"), static_cast<int>(FileSizeFormat::Auto));
   m_fileSizeFormatCombo->setToolTip(tr("Choose how file sizes are displayed"));
-  fileListForm->addRow(tr("File Size:"), m_fileSizeFormatCombo);
+  addPair(fileListRow, tr("File Size:"), m_fileSizeFormatCombo);
 
   m_dateTimeFormatCombo = new QComboBox(this);
   m_dateTimeFormatCombo->setEditable(true);
@@ -94,22 +134,12 @@ void AppearanceTab::setupUi() {
   m_dateTimeFormatCombo->addItem("MM/dd/yyyy HH:mm:ss");
   m_dateTimeFormatCombo->addItem("yyyy/MM/dd");
   m_dateTimeFormatCombo->setToolTip(tr("Choose the date/time format (Qt format string)"));
-  fileListForm->addRow(tr("Date/Time:"), m_dateTimeFormatCombo);
+  addPair(fileListRow, tr("Date/Time:"), m_dateTimeFormatCombo);
+  fileListRow->addStretch();
+  fileListOuter->addLayout(fileListRow);
 
-  fileListOuter->addLayout(fileListForm);
-
-  // Cursor (行カーソルの色)
-  QGroupBox* cursorGroup = new QGroupBox(tr("Cursor"), this);
-  QFormLayout* cursorForm = new QFormLayout(cursorGroup);
-  m_cursorActiveButton   = makeColorButton(m_cursorActiveValue,   tr("Active Cursor Color"));
-  m_cursorInactiveButton = makeColorButton(m_cursorInactiveValue, tr("Inactive Cursor Color"));
-  cursorForm->addRow(tr("Active:"),   m_cursorActiveButton);
-  cursorForm->addRow(tr("Inactive:"), m_cursorInactiveButton);
-  fileListOuter->addWidget(cursorGroup);
-
-  // ファイル種別ごとのカラーリング — アクティブ／非アクティブ × 通常／選択の 4 グリッド
-  QGroupBox* categoryGroup = new QGroupBox(tr("Colors"), this);
-  QVBoxLayout* categoryOuter = new QVBoxLayout(categoryGroup);
+  // ファイル種別ごとのカラーリング (4 グリッド)
+  QVBoxLayout* categoryOuter = fileListOuter;
 
   auto buildStateGrid = [this](const QString& title, bool selected, bool inactive) -> QGroupBox* {
     QGroupBox* box = new QGroupBox(title, this);
@@ -121,6 +151,8 @@ void AppearanceTab::setupUi() {
     buildCategoryRow(grid, 1, FileCategory::Normal,    tr("Normal"),    selected, inactive);
     buildCategoryRow(grid, 2, FileCategory::Hidden,    tr("Hidden"),    selected, inactive);
     buildCategoryRow(grid, 3, FileCategory::Directory, tr("Directory"), selected, inactive);
+    // 余り行で縦方向のストレッチを吸収して、ヘッダー＋3 行を上端に詰める
+    grid->setRowStretch(4, 1);
     return box;
   };
 
@@ -147,8 +179,6 @@ void AppearanceTab::setupUi() {
           this, [this](bool checked) {
     m_inactivePaneGroup->setEnabled(checked);
   });
-
-  fileListOuter->addWidget(categoryGroup);
 
   mainLayout->addWidget(fileListGroup, /*stretch*/ 1);
 }
@@ -204,6 +234,15 @@ void AppearanceTab::loadSettings() {
   m_cursorInactiveValue = settings.cursorColor(false);
   updateColorButton(m_cursorActiveButton,   m_cursorActiveValue);
   updateColorButton(m_cursorInactiveButton, m_cursorInactiveValue);
+
+  for (int i = 0; i < m_cursorShapeCombo->count(); ++i) {
+    if (m_cursorShapeCombo->itemData(i).toInt() == static_cast<int>(settings.cursorShape())) {
+      m_cursorShapeCombo->setCurrentIndex(i);
+      break;
+    }
+  }
+  m_cursorThicknessSpin->setValue(settings.cursorThickness());
+  m_cursorThicknessSpin->setEnabled(settings.cursorShape() == CursorShape::Underline);
 }
 
 void AppearanceTab::onSelectFont() {
@@ -323,6 +362,9 @@ void AppearanceTab::save() {
   settings.setPathBackground(m_pathBgValue);
   settings.setCursorColor(true,  m_cursorActiveValue);
   settings.setCursorColor(false, m_cursorInactiveValue);
+  settings.setCursorShape(
+    static_cast<CursorShape>(m_cursorShapeCombo->currentData().toInt()));
+  settings.setCursorThickness(m_cursorThicknessSpin->value());
 }
 
 } // namespace Farman
