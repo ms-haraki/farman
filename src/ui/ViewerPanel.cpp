@@ -1,12 +1,10 @@
 #include "ViewerPanel.h"
 #include "viewer/BinaryView.h"
+#include "viewer/TextView.h"
 #include <QVBoxLayout>
-#include <QTextEdit>
 #include <QLabel>
 #include <QScrollArea>
 #include <QStackedWidget>
-#include <QFile>
-#include <QTextStream>
 #include <QPixmap>
 #include <QFileInfo>
 #include <QMimeDatabase>
@@ -18,7 +16,7 @@ namespace Farman {
 ViewerPanel::ViewerPanel(QWidget* parent)
   : QWidget(parent)
   , m_stack(nullptr)
-  , m_textEdit(nullptr)
+  , m_textView(nullptr)
   , m_imageScrollArea(nullptr)
   , m_imageLabel(nullptr)
   , m_binaryView(nullptr) {
@@ -36,10 +34,8 @@ void ViewerPanel::setupUi() {
   layout->addWidget(m_stack);
 
   // ===== Text Viewer =====
-  m_textEdit = new QTextEdit(this);
-  m_textEdit->setReadOnly(true);
-  m_textEdit->setLineWrapMode(QTextEdit::NoWrap);
-  m_stack->addWidget(m_textEdit);
+  m_textView = new TextView(this);
+  m_stack->addWidget(m_textView);
 
   // ===== Image Viewer =====
   m_imageScrollArea = new QScrollArea(this);
@@ -92,25 +88,15 @@ bool ViewerPanel::openFile(const QString& filePath) {
 }
 
 bool ViewerPanel::openTextFile(const QString& filePath) {
-  QFile file(filePath);
-  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+  if (!m_textView->loadFile(filePath)) {
     return false;
   }
-
-  QTextStream in(&file);
-  QString content = in.readAll();
-  m_textEdit->setPlainText(content);
-  file.close();
-
-  // Move cursor to beginning
-  QTextCursor cursor = m_textEdit->textCursor();
-  cursor.movePosition(QTextCursor::Start);
-  m_textEdit->setTextCursor(cursor);
-
-  m_stack->setCurrentWidget(m_textEdit);
+  m_stack->setCurrentWidget(m_textView);
+  // MainWindow::showViewer が後段で ViewerPanel->setFocus() を呼ぶので、
+  // ここでフォーカス委譲先 (= 現在ページ) を最新のウィジェットに切り替える
+  setFocusProxy(m_textView);
   m_currentFilePath = filePath;
   emit fileOpened(filePath);
-
   return true;
 }
 
@@ -124,6 +110,7 @@ bool ViewerPanel::openImageFile(const QString& filePath) {
   updateImageScale();
 
   m_stack->setCurrentWidget(m_imageScrollArea);
+  setFocusProxy(m_imageScrollArea);
   m_currentFilePath = filePath;
   emit fileOpened(filePath);
 
@@ -136,6 +123,7 @@ bool ViewerPanel::openBinaryFile(const QString& filePath) {
   }
 
   m_stack->setCurrentWidget(m_binaryView);
+  setFocusProxy(m_binaryView);
   m_currentFilePath = filePath;
   emit fileOpened(filePath);
   return true;
@@ -171,7 +159,7 @@ void ViewerPanel::updateImageScale() {
 }
 
 void ViewerPanel::clear() {
-  m_textEdit->clear();
+  m_textView->clearContent();
   m_imageLabel->clear();
   m_originalPixmap = QPixmap();
   m_binaryView->clearContent();

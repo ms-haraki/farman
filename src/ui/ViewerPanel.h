@@ -2,7 +2,6 @@
 
 #include <QWidget>
 
-class QTextEdit;
 class QLabel;
 class QScrollArea;
 class QStackedWidget;
@@ -10,6 +9,7 @@ class QStackedWidget;
 namespace Farman {
 
 class BinaryView;
+class TextView;
 
 class ViewerPanel : public QWidget {
   Q_OBJECT
@@ -42,10 +42,10 @@ private:
   void updateImageScale();
 
   QStackedWidget* m_stack;
-  QTextEdit* m_textEdit;
+  TextView*    m_textView;
   QScrollArea* m_imageScrollArea;
-  QLabel* m_imageLabel;
-  BinaryView* m_binaryView;
+  QLabel*      m_imageLabel;
+  BinaryView*  m_binaryView;
 
   QString m_currentFilePath;
   QPixmap m_originalPixmap;  // 元の画像サイズを保持

@@ -2,9 +2,9 @@
 
 #include <QMainWindow>
 
-class QTextEdit;
-
 namespace Farman {
+
+class TextView;
 
 class TextViewerWindow : public QMainWindow {
   Q_OBJECT
@@ -17,8 +17,8 @@ private:
   void setupUi();
   void loadFile();
 
-  QString m_filePath;
-  QTextEdit* m_textEdit;
+  QString    m_filePath;
+  TextView*  m_textView;
 };
 
 } // namespace Farman

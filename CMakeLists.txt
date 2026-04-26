@@ -53,6 +53,7 @@ qt_add_executable(farman
   src/core/workers/ArchiveExtractWorker.cpp
   src/model/FileListModel.cpp
   src/viewer/ViewerDispatcher.cpp
+  src/viewer/TextView.cpp
   src/viewer/TextViewerWindow.cpp
   src/viewer/ImageViewerWindow.cpp
   src/viewer/BinaryView.cpp

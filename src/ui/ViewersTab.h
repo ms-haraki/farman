@@ -1,8 +1,10 @@
 #pragma once
 
+#include <QColor>
 #include <QFont>
 #include <QWidget>
 
+class QCheckBox;
 class QComboBox;
 class QPushButton;
 class QTabWidget;
@@ -29,6 +31,26 @@ private:
   QWidget* buildBinaryViewerPage();
 
   QTabWidget* m_subTabs = nullptr;
+
+  // Text viewer widgets
+  QPushButton* m_textFontButton          = nullptr;
+  QFont        m_textSelectedFont;
+  QComboBox*   m_textEncodingCombo       = nullptr;
+  QCheckBox*   m_textShowLineNumbersCheck = nullptr;
+  QCheckBox*   m_textWordWrapCheck       = nullptr;
+  // 色ボタン (Normal Fg/Bg, Selected Fg/Bg, Line Number Fg/Bg)
+  QPushButton* m_textNormalFgButton     = nullptr;
+  QPushButton* m_textNormalBgButton     = nullptr;
+  QPushButton* m_textSelectedFgButton   = nullptr;
+  QPushButton* m_textSelectedBgButton   = nullptr;
+  QPushButton* m_textLineNumberFgButton = nullptr;
+  QPushButton* m_textLineNumberBgButton = nullptr;
+  QColor       m_textNormalFgValue;
+  QColor       m_textNormalBgValue;
+  QColor       m_textSelectedFgValue;
+  QColor       m_textSelectedBgValue;
+  QColor       m_textLineNumberFgValue;
+  QColor       m_textLineNumberBgValue;
 
   // Binary viewer widgets
   QComboBox*   m_binaryUnitCombo     = nullptr;

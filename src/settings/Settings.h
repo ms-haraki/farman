@@ -126,6 +126,29 @@ public:
   bool typeAheadIncludeDotfiles()       const;
   void setTypeAheadIncludeDotfiles(bool include);
 
+  // ── テキストビュアー設定 ───────────────────
+  QFont   textViewerFont()              const;
+  void    setTextViewerFont(const QFont& font);
+  QString textViewerEncoding()          const;
+  void    setTextViewerEncoding(const QString& encoding);
+  bool    textViewerShowLineNumbers()   const;
+  void    setTextViewerShowLineNumbers(bool show);
+  bool    textViewerWordWrap()          const;
+  void    setTextViewerWordWrap(bool wrap);
+  // 通常テキスト/選択範囲/行番号エリアの前景・背景色
+  QColor  textViewerNormalForeground()  const;
+  QColor  textViewerNormalBackground()  const;
+  QColor  textViewerSelectedForeground()const;
+  QColor  textViewerSelectedBackground()const;
+  QColor  textViewerLineNumberForeground() const;
+  QColor  textViewerLineNumberBackground() const;
+  void    setTextViewerNormalForeground(const QColor& c);
+  void    setTextViewerNormalBackground(const QColor& c);
+  void    setTextViewerSelectedForeground(const QColor& c);
+  void    setTextViewerSelectedBackground(const QColor& c);
+  void    setTextViewerLineNumberForeground(const QColor& c);
+  void    setTextViewerLineNumberBackground(const QColor& c);
+
   // ── バイナリビュアー設定 ───────────────────
   BinaryViewerUnit   binaryViewerUnit()     const;
   void               setBinaryViewerUnit(BinaryViewerUnit unit);
@@ -218,6 +241,18 @@ private:
   bool             m_confirmOnExit   = false;
   bool             m_cursorLoop      = false;
   bool             m_typeAheadIncludeDotfiles = true;
+
+  // Text viewer
+  QFont              m_textViewerFont;  // 既定は monospace (コンストラクタで初期化)
+  QString            m_textViewerEncoding         = QStringLiteral("UTF-8");
+  bool               m_textViewerShowLineNumbers  = true;
+  bool               m_textViewerWordWrap         = false;
+  QColor             m_textViewerNormalFg         = QColor(Qt::black);
+  QColor             m_textViewerNormalBg;
+  QColor             m_textViewerSelectedFg       = QColor(Qt::white);
+  QColor             m_textViewerSelectedBg       = QColor(0x31, 0x6A, 0xC5);
+  QColor             m_textViewerLineNumberFg     = QColor(Qt::darkGray);
+  QColor             m_textViewerLineNumberBg     = QColor(0xF0, 0xF0, 0xF0);
 
   // Binary viewer
   BinaryViewerUnit   m_binaryViewerUnit     = BinaryViewerUnit::Byte1;

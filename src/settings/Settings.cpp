@@ -24,6 +24,7 @@ Settings::Settings(QObject* parent) : QObject(parent) {
   // Initialize with default font
   m_font = QGuiApplication::font();
   m_pathFont = QGuiApplication::font();
+  m_textViewerFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
   m_binaryViewerFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
 
   // Initialize pane settings with defaults
@@ -259,6 +260,31 @@ bool Settings::typeAheadIncludeDotfiles() const {
 void Settings::setTypeAheadIncludeDotfiles(bool include) {
   m_typeAheadIncludeDotfiles = include;
 }
+
+QFont Settings::textViewerFont() const { return m_textViewerFont; }
+void  Settings::setTextViewerFont(const QFont& font) { m_textViewerFont = font; }
+
+QString Settings::textViewerEncoding() const { return m_textViewerEncoding; }
+void    Settings::setTextViewerEncoding(const QString& encoding) { m_textViewerEncoding = encoding; }
+
+bool Settings::textViewerShowLineNumbers() const { return m_textViewerShowLineNumbers; }
+void Settings::setTextViewerShowLineNumbers(bool show) { m_textViewerShowLineNumbers = show; }
+
+bool Settings::textViewerWordWrap() const { return m_textViewerWordWrap; }
+void Settings::setTextViewerWordWrap(bool wrap) { m_textViewerWordWrap = wrap; }
+
+QColor Settings::textViewerNormalForeground()       const { return m_textViewerNormalFg; }
+QColor Settings::textViewerNormalBackground()       const { return m_textViewerNormalBg; }
+QColor Settings::textViewerSelectedForeground()     const { return m_textViewerSelectedFg; }
+QColor Settings::textViewerSelectedBackground()     const { return m_textViewerSelectedBg; }
+QColor Settings::textViewerLineNumberForeground()   const { return m_textViewerLineNumberFg; }
+QColor Settings::textViewerLineNumberBackground()   const { return m_textViewerLineNumberBg; }
+void   Settings::setTextViewerNormalForeground(const QColor& c)     { m_textViewerNormalFg = c; }
+void   Settings::setTextViewerNormalBackground(const QColor& c)     { m_textViewerNormalBg = c; }
+void   Settings::setTextViewerSelectedForeground(const QColor& c)   { m_textViewerSelectedFg = c; }
+void   Settings::setTextViewerSelectedBackground(const QColor& c)   { m_textViewerSelectedBg = c; }
+void   Settings::setTextViewerLineNumberForeground(const QColor& c) { m_textViewerLineNumberFg = c; }
+void   Settings::setTextViewerLineNumberBackground(const QColor& c) { m_textViewerLineNumberBg = c; }
 
 BinaryViewerUnit Settings::binaryViewerUnit() const {
   return m_binaryViewerUnit;
@@ -833,6 +859,30 @@ void Settings::load() {
   }
   m_defaultBookmarksInstalled = behavior.value("defaultBookmarksInstalled").toBool(false);
 
+  // Load text viewer settings
+  QJsonObject textViewer = root.value("textViewer").toObject();
+  if (textViewer.contains("font")) {
+    QFont f;
+    if (f.fromString(textViewer.value("font").toString())) {
+      m_textViewerFont = f;
+    }
+  }
+  m_textViewerEncoding        = textViewer.value("encoding").toString(QStringLiteral("UTF-8"));
+  m_textViewerShowLineNumbers = textViewer.value("showLineNumbers").toBool(true);
+  m_textViewerWordWrap        = textViewer.value("wordWrap").toBool(false);
+  auto loadColor = [&](const QString& key, QColor& dst) {
+    if (textViewer.contains(key)) {
+      QColor c(textViewer.value(key).toString());
+      if (c.isValid()) dst = c;
+    }
+  };
+  loadColor("normalFg",     m_textViewerNormalFg);
+  loadColor("normalBg",     m_textViewerNormalBg);
+  loadColor("selectedFg",   m_textViewerSelectedFg);
+  loadColor("selectedBg",   m_textViewerSelectedBg);
+  loadColor("lineNumberFg", m_textViewerLineNumberFg);
+  loadColor("lineNumberBg", m_textViewerLineNumberBg);
+
   // Load binary viewer settings
   QJsonObject binaryViewer = root.value("binaryViewer").toObject();
   m_binaryViewerUnit     = bytesToBinaryViewerUnit(binaryViewer.value("unitBytes").toInt(1));
@@ -1072,6 +1122,22 @@ void Settings::save() const {
   }
   behavior["defaultBookmarksInstalled"] = m_defaultBookmarksInstalled;
   root["behavior"] = behavior;
+
+  // Save text viewer settings
+  QJsonObject textViewer;
+  textViewer["font"]            = m_textViewerFont.toString();
+  textViewer["encoding"]        = m_textViewerEncoding;
+  textViewer["showLineNumbers"] = m_textViewerShowLineNumbers;
+  textViewer["wordWrap"]        = m_textViewerWordWrap;
+  textViewer["normalFg"]        = m_textViewerNormalFg.name(QColor::HexArgb);
+  if (m_textViewerNormalBg.isValid()) {
+    textViewer["normalBg"]      = m_textViewerNormalBg.name(QColor::HexArgb);
+  }
+  textViewer["selectedFg"]      = m_textViewerSelectedFg.name(QColor::HexArgb);
+  textViewer["selectedBg"]      = m_textViewerSelectedBg.name(QColor::HexArgb);
+  textViewer["lineNumberFg"]    = m_textViewerLineNumberFg.name(QColor::HexArgb);
+  textViewer["lineNumberBg"]    = m_textViewerLineNumberBg.name(QColor::HexArgb);
+  root["textViewer"] = textViewer;
 
   // Save binary viewer settings
   QJsonObject binaryViewer;
