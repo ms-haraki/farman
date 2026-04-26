@@ -8,6 +8,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QDebug>
+#include <QFontDatabase>
 #include <QGuiApplication>
 #include <QSize>
 #include <QPoint>
@@ -22,6 +23,7 @@ Settings& Settings::instance() {
 Settings::Settings(QObject* parent) : QObject(parent) {
   // Initialize with default font
   m_font = QGuiApplication::font();
+  m_binaryViewerFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
 
   // Initialize pane settings with defaults
   for (int i = 0; i < static_cast<int>(PaneType::Count); ++i) {
@@ -231,6 +233,38 @@ bool Settings::typeAheadIncludeDotfiles() const {
 
 void Settings::setTypeAheadIncludeDotfiles(bool include) {
   m_typeAheadIncludeDotfiles = include;
+}
+
+BinaryViewerUnit Settings::binaryViewerUnit() const {
+  return m_binaryViewerUnit;
+}
+
+void Settings::setBinaryViewerUnit(BinaryViewerUnit unit) {
+  m_binaryViewerUnit = unit;
+}
+
+BinaryViewerEndian Settings::binaryViewerEndian() const {
+  return m_binaryViewerEndian;
+}
+
+void Settings::setBinaryViewerEndian(BinaryViewerEndian endian) {
+  m_binaryViewerEndian = endian;
+}
+
+QString Settings::binaryViewerEncoding() const {
+  return m_binaryViewerEncoding;
+}
+
+void Settings::setBinaryViewerEncoding(const QString& encoding) {
+  m_binaryViewerEncoding = encoding;
+}
+
+QFont Settings::binaryViewerFont() const {
+  return m_binaryViewerFont;
+}
+
+void Settings::setBinaryViewerFont(const QFont& font) {
+  m_binaryViewerFont = font;
 }
 
 bool Settings::persistHistory() const {
@@ -578,6 +612,33 @@ ColorRule jsonToColorRule(const QJsonObject& obj) {
 
 } // anonymous namespace
 
+int binaryViewerUnitToBytes(BinaryViewerUnit unit) {
+  switch (unit) {
+    case BinaryViewerUnit::Byte1: return 1;
+    case BinaryViewerUnit::Byte2: return 2;
+    case BinaryViewerUnit::Byte4: return 4;
+    case BinaryViewerUnit::Byte8: return 8;
+  }
+  return 1;
+}
+
+BinaryViewerUnit bytesToBinaryViewerUnit(int bytes) {
+  switch (bytes) {
+    case 2: return BinaryViewerUnit::Byte2;
+    case 4: return BinaryViewerUnit::Byte4;
+    case 8: return BinaryViewerUnit::Byte8;
+    default: return BinaryViewerUnit::Byte1;
+  }
+}
+
+QString binaryViewerEndianToString(BinaryViewerEndian endian) {
+  return (endian == BinaryViewerEndian::Big) ? QStringLiteral("big") : QStringLiteral("little");
+}
+
+BinaryViewerEndian stringToBinaryViewerEndian(const QString& str) {
+  return (str == QLatin1String("big")) ? BinaryViewerEndian::Big : BinaryViewerEndian::Little;
+}
+
 void Settings::load() {
   QString configPath = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
   QString filePath = configPath + "/settings.json";
@@ -730,6 +791,18 @@ void Settings::load() {
     }
   }
   m_defaultBookmarksInstalled = behavior.value("defaultBookmarksInstalled").toBool(false);
+
+  // Load binary viewer settings
+  QJsonObject binaryViewer = root.value("binaryViewer").toObject();
+  m_binaryViewerUnit     = bytesToBinaryViewerUnit(binaryViewer.value("unitBytes").toInt(1));
+  m_binaryViewerEndian   = stringToBinaryViewerEndian(binaryViewer.value("endian").toString());
+  m_binaryViewerEncoding = binaryViewer.value("encoding").toString(QStringLiteral("UTF-8"));
+  if (binaryViewer.contains("font")) {
+    QFont f;
+    if (f.fromString(binaryViewer.value("font").toString())) {
+      m_binaryViewerFont = f;
+    }
+  }
 
   // ペイン履歴（ON の時のみ読む。OFF の時は必ず空にする）
   for (int i = 0; i < static_cast<int>(PaneType::Count); ++i) {
@@ -951,6 +1024,14 @@ void Settings::save() const {
   behavior["defaultBookmarksInstalled"] = m_defaultBookmarksInstalled;
   root["behavior"] = behavior;
 
+  // Save binary viewer settings
+  QJsonObject binaryViewer;
+  binaryViewer["unitBytes"] = binaryViewerUnitToBytes(m_binaryViewerUnit);
+  binaryViewer["endian"]    = binaryViewerEndianToString(m_binaryViewerEndian);
+  binaryViewer["encoding"]  = m_binaryViewerEncoding;
+  binaryViewer["font"]      = m_binaryViewerFont.toString();
+  root["binaryViewer"] = binaryViewer;
+
   // ペイン履歴（ON のときだけディスクに出す）
   if (m_persistHistory) {
     QJsonObject hist;
@@ -1042,6 +1123,7 @@ void Settings::save() const {
   file.close();
 
   qDebug() << "Settings::save: saved settings to" << filePath;
+  emit settingsChanged();
 }
 
 } // namespace Farman

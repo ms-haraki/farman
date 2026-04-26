@@ -166,6 +166,7 @@ void AppearanceTab::loadSettings() {
   m_pendingDateTimeFormat = settings.dateTimeFormat();
   m_dateTimeFormatCombo->setCurrentText(m_pendingDateTimeFormat);
 
+
   // Load category colors: 4 states (active/inactive × normal/selected)
   for (int i = 0; i < static_cast<int>(FileCategory::Count); ++i) {
     auto loadState = [&](CategoryStateRow& r, bool selected, bool inactive) {
@@ -295,6 +296,7 @@ void AppearanceTab::save() {
 
   // Save date/time format
   settings.setDateTimeFormat(m_dateTimeFormatCombo->currentText());
+
 
   // Save category colors: 4 states
   for (int i = 0; i < static_cast<int>(FileCategory::Count); ++i) {

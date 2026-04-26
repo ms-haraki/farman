@@ -29,6 +29,12 @@ struct ColorRule {
 };
 
 // ペインごとの設定
+// バイナリビュアー設定のシリアライズ補助
+int                binaryViewerUnitToBytes(BinaryViewerUnit unit);
+BinaryViewerUnit   bytesToBinaryViewerUnit(int bytes);
+QString            binaryViewerEndianToString(BinaryViewerEndian endian);
+BinaryViewerEndian stringToBinaryViewerEndian(const QString& str);
+
 struct PaneSettings {
   QString         path;
   SortKey         sortKey      = SortKey::Name;
@@ -109,6 +115,16 @@ public:
   bool typeAheadIncludeDotfiles()       const;
   void setTypeAheadIncludeDotfiles(bool include);
 
+  // ── バイナリビュアー設定 ───────────────────
+  BinaryViewerUnit   binaryViewerUnit()     const;
+  void               setBinaryViewerUnit(BinaryViewerUnit unit);
+  BinaryViewerEndian binaryViewerEndian()   const;
+  void               setBinaryViewerEndian(BinaryViewerEndian endian);
+  QString            binaryViewerEncoding() const;
+  void               setBinaryViewerEncoding(const QString& encoding);
+  QFont              binaryViewerFont()     const;
+  void               setBinaryViewerFont(const QFont& font);
+
   // ディレクトリ履歴を終了時に保存し、起動時に復元するか
   bool persistHistory()                 const;
   void setPersistHistory(bool persist);
@@ -156,7 +172,7 @@ public:
   void save() const;
 
 signals:
-  void settingsChanged();
+  void settingsChanged() const;
 
 private:
   explicit Settings(QObject* parent = nullptr);
@@ -188,6 +204,12 @@ private:
   bool             m_confirmOnExit   = false;
   bool             m_cursorLoop      = false;
   bool             m_typeAheadIncludeDotfiles = true;
+
+  // Binary viewer
+  BinaryViewerUnit   m_binaryViewerUnit     = BinaryViewerUnit::Byte1;
+  BinaryViewerEndian m_binaryViewerEndian   = BinaryViewerEndian::Little;
+  QString            m_binaryViewerEncoding = QStringLiteral("UTF-8");
+  QFont              m_binaryViewerFont;  // 既定は monospace (コンストラクタで初期化)
   bool             m_persistHistory  = false;
   QStringList      m_paneHistory[static_cast<int>(PaneType::Count)];
   QString          m_autoRenameTemplate = QStringLiteral(" ({n})");

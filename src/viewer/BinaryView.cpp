@@ -1,63 +1,118 @@
 #include "BinaryView.h"
+#include "settings/Settings.h"
 
+#include <QComboBox>
 #include <QFile>
 #include <QFontDatabase>
-#include <QString>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QPlainTextEdit>
+#include <QSignalBlocker>
+#include <QStringDecoder>
+#include <QTextCodec>
+#include <QVBoxLayout>
 
 namespace Farman {
 
 namespace {
 
-QString formatHexDump(const QByteArray& data, qint64 baseOffset = 0) {
-  constexpr int bytesPerLine = 16;
-  const int lineCount = (data.size() + bytesPerLine - 1) / bytesPerLine;
+constexpr int kBytesPerLine = 16;
+constexpr char kHexDigits[] = "0123456789abcdef";
+
+void appendUnitHex(QString& out, const unsigned char* valueBytes, int unitBytes,
+                   BinaryViewerEndian endian) {
+  if (endian == BinaryViewerEndian::Big) {
+    for (int i = 0; i < unitBytes; ++i) {
+      out.append(QLatin1Char(kHexDigits[valueBytes[i] >> 4]));
+      out.append(QLatin1Char(kHexDigits[valueBytes[i] & 0xF]));
+    }
+  } else {
+    for (int i = unitBytes - 1; i >= 0; --i) {
+      out.append(QLatin1Char(kHexDigits[valueBytes[i] >> 4]));
+      out.append(QLatin1Char(kHexDigits[valueBytes[i] & 0xF]));
+    }
+  }
+}
+
+QString decodeStringColumn(const QByteArray& chunk, const QString& encoding) {
+  // Qt6 ネイティブの QStringDecoder は UTF-* / Latin1 / System のみ。
+  // Shift_JIS / EUC-JP 等は Qt5Compat の QTextCodec にフォールバック。
+  QString decoded;
+  QStringDecoder decoder(encoding.toUtf8().constData());
+  if (decoder.isValid()) {
+    decoded = decoder.decode(chunk);
+  } else if (QTextCodec* codec = QTextCodec::codecForName(encoding.toUtf8())) {
+    decoded = codec->toUnicode(chunk);
+  } else {
+    decoded = QStringDecoder(QStringDecoder::Utf8).decode(chunk);
+  }
 
   QString out;
-  // 1 行あたり: 8 (addr) + 2 (sp) + 16*3 (hex+sp) + 1 (mid extra sp) + 16 (ascii) + 1 (\n) ≈ 76
-  out.reserve(lineCount * 80);
+  out.reserve(decoded.size());
+  for (QChar ch : decoded) {
+    if (ch == QChar(0xFFFD) || !ch.isPrint() || ch.isSpace()) {
+      out.append(QLatin1Char('.'));
+    } else {
+      out.append(ch);
+    }
+  }
+  return out;
+}
 
-  static const char hex[] = "0123456789abcdef";
+QString formatHexDump(const QByteArray& data, BinaryViewerUnit unit,
+                      BinaryViewerEndian endian, const QString& encoding) {
+  const int unitBytes  = binaryViewerUnitToBytes(unit);
+  const int unitsPerLine = kBytesPerLine / unitBytes;
+  const int midUnit    = unitsPerLine / 2;
+  const int lineCount  = (data.size() + kBytesPerLine - 1) / kBytesPerLine;
+
+  QString out;
+  out.reserve(lineCount * (8 + 2 + unitsPerLine * (unitBytes * 2 + 1) + 2 + kBytesPerLine + 1));
 
   for (int line = 0; line < lineCount; ++line) {
-    const int off = line * bytesPerLine;
-    const qint64 addr = baseOffset + off;
+    const int off  = line * kBytesPerLine;
+    const qint64 addr = static_cast<qint64>(off);
 
-    // address: 8 桁 16 進
     char addrBuf[9];
     for (int i = 7; i >= 0; --i) {
-      addrBuf[i] = hex[(addr >> ((7 - i) * 4)) & 0xF];
+      addrBuf[i] = kHexDigits[(addr >> ((7 - i) * 4)) & 0xF];
     }
     addrBuf[8] = '\0';
     out.append(QLatin1String(addrBuf, 8));
     out.append(QLatin1String("  "));
 
-    // hex columns
-    for (int i = 0; i < bytesPerLine; ++i) {
-      if (i == 8) {
+    for (int u = 0; u < unitsPerLine; ++u) {
+      if (u == midUnit && midUnit > 0) {
         out.append(QLatin1Char(' '));
       }
-      const int idx = off + i;
-      if (idx < data.size()) {
-        const unsigned char b = static_cast<unsigned char>(data[idx]);
-        out.append(QLatin1Char(hex[b >> 4]));
-        out.append(QLatin1Char(hex[b & 0xF]));
+      const int unitOff = off + u * unitBytes;
+      const int avail = qMin(unitBytes, static_cast<int>(data.size()) - unitOff);
+      if (avail >= unitBytes) {
+        appendUnitHex(out, reinterpret_cast<const unsigned char*>(data.constData() + unitOff),
+                      unitBytes, endian);
+      } else if (avail > 0) {
+        for (int i = 0; i < avail; ++i) {
+          const unsigned char b = static_cast<unsigned char>(data[unitOff + i]);
+          out.append(QLatin1Char(kHexDigits[b >> 4]));
+          out.append(QLatin1Char(kHexDigits[b & 0xF]));
+        }
+        for (int i = avail; i < unitBytes; ++i) {
+          out.append(QLatin1String("  "));
+        }
       } else {
-        out.append(QLatin1String("  "));
+        for (int i = 0; i < unitBytes; ++i) {
+          out.append(QLatin1String("  "));
+        }
       }
       out.append(QLatin1Char(' '));
     }
 
     out.append(QLatin1Char(' '));
 
-    // ASCII column
-    for (int i = 0; i < bytesPerLine; ++i) {
-      const int idx = off + i;
-      if (idx < data.size()) {
-        const unsigned char b = static_cast<unsigned char>(data[idx]);
-        out.append(QChar((b >= 0x20 && b <= 0x7E) ? static_cast<char>(b) : '.'));
-      } else {
-        out.append(QLatin1Char(' '));
-      }
+    const int chunkLen = qMin(kBytesPerLine, static_cast<int>(data.size()) - off);
+    if (chunkLen > 0) {
+      const QByteArray chunk(data.constData() + off, chunkLen);
+      out.append(decodeStringColumn(chunk, encoding));
     }
 
     out.append(QLatin1Char('\n'));
@@ -69,11 +124,122 @@ QString formatHexDump(const QByteArray& data, qint64 baseOffset = 0) {
 } // namespace
 
 BinaryView::BinaryView(QWidget* parent)
-  : QPlainTextEdit(parent)
+  : QWidget(parent)
 {
-  setReadOnly(true);
-  setLineWrapMode(QPlainTextEdit::NoWrap);
-  setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+  setupUi();
+  syncFromSettings();
+
+  // グローバル設定が変更されたらローカル上書きをリセット
+  connect(&Settings::instance(), &Settings::settingsChanged, this, [this] {
+    syncFromSettings();
+    if (!m_filePath.isEmpty()) {
+      render();
+    }
+  });
+}
+
+void BinaryView::setupUi() {
+  QVBoxLayout* root = new QVBoxLayout(this);
+  root->setContentsMargins(0, 0, 0, 0);
+  root->setSpacing(0);
+
+  // ローカル設定オーバーレイ
+  QWidget* toolbar = new QWidget(this);
+  QHBoxLayout* tb = new QHBoxLayout(toolbar);
+  tb->setContentsMargins(4, 2, 4, 2);
+  tb->setSpacing(8);
+
+  tb->addWidget(new QLabel(tr("Unit:"), toolbar));
+  m_unitCombo = new QComboBox(toolbar);
+  m_unitCombo->addItem(tr("1 Byte"), 1);
+  m_unitCombo->addItem(tr("2 Byte"), 2);
+  m_unitCombo->addItem(tr("4 Byte"), 4);
+  m_unitCombo->addItem(tr("8 Byte"), 8);
+  // macOS の「キーボードナビゲーション」設定に依存せず Tab で巡回させる
+  m_unitCombo->setFocusPolicy(Qt::StrongFocus);
+  tb->addWidget(m_unitCombo);
+
+  tb->addWidget(new QLabel(tr("Endian:"), toolbar));
+  m_endianCombo = new QComboBox(toolbar);
+  m_endianCombo->addItem(tr("Little"), static_cast<int>(BinaryViewerEndian::Little));
+  m_endianCombo->addItem(tr("Big"),    static_cast<int>(BinaryViewerEndian::Big));
+  m_endianCombo->setFocusPolicy(Qt::StrongFocus);
+  tb->addWidget(m_endianCombo);
+
+  tb->addWidget(new QLabel(tr("Encoding:"), toolbar));
+  m_encodingCombo = new QComboBox(toolbar);
+  m_encodingCombo->setEditable(true);
+  m_encodingCombo->setFocusPolicy(Qt::StrongFocus);
+  rebuildEncodingItems();
+  tb->addWidget(m_encodingCombo);
+
+  tb->addStretch();
+  root->addWidget(toolbar);
+
+  // 16 進ダンプ本体 (フォントは syncFromSettings で適用)
+  m_textArea = new QPlainTextEdit(this);
+  m_textArea->setReadOnly(true);
+  m_textArea->setLineWrapMode(QPlainTextEdit::NoWrap);
+  root->addWidget(m_textArea, /*stretch*/ 1);
+
+  // ローカルでの変更は Settings に保存しない (render のみ)
+  connect(m_unitCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
+    m_unit = bytesToBinaryViewerUnit(m_unitCombo->currentData().toInt());
+    if (!m_filePath.isEmpty()) render();
+  });
+  connect(m_endianCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
+    m_endian = static_cast<BinaryViewerEndian>(m_endianCombo->currentData().toInt());
+    if (!m_filePath.isEmpty()) render();
+  });
+  connect(m_encodingCombo, &QComboBox::currentTextChanged, this, [this](const QString& text) {
+    const QString trimmed = text.trimmed();
+    if (trimmed.isEmpty()) return;
+    m_encoding = trimmed;
+    if (!m_filePath.isEmpty()) render();
+  });
+}
+
+void BinaryView::rebuildEncodingItems() {
+  m_encodingCombo->clear();
+  m_encodingCombo->addItem(QStringLiteral("UTF-8"));
+  m_encodingCombo->addItem(QStringLiteral("UTF-16LE"));
+  m_encodingCombo->addItem(QStringLiteral("UTF-16BE"));
+  m_encodingCombo->addItem(QStringLiteral("Shift_JIS"));
+  m_encodingCombo->addItem(QStringLiteral("EUC-JP"));
+  m_encodingCombo->addItem(QStringLiteral("ISO-8859-1"));
+}
+
+void BinaryView::syncFromSettings() {
+  const Settings& s = Settings::instance();
+  m_unit     = s.binaryViewerUnit();
+  m_endian   = s.binaryViewerEndian();
+  m_encoding = s.binaryViewerEncoding();
+  m_textArea->setFont(s.binaryViewerFont());
+
+  // コンボの再選択 (シグナルを抑止して二重 render を防ぐ)
+  {
+    QSignalBlocker b(m_unitCombo);
+    const int unitBytes = binaryViewerUnitToBytes(m_unit);
+    for (int i = 0; i < m_unitCombo->count(); ++i) {
+      if (m_unitCombo->itemData(i).toInt() == unitBytes) {
+        m_unitCombo->setCurrentIndex(i);
+        break;
+      }
+    }
+  }
+  {
+    QSignalBlocker b(m_endianCombo);
+    for (int i = 0; i < m_endianCombo->count(); ++i) {
+      if (m_endianCombo->itemData(i).toInt() == static_cast<int>(m_endian)) {
+        m_endianCombo->setCurrentIndex(i);
+        break;
+      }
+    }
+  }
+  {
+    QSignalBlocker b(m_encodingCombo);
+    m_encodingCombo->setCurrentText(m_encoding);
+  }
 }
 
 bool BinaryView::loadFile(const QString& filePath) {
@@ -82,21 +248,33 @@ bool BinaryView::loadFile(const QString& filePath) {
     return false;
   }
 
-  const qint64 totalSize = file.size();
-  const qint64 readSize = qMin<qint64>(totalSize, kMaxBytes);
-  const QByteArray data = file.read(readSize);
+  m_filePath   = filePath;
+  m_totalSize  = file.size();
+  m_loadedSize = qMin<qint64>(m_totalSize, kMaxBytes);
+  m_data       = file.read(m_loadedSize);
   file.close();
 
-  QString text = formatHexDump(data);
-  if (totalSize > readSize) {
-    text.append(QStringLiteral("...\n[truncated: showing first %1 of %2 bytes]\n")
-                  .arg(readSize)
-                  .arg(totalSize));
-  }
-
-  setPlainText(text);
-  moveCursor(QTextCursor::Start);
+  render();
   return true;
+}
+
+void BinaryView::clearContent() {
+  m_filePath.clear();
+  m_data.clear();
+  m_totalSize  = 0;
+  m_loadedSize = 0;
+  m_textArea->clear();
+}
+
+void BinaryView::render() {
+  QString text = formatHexDump(m_data, m_unit, m_endian, m_encoding);
+  if (m_totalSize > m_loadedSize) {
+    text.append(QStringLiteral("...\n[truncated: showing first %1 of %2 bytes]\n")
+                  .arg(m_loadedSize)
+                  .arg(m_totalSize));
+  }
+  m_textArea->setPlainText(text);
+  m_textArea->moveCursor(QTextCursor::Start);
 }
 
 } // namespace Farman

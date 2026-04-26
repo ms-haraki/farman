@@ -7,7 +7,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Core5Compat)
 
 # Homebrew の libarchive は keg-only なので明示的にパスを通す
 if(APPLE AND EXISTS /opt/homebrew/opt/libarchive)
@@ -27,6 +27,7 @@ qt_add_executable(farman
   src/ui/KeybindingTab.cpp
   src/ui/AppearanceTab.cpp
   src/ui/BehaviorTab.cpp
+  src/ui/ViewersTab.cpp
   src/ui/SortFilterDialog.cpp
   src/ui/TransferConfirmDialog.cpp
   src/ui/OverwriteDialog.cpp
@@ -78,6 +79,7 @@ target_include_directories(farman PRIVATE
 target_link_libraries(farman PRIVATE
   Qt6::Core
   Qt6::Widgets
+  Qt6::Core5Compat
   LibArchive::LibArchive
 )
 

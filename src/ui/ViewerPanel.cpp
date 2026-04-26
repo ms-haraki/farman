@@ -174,7 +174,7 @@ void ViewerPanel::clear() {
   m_textEdit->clear();
   m_imageLabel->clear();
   m_originalPixmap = QPixmap();
-  m_binaryView->clear();
+  m_binaryView->clearContent();
   m_currentFilePath.clear();
   emit fileClosed();
 }

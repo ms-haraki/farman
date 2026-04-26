@@ -94,6 +94,20 @@ enum class InitialPathMode {
   Custom        // ユーザー指定の固定パス
 };
 
+// バイナリビュアーの 16 進ダンプ単位
+enum class BinaryViewerUnit {
+  Byte1,
+  Byte2,
+  Byte4,
+  Byte8
+};
+
+// バイナリビュアーの多バイト単位表示時のエンディアン
+enum class BinaryViewerEndian {
+  Little,
+  Big
+};
+
 // ファイル一覧でのカラーリング対象カテゴリ
 enum class FileCategory {
   Normal    = 0,  // 通常ファイル
