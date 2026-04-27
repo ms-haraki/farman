@@ -18,12 +18,8 @@
 
 namespace Farman {
 
-BehaviorTab::BehaviorTab(const QString& leftCurrentPath,
-                         const QString& rightCurrentPath,
-                         QWidget* parent)
+BehaviorTab::BehaviorTab(QWidget* parent)
   : QWidget(parent)
-  , m_leftCurrentPath(leftCurrentPath)
-  , m_rightCurrentPath(rightCurrentPath)
   , m_sortKeyCombo(nullptr)
   , m_sortOrderCombo(nullptr)
   , m_sortKey2ndCombo(nullptr)
@@ -36,20 +32,7 @@ BehaviorTab::BehaviorTab(const QString& leftCurrentPath,
   , m_persistHistoryCheck(nullptr)
   , m_autoRenameTemplateEdit(nullptr)
   , m_defaultDeleteToTrashCheck(nullptr)
-  , m_searchExcludeDirsEdit(nullptr)
-  , m_leftInitialPathModeCombo(nullptr)
-  , m_leftCustomPathEdit(nullptr)
-  , m_leftBrowseButton(nullptr)
-  , m_rightInitialPathModeCombo(nullptr)
-  , m_rightCustomPathEdit(nullptr)
-  , m_rightBrowseButton(nullptr)
-  , m_confirmOnExitCheck(nullptr)
-  , m_windowSizeModeCombo(nullptr)
-  , m_windowWidthSpin(nullptr)
-  , m_windowHeightSpin(nullptr)
-  , m_windowPositionModeCombo(nullptr)
-  , m_windowXSpin(nullptr)
-  , m_windowYSpin(nullptr) {
+  , m_searchExcludeDirsEdit(nullptr) {
   setupUi();
   loadSettings();
 }
@@ -62,8 +45,8 @@ void BehaviorTab::setupUi() {
   QVBoxLayout* sortGroupLayout = new QVBoxLayout(sortGroup);
 
   QLabel* sortLabel = new QLabel(
-    tr("These settings define the default sort and filter behavior for new panes. "
-       "You can override them per-pane during use."),
+    tr("Default sort and filter applied when opening a directory. "
+       "Per-directory saved settings take priority."),
     this
   );
   sortLabel->setWordWrap(true);
@@ -210,241 +193,9 @@ void BehaviorTab::setupUi() {
 
   mainLayout->addWidget(fileOpsGroup);
 
-  // Log settings
-  QGroupBox* logGroup = new QGroupBox(tr("Log"), this);
-  QVBoxLayout* logGroupLayout = new QVBoxLayout(logGroup);
-
-  // Row 1: Show log pane + height + retention
-  m_logVisibleCheck = new QCheckBox(tr("Show log pane"), this);
-  m_logVisibleCheck->setToolTip(
-    tr("Show the log pane between the file panes and status bar. "
-       "Toggle from the View menu or with Ctrl+L."));
-
-  m_logPaneHeightSpin = new QSpinBox(this);
-  m_logPaneHeightSpin->setRange(40, 4000);
-  m_logPaneHeightSpin->setSingleStep(10);
-  m_logPaneHeightSpin->setSuffix(tr(" px"));
-  m_logPaneHeightSpin->setToolTip(tr("Fixed height of the log pane in pixels."));
-
-  m_logRetentionDaysSpin = new QSpinBox(this);
-  m_logRetentionDaysSpin->setRange(1, 36500);
-  m_logRetentionDaysSpin->setSuffix(tr(" days"));
-  m_logRetentionDaysSpin->setToolTip(
-    tr("Daily log files older than this number of days are deleted on startup and on rotation."));
-
-  m_logRetentionForeverCheck = new QCheckBox(tr("Keep forever"), this);
-  m_logRetentionForeverCheck->setToolTip(
-    tr("If checked, never delete old daily log files."));
-
-  QHBoxLayout* logVisibleRow = new QHBoxLayout();
-  logVisibleRow->setContentsMargins(0, 0, 0, 0);
-  logVisibleRow->addWidget(m_logVisibleCheck);
-  logVisibleRow->addSpacing(16);
-  logVisibleRow->addWidget(new QLabel(tr("Height:"), this));
-  logVisibleRow->addWidget(m_logPaneHeightSpin);
-  logVisibleRow->addSpacing(16);
-  logVisibleRow->addWidget(new QLabel(tr("Retention:"), this));
-  logVisibleRow->addWidget(m_logRetentionDaysSpin);
-  logVisibleRow->addSpacing(8);
-  logVisibleRow->addWidget(m_logRetentionForeverCheck);
-  logVisibleRow->addStretch(1);
-  logGroupLayout->addLayout(logVisibleRow);
-
-  // Row 2: Write to file + directory
-  m_logToFileCheck = new QCheckBox(tr("Write log to file"), this);
-  m_logToFileCheck->setToolTip(
-    tr("Append log entries to a date-stamped file (rotated daily) in addition to the log pane."));
-
-  m_logDirectoryEdit = new QLineEdit(this);
-  m_logDirectoryEdit->setPlaceholderText(tr("/path/to/log/dir"));
-  m_logDirectoryEdit->setToolTip(
-    tr("Directory where daily log files (farman-YYYY-MM-DD.log) are stored."));
-
-  m_logDirectoryBrowse = new QToolButton(this);
-  m_logDirectoryBrowse->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
-  m_logDirectoryBrowse->setToolTip(tr("Choose log directory..."));
-
-  QHBoxLayout* logFileRow = new QHBoxLayout();
-  logFileRow->setContentsMargins(0, 0, 0, 0);
-  logFileRow->addWidget(m_logToFileCheck);
-  logFileRow->addWidget(new QLabel(tr("Directory:"), this));
-  logFileRow->addWidget(m_logDirectoryEdit, 1);
-  logFileRow->addWidget(m_logDirectoryBrowse);
-  logGroupLayout->addLayout(logFileRow);
-
-  auto updateLogFileEnabled = [this]() {
-    const bool fileEnabled = m_logToFileCheck->isChecked();
-    m_logDirectoryEdit->setEnabled(fileEnabled);
-    m_logDirectoryBrowse->setEnabled(fileEnabled);
-    m_logRetentionForeverCheck->setEnabled(fileEnabled);
-    m_logRetentionDaysSpin->setEnabled(fileEnabled && !m_logRetentionForeverCheck->isChecked());
-  };
-  connect(m_logToFileCheck, &QCheckBox::toggled, this, updateLogFileEnabled);
-  connect(m_logRetentionForeverCheck, &QCheckBox::toggled, this, updateLogFileEnabled);
-  connect(m_logDirectoryBrowse, &QToolButton::clicked, this, [this]() {
-    const QString start = m_logDirectoryEdit->text().isEmpty()
-                          ? QDir::homePath()
-                          : m_logDirectoryEdit->text();
-    const QString selected = QFileDialog::getExistingDirectory(
-      this, tr("Choose log directory"), start,
-      QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
-    );
-    if (!selected.isEmpty()) {
-      m_logDirectoryEdit->setText(selected);
-    }
-  });
-
-  mainLayout->addWidget(logGroup);
-
-  // Startup settings
-  QGroupBox* startupGroup = new QGroupBox(tr("Startup Settings"), this);
-  QVBoxLayout* startupLayout = new QVBoxLayout(startupGroup);
-
-  // Per-pane initial path (left / right) — Window Settings と同様の 2 カラム
-  QGroupBox* initialPathsGroup = new QGroupBox(tr("Initial Directory"), this);
-  QHBoxLayout* initialPathsLayout = new QHBoxLayout(initialPathsGroup);
-
-  auto buildPanePathBox = [this](
-      const QString& title,
-      QComboBox*& modeCombo,
-      QLineEdit*& pathEdit,
-      QToolButton*& browseBtn) -> QGroupBox* {
-    QGroupBox* box = new QGroupBox(title, this);
-    QFormLayout* form = new QFormLayout(box);
-
-    modeCombo = new QComboBox(this);
-    modeCombo->addItem(tr("Default (Home)"),   static_cast<int>(InitialPathMode::Default));
-    modeCombo->addItem(tr("Last Session"),     static_cast<int>(InitialPathMode::LastSession));
-    modeCombo->addItem(tr("Custom"),           static_cast<int>(InitialPathMode::Custom));
-    form->addRow(tr("Mode:"), modeCombo);
-
-    QWidget* pathRow = new QWidget(this);
-    QHBoxLayout* pathRowLayout = new QHBoxLayout(pathRow);
-    pathRowLayout->setContentsMargins(0, 0, 0, 0);
-    pathEdit = new QLineEdit(this);
-    pathEdit->setPlaceholderText(tr("/path/to/directory"));
-    browseBtn = new QToolButton(this);
-    browseBtn->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
-    browseBtn->setToolTip(tr("Browse for folder..."));
-    pathRowLayout->addWidget(pathEdit, 1);
-    pathRowLayout->addWidget(browseBtn);
-    form->addRow(tr("Custom Path:"), pathRow);
-
-    return box;
-  };
-
-  initialPathsLayout->addWidget(buildPanePathBox(
-    tr("Left Pane"),
-    m_leftInitialPathModeCombo, m_leftCustomPathEdit, m_leftBrowseButton));
-  initialPathsLayout->addWidget(buildPanePathBox(
-    tr("Right Pane"),
-    m_rightInitialPathModeCombo, m_rightCustomPathEdit, m_rightBrowseButton));
-
-  connect(m_leftInitialPathModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-          this, &BehaviorTab::onLeftInitialPathModeChanged);
-  connect(m_rightInitialPathModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-          this, &BehaviorTab::onRightInitialPathModeChanged);
-  connect(m_leftBrowseButton,  &QToolButton::clicked,
-          this, &BehaviorTab::onLeftBrowseInitialPath);
-  connect(m_rightBrowseButton, &QToolButton::clicked,
-          this, &BehaviorTab::onRightBrowseInitialPath);
-
-  startupLayout->addWidget(initialPathsGroup);
-
-  m_confirmOnExitCheck = new QCheckBox(tr("Confirm on exit"), this);
-  m_confirmOnExitCheck->setToolTip(tr("Show confirmation dialog when closing the application"));
-
-  m_languageCombo = new QComboBox(this);
-  m_languageCombo->addItem(tr("Auto (System)"), static_cast<int>(LanguageMode::Auto));
-  m_languageCombo->addItem(tr("English"),       static_cast<int>(LanguageMode::English));
-  m_languageCombo->addItem(QStringLiteral("日本語 (Japanese)"),
-                           static_cast<int>(LanguageMode::Japanese));
-  m_languageCombo->setToolTip(tr("Takes effect on next launch."));
-
-  QHBoxLayout* startupRow = new QHBoxLayout();
-  startupRow->setContentsMargins(0, 0, 0, 0);
-  startupRow->addWidget(m_confirmOnExitCheck);
-  startupRow->addSpacing(16);
-  startupRow->addWidget(new QLabel(tr("Language:"), this));
-  startupRow->addWidget(m_languageCombo);
-  startupRow->addStretch(1);
-  startupLayout->addLayout(startupRow);
-
-  mainLayout->addWidget(startupGroup);
-
-  // Window settings
-  QGroupBox* windowGroup = new QGroupBox(tr("Window Settings"), this);
-  QHBoxLayout* windowLayout = new QHBoxLayout(windowGroup);
-
-  // --- Window size column ---
-  QGroupBox* sizeGroup = new QGroupBox(tr("Size"), this);
-  QFormLayout* sizeFormLayout = new QFormLayout(sizeGroup);
-
-  m_windowSizeModeCombo = new QComboBox(this);
-  m_windowSizeModeCombo->addItem(tr("Default (1200x600)"), static_cast<int>(WindowSizeMode::Default));
-  m_windowSizeModeCombo->addItem(tr("Last Session"), static_cast<int>(WindowSizeMode::LastSession));
-  m_windowSizeModeCombo->addItem(tr("Custom"), static_cast<int>(WindowSizeMode::Custom));
-  connect(m_windowSizeModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-          this, &BehaviorTab::onWindowSizeModeChanged);
-  sizeFormLayout->addRow(tr("Window Size:"), m_windowSizeModeCombo);
-
-  QWidget* sizeWidget = new QWidget(this);
-  QHBoxLayout* sizeLayout = new QHBoxLayout(sizeWidget);
-  sizeLayout->setContentsMargins(0, 0, 0, 0);
-
-  m_windowWidthSpin = new QSpinBox(this);
-  m_windowWidthSpin->setRange(800, 9999);
-  m_windowWidthSpin->setSuffix(tr(" px"));
-  sizeLayout->addWidget(new QLabel(tr("Width:"), this));
-  sizeLayout->addWidget(m_windowWidthSpin);
-
-  m_windowHeightSpin = new QSpinBox(this);
-  m_windowHeightSpin->setRange(600, 9999);
-  m_windowHeightSpin->setSuffix(tr(" px"));
-  sizeLayout->addWidget(new QLabel(tr("Height:"), this));
-  sizeLayout->addWidget(m_windowHeightSpin);
-  sizeLayout->addStretch();
-
-  sizeFormLayout->addRow(tr("Custom Size:"), sizeWidget);
-
-  // --- Window position column ---
-  QGroupBox* posGroup = new QGroupBox(tr("Position"), this);
-  QFormLayout* posFormLayout = new QFormLayout(posGroup);
-
-  m_windowPositionModeCombo = new QComboBox(this);
-  m_windowPositionModeCombo->addItem(tr("Default (Center)"), static_cast<int>(WindowPositionMode::Default));
-  m_windowPositionModeCombo->addItem(tr("Last Session"), static_cast<int>(WindowPositionMode::LastSession));
-  m_windowPositionModeCombo->addItem(tr("Custom"), static_cast<int>(WindowPositionMode::Custom));
-  connect(m_windowPositionModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-          this, &BehaviorTab::onWindowPositionModeChanged);
-  posFormLayout->addRow(tr("Window Position:"), m_windowPositionModeCombo);
-
-  QWidget* posWidget = new QWidget(this);
-  QHBoxLayout* posLayout = new QHBoxLayout(posWidget);
-  posLayout->setContentsMargins(0, 0, 0, 0);
-
-  m_windowXSpin = new QSpinBox(this);
-  m_windowXSpin->setRange(0, 9999);
-  m_windowXSpin->setSuffix(tr(" px"));
-  posLayout->addWidget(new QLabel(tr("X:"), this));
-  posLayout->addWidget(m_windowXSpin);
-
-  m_windowYSpin = new QSpinBox(this);
-  m_windowYSpin->setRange(0, 9999);
-  m_windowYSpin->setSuffix(tr(" px"));
-  posLayout->addWidget(new QLabel(tr("Y:"), this));
-  posLayout->addWidget(m_windowYSpin);
-  posLayout->addStretch();
-
-  posFormLayout->addRow(tr("Custom Position:"), posWidget);
-
-  windowLayout->addWidget(sizeGroup);
-  windowLayout->addWidget(posGroup);
-
-  mainLayout->addWidget(windowGroup);
-
   mainLayout->addStretch();
 }
+
 
 void BehaviorTab::loadSettings() {
   auto& settings = Settings::instance();
@@ -501,71 +252,6 @@ void BehaviorTab::loadSettings() {
   m_defaultDeleteToTrashCheck->setChecked(settings.defaultDeleteToTrash());
   m_searchExcludeDirsEdit->setText(settings.searchExcludeDirs().join(QLatin1Char(' ')));
 
-  // Log settings
-  m_logVisibleCheck->setChecked(settings.logVisible());
-  m_logPaneHeightSpin->setValue(settings.logPaneHeight());
-  m_logToFileCheck->setChecked(settings.logToFile());
-  m_logDirectoryEdit->setText(settings.logDirectory());
-  const int retention = settings.logRetentionDays();
-  m_logRetentionForeverCheck->setChecked(retention == 0);
-  m_logRetentionDaysSpin->setValue(retention > 0 ? retention : 7);
-  const bool logFileEnabled = m_logToFileCheck->isChecked();
-  m_logDirectoryEdit->setEnabled(logFileEnabled);
-  m_logDirectoryBrowse->setEnabled(logFileEnabled);
-  m_logRetentionForeverCheck->setEnabled(logFileEnabled);
-  m_logRetentionDaysSpin->setEnabled(logFileEnabled && !m_logRetentionForeverCheck->isChecked());
-
-  // Startup settings
-  auto selectModeByData = [](QComboBox* combo, int value) {
-    for (int i = 0; i < combo->count(); ++i) {
-      if (combo->itemData(i).toInt() == value) {
-        combo->setCurrentIndex(i);
-        return;
-      }
-    }
-  };
-  selectModeByData(m_leftInitialPathModeCombo,
-                   static_cast<int>(settings.initialPathMode(PaneType::Left)));
-  selectModeByData(m_rightInitialPathModeCombo,
-                   static_cast<int>(settings.initialPathMode(PaneType::Right)));
-  // Custom Path 欄の表示はモードに応じて onXxxInitialPathModeChanged が決める
-  onLeftInitialPathModeChanged(m_leftInitialPathModeCombo->currentIndex());
-  onRightInitialPathModeChanged(m_rightInitialPathModeCombo->currentIndex());
-
-  m_confirmOnExitCheck->setChecked(settings.confirmOnExit());
-  for (int i = 0; i < m_languageCombo->count(); ++i) {
-    if (m_languageCombo->itemData(i).toInt() == static_cast<int>(settings.language())) {
-      m_languageCombo->setCurrentIndex(i);
-      break;
-    }
-  }
-
-  // Window settings
-  for (int i = 0; i < m_windowSizeModeCombo->count(); ++i) {
-    if (m_windowSizeModeCombo->itemData(i).toInt() == static_cast<int>(settings.windowSizeMode())) {
-      m_windowSizeModeCombo->setCurrentIndex(i);
-      break;
-    }
-  }
-
-  QSize customSize = settings.customWindowSize();
-  m_windowWidthSpin->setValue(customSize.width());
-  m_windowHeightSpin->setValue(customSize.height());
-
-  for (int i = 0; i < m_windowPositionModeCombo->count(); ++i) {
-    if (m_windowPositionModeCombo->itemData(i).toInt() == static_cast<int>(settings.windowPositionMode())) {
-      m_windowPositionModeCombo->setCurrentIndex(i);
-      break;
-    }
-  }
-
-  QPoint customPos = settings.customWindowPosition();
-  m_windowXSpin->setValue(customPos.x());
-  m_windowYSpin->setValue(customPos.y());
-
-  // Update spin box enabled state
-  onWindowSizeModeChanged(m_windowSizeModeCombo->currentIndex());
-  onWindowPositionModeChanged(m_windowPositionModeCombo->currentIndex());
 }
 
 void BehaviorTab::save() {
@@ -625,107 +311,6 @@ void BehaviorTab::save() {
     settings.setSearchExcludeDirs(excludeList);
   }
 
-  // Save log settings
-  settings.setLogVisible(m_logVisibleCheck->isChecked());
-  settings.setLogPaneHeight(m_logPaneHeightSpin->value());
-  settings.setLogToFile(m_logToFileCheck->isChecked());
-  settings.setLogDirectory(m_logDirectoryEdit->text().trimmed());
-  settings.setLogRetentionDays(
-    m_logRetentionForeverCheck->isChecked() ? 0 : m_logRetentionDaysSpin->value());
-
-  // Save startup settings
-  settings.setInitialPathMode(
-    PaneType::Left,
-    static_cast<InitialPathMode>(m_leftInitialPathModeCombo->currentData().toInt())
-  );
-  settings.setInitialPathMode(
-    PaneType::Right,
-    static_cast<InitialPathMode>(m_rightInitialPathModeCombo->currentData().toInt())
-  );
-  settings.setCustomInitialPath(PaneType::Left,  m_leftCustomPathEdit->text().trimmed());
-  settings.setCustomInitialPath(PaneType::Right, m_rightCustomPathEdit->text().trimmed());
-  settings.setConfirmOnExit(m_confirmOnExitCheck->isChecked());
-  settings.setLanguage(static_cast<LanguageMode>(m_languageCombo->currentData().toInt()));
-
-  // Save window settings
-  WindowSizeMode sizeMode = static_cast<WindowSizeMode>(m_windowSizeModeCombo->currentData().toInt());
-  settings.setWindowSizeMode(sizeMode);
-  settings.setCustomWindowSize(QSize(m_windowWidthSpin->value(), m_windowHeightSpin->value()));
-
-  WindowPositionMode posMode = static_cast<WindowPositionMode>(m_windowPositionModeCombo->currentData().toInt());
-  settings.setWindowPositionMode(posMode);
-  settings.setCustomWindowPosition(QPoint(m_windowXSpin->value(), m_windowYSpin->value()));
-}
-
-void BehaviorTab::onWindowSizeModeChanged(int index) {
-  WindowSizeMode mode = static_cast<WindowSizeMode>(m_windowSizeModeCombo->itemData(index).toInt());
-  bool enableCustomSize = (mode == WindowSizeMode::Custom);
-  m_windowWidthSpin->setEnabled(enableCustomSize);
-  m_windowHeightSpin->setEnabled(enableCustomSize);
-}
-
-void BehaviorTab::onWindowPositionModeChanged(int index) {
-  WindowPositionMode mode = static_cast<WindowPositionMode>(m_windowPositionModeCombo->itemData(index).toInt());
-  bool enableCustomPos = (mode == WindowPositionMode::Custom);
-  m_windowXSpin->setEnabled(enableCustomPos);
-  m_windowYSpin->setEnabled(enableCustomPos);
-}
-
-void BehaviorTab::onLeftInitialPathModeChanged(int index) {
-  InitialPathMode mode = static_cast<InitialPathMode>(
-    m_leftInitialPathModeCombo->itemData(index).toInt());
-  const bool enableCustom = (mode == InitialPathMode::Custom);
-  m_leftCustomPathEdit->setEnabled(enableCustom);
-  m_leftBrowseButton->setEnabled(enableCustom);
-
-  // Custom + 保存済み値あり → 保存値を表示、それ以外 → ペインのカレントディレクトリ
-  const QString saved = Settings::instance().customInitialPath(PaneType::Left);
-  if (mode == InitialPathMode::Custom && !saved.isEmpty()) {
-    m_leftCustomPathEdit->setText(saved);
-  } else {
-    m_leftCustomPathEdit->setText(m_leftCurrentPath);
-  }
-}
-
-void BehaviorTab::onRightInitialPathModeChanged(int index) {
-  InitialPathMode mode = static_cast<InitialPathMode>(
-    m_rightInitialPathModeCombo->itemData(index).toInt());
-  const bool enableCustom = (mode == InitialPathMode::Custom);
-  m_rightCustomPathEdit->setEnabled(enableCustom);
-  m_rightBrowseButton->setEnabled(enableCustom);
-
-  const QString saved = Settings::instance().customInitialPath(PaneType::Right);
-  if (mode == InitialPathMode::Custom && !saved.isEmpty()) {
-    m_rightCustomPathEdit->setText(saved);
-  } else {
-    m_rightCustomPathEdit->setText(m_rightCurrentPath);
-  }
-}
-
-void BehaviorTab::onLeftBrowseInitialPath() {
-  const QString start = m_leftCustomPathEdit->text().isEmpty()
-                        ? QDir::homePath()
-                        : m_leftCustomPathEdit->text();
-  const QString selected = QFileDialog::getExistingDirectory(
-    this, tr("Select initial directory for left pane"), start,
-    QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
-  );
-  if (!selected.isEmpty()) {
-    m_leftCustomPathEdit->setText(selected);
-  }
-}
-
-void BehaviorTab::onRightBrowseInitialPath() {
-  const QString start = m_rightCustomPathEdit->text().isEmpty()
-                        ? QDir::homePath()
-                        : m_rightCustomPathEdit->text();
-  const QString selected = QFileDialog::getExistingDirectory(
-    this, tr("Select initial directory for right pane"), start,
-    QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
-  );
-  if (!selected.isEmpty()) {
-    m_rightCustomPathEdit->setText(selected);
-  }
 }
 
 } // namespace Farman

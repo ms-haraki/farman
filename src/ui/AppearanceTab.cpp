@@ -50,30 +50,30 @@ void AppearanceTab::setupUi() {
     row->addSpacing(12);
   };
 
-  // ─── Path グループ: Font / Foreground / Background を横並び ───
-  QGroupBox* pathGroup = new QGroupBox(tr("Path"), this);
-  QHBoxLayout* pathRow = new QHBoxLayout(pathGroup);
+  // ─── Address グループ: Font / Foreground / Background を横並び ───
+  QGroupBox* addressGroup = new QGroupBox(tr("Address"), this);
+  QHBoxLayout* addressRow = new QHBoxLayout(addressGroup);
 
-  m_pathFontButton = new QPushButton(tr("Select Font..."), this);
-  m_pathFontButton->setToolTip(tr("Choose the font for the path label above each pane"));
-  connect(m_pathFontButton, &QPushButton::clicked, this, [this]() {
+  m_addressFontButton = new QPushButton(tr("Select Font..."), this);
+  m_addressFontButton->setToolTip(tr("Choose the font for the address bar above each pane"));
+  connect(m_addressFontButton, &QPushButton::clicked, this, [this]() {
     bool ok = false;
-    const QFont chosen = QFontDialog::getFont(&ok, m_pathFontValue, this, tr("Path Font"));
+    const QFont chosen = QFontDialog::getFont(&ok, m_addressFontValue, this, tr("Address Font"));
     if (ok) {
-      m_pathFontValue = chosen;
-      m_pathFontButton->setText(QString("%1, %2pt")
-        .arg(m_pathFontValue.family())
-        .arg(m_pathFontValue.pointSize()));
+      m_addressFontValue = chosen;
+      m_addressFontButton->setText(QString("%1, %2pt")
+        .arg(m_addressFontValue.family())
+        .arg(m_addressFontValue.pointSize()));
     }
   });
-  addPair(pathRow, tr("Font:"), m_pathFontButton);
+  addPair(addressRow, tr("Font:"), m_addressFontButton);
 
-  m_pathFgButton = makeColorButton(m_pathFgValue, tr("Path Foreground Color"));
-  m_pathBgButton = makeColorButton(m_pathBgValue, tr("Path Background Color"));
-  addPair(pathRow, tr("Foreground:"), m_pathFgButton);
-  addPair(pathRow, tr("Background:"), m_pathBgButton);
-  pathRow->addStretch();
-  mainLayout->addWidget(pathGroup);
+  m_addressFgButton = makeColorButton(m_addressFgValue, tr("Address Foreground Color"));
+  m_addressBgButton = makeColorButton(m_addressBgValue, tr("Address Background Color"));
+  addPair(addressRow, tr("Foreground:"), m_addressFgButton);
+  addPair(addressRow, tr("Background:"), m_addressBgButton);
+  addressRow->addStretch();
+  mainLayout->addWidget(addressGroup);
 
   // ─── Cursor グループ: Shape / Thickness / Active / Inactive を横並び ─
   QGroupBox* cursorGroup = new QGroupBox(tr("Cursor"), this);
@@ -189,8 +189,8 @@ void AppearanceTab::loadSettings() {
   // Load fonts
   m_selectedFont = settings.font();
   m_fontButton->setText(QString("%1, %2pt").arg(m_selectedFont.family()).arg(m_selectedFont.pointSize()));
-  m_pathFontValue = settings.pathFont();
-  m_pathFontButton->setText(QString("%1, %2pt").arg(m_pathFontValue.family()).arg(m_pathFontValue.pointSize()));
+  m_addressFontValue = settings.addressFont();
+  m_addressFontButton->setText(QString("%1, %2pt").arg(m_addressFontValue.family()).arg(m_addressFontValue.pointSize()));
 
   // Load file size format
   FileSizeFormat fmt = settings.fileSizeFormat();
@@ -225,10 +225,10 @@ void AppearanceTab::loadSettings() {
   m_inactivePaneGroup->setEnabled(settings.useInactivePaneColors());
 
   // Path & Cursor
-  m_pathFgValue = settings.pathForeground();
-  m_pathBgValue = settings.pathBackground();
-  updateColorButton(m_pathFgButton, m_pathFgValue);
-  updateColorButton(m_pathBgButton, m_pathBgValue);
+  m_addressFgValue = settings.addressForeground();
+  m_addressBgValue = settings.addressBackground();
+  updateColorButton(m_addressFgButton, m_addressFgValue);
+  updateColorButton(m_addressBgButton, m_addressBgValue);
 
   m_cursorActiveValue   = settings.cursorColor(true);
   m_cursorInactiveValue = settings.cursorColor(false);
@@ -335,7 +335,7 @@ void AppearanceTab::save() {
 
   // Save fonts
   settings.setFont(m_selectedFont);
-  settings.setPathFont(m_pathFontValue);
+  settings.setAddressFont(m_addressFontValue);
 
   // Save file size format
   FileSizeFormat fmt = static_cast<FileSizeFormat>(
@@ -358,8 +358,8 @@ void AppearanceTab::save() {
   settings.setUseInactivePaneColors(m_useInactivePaneColorsCheck->isChecked());
 
   // Save path & cursor colors
-  settings.setPathForeground(m_pathFgValue);
-  settings.setPathBackground(m_pathBgValue);
+  settings.setAddressForeground(m_addressFgValue);
+  settings.setAddressBackground(m_addressBgValue);
   settings.setCursorColor(true,  m_cursorActiveValue);
   settings.setCursorColor(false, m_cursorInactiveValue);
   settings.setCursorShape(

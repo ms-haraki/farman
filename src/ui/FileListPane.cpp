@@ -23,7 +23,7 @@ namespace Farman {
 
 FileListPane::FileListPane(QWidget* parent)
   : QWidget(parent)
-  , m_pathLabel(nullptr)
+  , m_addressLabel(nullptr)
   , m_bookmarkLabel(nullptr)
   , m_folderButton(nullptr)
   , m_view(nullptr)
@@ -60,13 +60,13 @@ void FileListPane::setupUi() {
           this, &FileListPane::onBookmarkButtonClicked);
   pathLayout->addWidget(m_bookmarkLabel, 0);
 
-  m_pathLabel = new QLabel(this);
+  m_addressLabel = new QLabel(this);
   // パスが長くてもペイン幅を押し広げないよう、水平方向の推奨幅は無視させる。
   // テキストは end を elide で表示して親幅に収まるようにする。
-  m_pathLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-  m_pathLabel->setMinimumWidth(0);
-  m_pathLabel->setTextFormat(Qt::PlainText);
-  pathLayout->addWidget(m_pathLabel, 1);
+  m_addressLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+  m_addressLabel->setMinimumWidth(0);
+  m_addressLabel->setTextFormat(Qt::PlainText);
+  pathLayout->addWidget(m_addressLabel, 1);
 
   m_folderButton = new QToolButton(this);
   m_folderButton->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
@@ -123,15 +123,15 @@ void FileListPane::setupUi() {
 }
 
 void FileListPane::refreshAppearance() {
-  const QColor fg = Settings::instance().pathForeground();
-  const QColor bg = Settings::instance().pathBackground();
-  const QString pathStyle = QString("QLabel { color: %1; background-color: %2; padding: 2px 5px; }")
-                              .arg(fg.name(), bg.name());
+  const QColor fg = Settings::instance().addressForeground();
+  const QColor bg = Settings::instance().addressBackground();
+  const QString addressStyle = QString("QLabel { color: %1; background-color: %2; padding: 2px 5px; }")
+                                 .arg(fg.name(), bg.name());
   const QString buttonStyle = QString("QToolButton { background-color: %1; border: none; padding: 2px; }")
                                 .arg(bg.name());
-  if (m_pathLabel) {
-    m_pathLabel->setStyleSheet(pathStyle);
-    m_pathLabel->setFont(Settings::instance().pathFont());
+  if (m_addressLabel) {
+    m_addressLabel->setStyleSheet(addressStyle);
+    m_addressLabel->setFont(Settings::instance().addressFont());
   }
   if (m_folderButton) m_folderButton->setStyleSheet(buttonStyle);
   if (m_view) {
@@ -152,7 +152,7 @@ QString FileListPane::currentPath() const {
 bool FileListPane::setPath(const QString& path) {
   bool result = m_model->setPath(path);
   if (result) {
-    m_pathLabel->setText(m_model->currentPath());
+    m_addressLabel->setText(m_model->currentPath());
     refreshBookmarkIndicator();
     // カーソルを先頭に移動
     if (m_model->rowCount() > 0) {
@@ -268,9 +268,9 @@ void FileListPane::refreshBookmarkIndicator() {
   const QString path = currentPath();
   const bool marked = !path.isEmpty() && BookmarkManager::instance().contains(path);
 
-  const QColor bg = Settings::instance().pathBackground();
+  const QColor bg = Settings::instance().addressBackground();
   // 登録済み: ゴールド / 未登録: 背景に溶け込むグレーで無効化表示。
-  // padding は pathLabel と揃え、left だけ広めにしてアイコン然と見せる。
+  // padding はアドレスラベルと揃え、left だけ広めにしてアイコン然と見せる。
   const QString color = marked ? QStringLiteral("#d4a017")
                                : QStringLiteral("#bdbdbd");
   const QString style = QString(

@@ -24,7 +24,7 @@ Settings::Settings(QObject* parent) : QObject(parent) {
   // Initialize with default font
   m_font = QGuiApplication::font();
   m_logDirectory = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
-  m_pathFont = QGuiApplication::font();
+  m_addressFont = QGuiApplication::font();
   m_textViewerFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
   m_binaryViewerFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
 
@@ -120,12 +120,12 @@ void Settings::setFont(const QFont& font) {
   m_font = font;
 }
 
-QFont Settings::pathFont() const {
-  return m_pathFont;
+QFont Settings::addressFont() const {
+  return m_addressFont;
 }
 
-void Settings::setPathFont(const QFont& font) {
-  m_pathFont = font;
+void Settings::setAddressFont(const QFont& font) {
+  m_addressFont = font;
 }
 
 FileSizeFormat Settings::fileSizeFormat() const {
@@ -183,10 +183,10 @@ void Settings::setUseInactivePaneColors(bool use) {
   m_useInactivePaneColors = use;
 }
 
-QColor Settings::pathForeground() const { return m_pathForeground; }
-void   Settings::setPathForeground(const QColor& c) { m_pathForeground = c; }
-QColor Settings::pathBackground() const { return m_pathBackground; }
-void   Settings::setPathBackground(const QColor& c) { m_pathBackground = c; }
+QColor Settings::addressForeground() const { return m_addressForeground; }
+void   Settings::setAddressForeground(const QColor& c) { m_addressForeground = c; }
+QColor Settings::addressBackground() const { return m_addressBackground; }
+void   Settings::setAddressBackground(const QColor& c) { m_addressBackground = c; }
 
 QColor Settings::cursorColor(bool active) const {
   return active ? m_cursorActiveColor : m_cursorInactiveColor;
@@ -791,11 +791,14 @@ void Settings::load() {
       m_font.setPointSize(fontObj.value("pointSize").toInt());
     }
   }
-  if (appearance.contains("pathFont")) {
-    QJsonObject fontObj = appearance.value("pathFont").toObject();
-    m_pathFont.setFamily(fontObj.value("family").toString());
+  // 新キー addressFont、旧キー pathFont の順でフォールバック
+  if (appearance.contains("addressFont") || appearance.contains("pathFont")) {
+    QJsonObject fontObj = appearance.contains("addressFont")
+                          ? appearance.value("addressFont").toObject()
+                          : appearance.value("pathFont").toObject();
+    m_addressFont.setFamily(fontObj.value("family").toString());
     if (fontObj.contains("pointSize")) {
-      m_pathFont.setPointSize(fontObj.value("pointSize").toInt());
+      m_addressFont.setPointSize(fontObj.value("pointSize").toInt());
     }
   }
 
@@ -872,15 +875,17 @@ void Settings::load() {
   m_useInactivePaneColors =
     appearance.value("useInactivePaneColors").toBool(false);
 
-  // Path label colors
-  QJsonObject pathColors = appearance.value("pathColors").toObject();
-  if (pathColors.contains("foreground")) {
-    QColor fg(pathColors.value("foreground").toString());
-    if (fg.isValid()) m_pathForeground = fg;
+  // Address bar colors (新キー addressColors、旧キー pathColors の順でフォールバック)
+  QJsonObject addressColors = appearance.contains("addressColors")
+                              ? appearance.value("addressColors").toObject()
+                              : appearance.value("pathColors").toObject();
+  if (addressColors.contains("foreground")) {
+    QColor fg(addressColors.value("foreground").toString());
+    if (fg.isValid()) m_addressForeground = fg;
   }
-  if (pathColors.contains("background")) {
-    QColor bg(pathColors.value("background").toString());
-    if (bg.isValid()) m_pathBackground = bg;
+  if (addressColors.contains("background")) {
+    QColor bg(addressColors.value("background").toString());
+    if (bg.isValid()) m_addressBackground = bg;
   }
 
   // Cursor colors
@@ -1210,10 +1215,10 @@ void Settings::save() const {
   fontObj["family"] = m_font.family();
   fontObj["pointSize"] = m_font.pointSize();
   appearance["font"] = fontObj;
-  QJsonObject pathFontObj;
-  pathFontObj["family"] = m_pathFont.family();
-  pathFontObj["pointSize"] = m_pathFont.pointSize();
-  appearance["pathFont"] = pathFontObj;
+  QJsonObject addressFontObj;
+  addressFontObj["family"] = m_addressFont.family();
+  addressFontObj["pointSize"] = m_addressFont.pointSize();
+  appearance["addressFont"] = addressFontObj;
   appearance["fileSizeFormat"] = fileSizeFormatToString(m_fileSizeFormat);
   appearance["dateTimeFormat"] = m_dateTimeFormat;
 
@@ -1243,10 +1248,10 @@ void Settings::save() const {
   appearance["categoryColors"]      = catColors;
   appearance["useInactivePaneColors"] = m_useInactivePaneColors;
 
-  QJsonObject pathColors;
-  pathColors["foreground"] = m_pathForeground.name(QColor::HexArgb);
-  pathColors["background"] = m_pathBackground.name(QColor::HexArgb);
-  appearance["pathColors"] = pathColors;
+  QJsonObject addressColors;
+  addressColors["foreground"] = m_addressForeground.name(QColor::HexArgb);
+  addressColors["background"] = m_addressBackground.name(QColor::HexArgb);
+  appearance["addressColors"] = addressColors;
 
   QJsonObject cursorColorsJson;
   cursorColorsJson["active"]   = m_cursorActiveColor.name(QColor::HexArgb);

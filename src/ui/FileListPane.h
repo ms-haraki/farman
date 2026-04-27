@@ -58,7 +58,7 @@ private slots:
 private:
   void setupUi();
 
-  QLabel* m_pathLabel;
+  QLabel* m_addressLabel;
   ClickableLabel* m_bookmarkLabel;
   QToolButton* m_folderButton;
   QTableView* m_view;

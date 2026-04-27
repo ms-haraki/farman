@@ -50,7 +50,7 @@ src/
 ├── main.cpp                 # エントリーポイント
 ├── ui/                      # UI層
 │   ├── MainWindow.{h,cpp}   # メインウィンドウ
-│   ├── FilePane.{h,cpp}     # ファイルリストペイン
+│   ├── FilePane.{h,cpp}     # ファイルリストパネル
 │   ├── LogWidget.{h,cpp}    # ログ表示
 │   └── StatusBar.{h,cpp}    # ステータスバー
 ├── models/                  # モデル層
@@ -100,7 +100,7 @@ private:
   LogWidget *logWidget_;
   StatusBar *statusBar_;
 
-  FilePane *activePane_;  // 現在アクティブなペイン
+  FilePane *activePane_;  // 現在アクティブなパネル
 
   void setupUi();
   void connectSignals();

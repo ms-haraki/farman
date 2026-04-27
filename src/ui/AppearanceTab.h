@@ -53,8 +53,8 @@ private:
   // Font settings
   QPushButton*   m_fontButton;          // File list font
   QFont          m_selectedFont;
-  QPushButton*   m_pathFontButton = nullptr;
-  QFont          m_pathFontValue;
+  QPushButton*   m_addressFontButton = nullptr;
+  QFont          m_addressFontValue;
 
   // File size format
   QComboBox*     m_fileSizeFormatCombo;
@@ -69,11 +69,11 @@ private:
   // 非アクティブ側のグリッド全体（チェック OFF 時に disable）
   QGroupBox*  m_inactivePaneGroup = nullptr;
 
-  // Path label colors
-  QPushButton* m_pathFgButton = nullptr;
-  QPushButton* m_pathBgButton = nullptr;
-  QColor       m_pathFgValue;
-  QColor       m_pathBgValue;
+  // Address bar colors
+  QPushButton* m_addressFgButton = nullptr;
+  QPushButton* m_addressBgButton = nullptr;
+  QColor       m_addressFgValue;
+  QColor       m_addressBgValue;
   // Cursor colors / shape
   QPushButton* m_cursorActiveButton   = nullptr;
   QPushButton* m_cursorInactiveButton = nullptr;

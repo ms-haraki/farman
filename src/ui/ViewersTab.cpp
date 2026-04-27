@@ -295,9 +295,13 @@ QWidget* ViewersTab::buildBinaryViewerPage() {
     return btn;
   };
 
-  // 上段: Font / Unit / Endian / String Encoding を 1 行に横並び (左寄せ)
-  QHBoxLayout* topRow = new QHBoxLayout();
+  // 上段は 2 行に分割:
+  //   1 行目: Font / Unit / Endian (16 進ダンプ表示の基本設定)
+  //   2 行目: String Encoding ("文字列エンコーディング" などラベルが長いので分離)
+  QHBoxLayout* topRow    = new QHBoxLayout();
+  QHBoxLayout* bottomRow = new QHBoxLayout();
   topRow->setSpacing(12);
+  bottomRow->setSpacing(12);
   auto addPair = [page](QHBoxLayout* row, const QString& labelText, QWidget* w) {
     row->addWidget(new QLabel(labelText, page));
     row->addWidget(w);
@@ -346,9 +350,12 @@ QWidget* ViewersTab::buildBinaryViewerPage() {
   m_binaryEncodingCombo->addItem(QStringLiteral("ISO-8859-1"));
   m_binaryEncodingCombo->setToolTip(
     tr("Text encoding for the string column on the right"));
-  addPair(topRow, tr("String Encoding:"), m_binaryEncodingCombo);
   topRow->addStretch();
   outer->addLayout(topRow);
+
+  addPair(bottomRow, tr("String Encoding:"), m_binaryEncodingCombo);
+  bottomRow->addStretch();
+  outer->addLayout(bottomRow);
 
   // 下段: カラー (Normal / Selected / Address)
   QGridLayout* colors = new QGridLayout();

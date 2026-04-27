@@ -70,9 +70,9 @@ public:
   QFont  font()                        const;
   void   setFont(const QFont& font);
 
-  // パス表示ラベル用フォント
-  QFont  pathFont()                    const;
-  void   setPathFont(const QFont& font);
+  // アドレスバー (各ペイン上部のパス/URI 表示) 用フォント
+  QFont  addressFont()                 const;
+  void   setAddressFont(const QFont& font);
 
   FileSizeFormat fileSizeFormat()       const;
   void           setFileSizeFormat(FileSizeFormat fmt);
@@ -93,11 +93,11 @@ public:
   bool             useInactivePaneColors() const;
   void             setUseInactivePaneColors(bool use);
 
-  // ペイン上部のパスラベルのカラー
-  QColor           pathForeground()                 const;
-  void             setPathForeground(const QColor& c);
-  QColor           pathBackground()                 const;
-  void             setPathBackground(const QColor& c);
+  // ペイン上部のアドレスバーのカラー
+  QColor           addressForeground()              const;
+  void             setAddressForeground(const QColor& c);
+  QColor           addressBackground()              const;
+  void             setAddressBackground(const QColor& c);
 
   // カーソル（現在行下線）のカラー
   QColor           cursorColor(bool active)         const;
@@ -275,7 +275,7 @@ private:
   PaneSettings     m_paneSettings[static_cast<int>(PaneType::Count)];
   QMap<QString, PaneSettings> m_pathOverrides;
   QFont            m_font;
-  QFont            m_pathFont;
+  QFont            m_addressFont;
   FileSizeFormat   m_fileSizeFormat  = FileSizeFormat::Auto;
   QString          m_dateTimeFormat  = "yyyy/MM/dd HH:mm:ss";
   QList<ColorRule> m_colorRules;
@@ -286,8 +286,8 @@ private:
   bool             m_useInactivePaneColors = false;
 
   // Path label & cursor colors
-  QColor           m_pathForeground       = QColor(Qt::black);
-  QColor           m_pathBackground       = QColor(0xE0, 0xE0, 0xE0);
+  QColor           m_addressForeground    = QColor(Qt::black);
+  QColor           m_addressBackground    = QColor(0xE0, 0xE0, 0xE0);
   QColor           m_cursorActiveColor    = QColor(Qt::black);
   QColor           m_cursorInactiveColor  = QColor(Qt::lightGray);
   CursorShape      m_cursorShape          = CursorShape::Underline;

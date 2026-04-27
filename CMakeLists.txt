@@ -28,6 +28,7 @@ qt_add_executable(farman
   src/ui/KeybindingTab.cpp
   src/ui/AppearanceTab.cpp
   src/ui/BehaviorTab.cpp
+  src/ui/GeneralTab.cpp
   src/ui/ViewersTab.cpp
   src/ui/SortFilterDialog.cpp
   src/ui/TransferConfirmDialog.cpp

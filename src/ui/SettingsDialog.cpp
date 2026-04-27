@@ -2,6 +2,7 @@
 #include "KeybindingTab.h"
 #include "AppearanceTab.h"
 #include "BehaviorTab.h"
+#include "GeneralTab.h"
 #include "ViewersTab.h"
 #include "settings/Settings.h"
 #include "keybinding/KeyBindingManager.h"
@@ -43,13 +44,15 @@ void SettingsDialog::setupUi() {
 
   m_keybindingTab = new KeybindingTab(this);
   m_appearanceTab = new AppearanceTab(this);
-  m_behaviorTab = new BehaviorTab(m_leftCurrentPath, m_rightCurrentPath, this);
-  m_viewersTab = new ViewersTab(this);
+  m_behaviorTab   = new BehaviorTab(this);
+  m_generalTab    = new GeneralTab(m_leftCurrentPath, m_rightCurrentPath, this);
+  m_viewersTab    = new ViewersTab(this);
 
-  m_tabWidget->addTab(m_behaviorTab,   tr("1. Behavior"));
-  m_tabWidget->addTab(m_appearanceTab, tr("2. Appearance"));
-  m_tabWidget->addTab(m_viewersTab,    tr("3. Viewers"));
-  m_tabWidget->addTab(m_keybindingTab, tr("4. Keybindings"));
+  m_tabWidget->addTab(m_generalTab,    tr("1. General"));
+  m_tabWidget->addTab(m_behaviorTab,   tr("2. Behavior"));
+  m_tabWidget->addTab(m_appearanceTab, tr("3. Appearance"));
+  m_tabWidget->addTab(m_viewersTab,    tr("4. Viewers"));
+  m_tabWidget->addTab(m_keybindingTab, tr("5. Keybindings"));
 
   // Info label for keyboard shortcuts
   int tabCount = m_tabWidget->count();
@@ -132,6 +135,7 @@ void SettingsDialog::onApply() {
   m_keybindingTab->save();
   m_appearanceTab->save();
   m_behaviorTab->save();
+  m_generalTab->save();
   m_viewersTab->save();
 
   // Save settings to file
