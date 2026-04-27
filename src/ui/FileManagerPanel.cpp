@@ -290,6 +290,22 @@ bool FileManagerPanel::navigateActivePaneTo(const QString& path) {
   return true;
 }
 
+void FileManagerPanel::syncOtherToActive() {
+  const PaneType other = (m_activePane == PaneType::Left) ? PaneType::Right : PaneType::Left;
+  const QString path = activePane()->currentPath();
+  if (path.isEmpty()) return;
+  navigatePane(other, path);
+  updatePathSignal();
+}
+
+void FileManagerPanel::syncActiveToOther() {
+  FileListPane* otherPane = (m_activePane == PaneType::Left) ? m_rightPane : m_leftPane;
+  const QString path = otherPane->currentPath();
+  if (path.isEmpty()) return;
+  navigatePane(m_activePane, path);
+  updatePathSignal();
+}
+
 bool FileManagerPanel::handleKeyEvent(QKeyEvent* event) {
   // Tabキーでペイン切り替え（2ペイン表示時のみ）
   if (event->key() == Qt::Key_Tab && !m_singlePaneMode) {

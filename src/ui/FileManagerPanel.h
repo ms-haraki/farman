@@ -58,6 +58,11 @@ public:
   // 任意のパスへアクティブペインを遷移させる（失敗時は false）
   bool navigateActivePaneTo(const QString& path);
 
+  // 反対側のペインをアクティブと同じディレクトリへ移動
+  void syncOtherToActive();
+  // 反対側のペインのディレクトリをアクティブへ取り込む（アクティブを反対側と同じに）
+  void syncActiveToOther();
+
   // ── ディレクトリ履歴 ─────────────────────
   DirectoryHistory&       history(PaneType pane);
   const DirectoryHistory& history(PaneType pane) const;

@@ -422,6 +422,24 @@ void MainWindow::registerCommands() {
     "pane"
   ));
 
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "pane.sync_other_to_active",
+    "Sync Other Pane to Active",
+    [this]() {
+      m_fileManagerPanel->syncOtherToActive();
+    },
+    "pane"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "pane.sync_active_to_other",
+    "Sync Active Pane to Other",
+    [this]() {
+      m_fileManagerPanel->syncActiveToOther();
+    },
+    "pane"
+  ));
+
   // File operation commands
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.copy",
@@ -691,6 +709,9 @@ void MainWindow::createMenus() {
     singlePaneAction->setChecked(m_fileManagerPanel->isSinglePaneMode());
   });
   addCmd(viewMenu, "pane.sort_filter", tr("Sort && Filter..."));
+  viewMenu->addSeparator();
+  addCmd(viewMenu, "pane.sync_other_to_active", tr("Sync Other Pane to Active"));
+  addCmd(viewMenu, "pane.sync_active_to_other", tr("Sync Active Pane to Other"));
   viewMenu->addSeparator();
   addCmd(viewMenu, "view.file", tr("View File"));
   addCmd(viewMenu, "view.toggle_log", tr("Toggle Log Pane"));

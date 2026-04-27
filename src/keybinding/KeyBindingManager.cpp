@@ -89,9 +89,11 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::CTRL | Qt::Key_A),    "select.all"             },
 
     // Pane
-    { QKeySequence(Qt::Key_Tab),             "pane.switch"        },
-    { QKeySequence(Qt::CTRL | Qt::Key_O),    "pane.toggle_single" },
-    { QKeySequence(Qt::Key_S),               "pane.sort_filter"   },
+    { QKeySequence(Qt::Key_Tab),               "pane.switch"               },
+    { QKeySequence(Qt::CTRL | Qt::Key_O),      "pane.toggle_single"        },
+    { QKeySequence(Qt::Key_S),                 "pane.sort_filter"          },
+    { QKeySequence(Qt::CTRL | Qt::Key_Right),  "pane.sync_other_to_active" },
+    { QKeySequence(Qt::CTRL | Qt::Key_Left),   "pane.sync_active_to_other" },
 
     // File operations — 簡略キーボードでも打てる一文字キーをデフォルトに
     { QKeySequence(Qt::Key_C), "file.copy"    },
