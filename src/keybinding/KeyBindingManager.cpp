@@ -107,6 +107,7 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
 
     // View
     { QKeySequence(Qt::Key_V), "view.file" },
+    { QKeySequence(Qt::CTRL | Qt::Key_L), "view.toggle_log" },
 
     // Bookmark
     { QKeySequence(Qt::Key_B),            "bookmark.toggle" },
@@ -168,7 +169,8 @@ void KeyBindingManager::loadFromSettings() {
   // 変更し、ファンクションキーを既定から排除。
   // version < 8: app.quit を Q → Ctrl+Q (macOS では Cmd+Q) に戻す。
   // OS 標準のショートカットに揃えるため。
-  if (version < 8) {
+  // version < 9: view.toggle_log (Ctrl+L) を新規追加。
+  if (version < 9) {
     qDebug() << "KeyBindingManager: migrating bindings from version" << version;
     loadDefaults();
     saveToSettings();
@@ -226,7 +228,7 @@ void KeyBindingManager::saveToSettings() const {
 
   QJsonObject root;
   root["bindings"] = bindings;
-  root["version"] = 8;
+  root["version"] = 9;
 
   QJsonDocument doc(root);
   QString jsonData = QString::fromUtf8(doc.toJson(QJsonDocument::Indented));

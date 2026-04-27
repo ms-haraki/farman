@@ -23,6 +23,8 @@ Settings& Settings::instance() {
 Settings::Settings(QObject* parent) : QObject(parent) {
   // Initialize with default font
   m_font = QGuiApplication::font();
+  m_logFilePath = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
+                  + QStringLiteral("/farman.log");
   m_pathFont = QGuiApplication::font();
   m_textViewerFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
   m_binaryViewerFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
@@ -244,6 +246,13 @@ bool Settings::confirmOnExit() const {
 void Settings::setConfirmOnExit(bool confirm) {
   m_confirmOnExit = confirm;
 }
+
+bool    Settings::logVisible()  const { return m_logVisible; }
+void    Settings::setLogVisible(bool v) { m_logVisible = v; }
+bool    Settings::logToFile()   const { return m_logToFile; }
+void    Settings::setLogToFile(bool v) { m_logToFile = v; }
+QString Settings::logFilePath() const { return m_logFilePath; }
+void    Settings::setLogFilePath(const QString& p) { m_logFilePath = p; }
 
 bool Settings::cursorLoop() const {
   return m_cursorLoop;
@@ -899,6 +908,15 @@ void Settings::load() {
   }
   m_defaultBookmarksInstalled = behavior.value("defaultBookmarksInstalled").toBool(false);
 
+  // Load log settings
+  QJsonObject logObj = root.value("log").toObject();
+  m_logVisible  = logObj.value("visible").toBool(true);
+  m_logToFile   = logObj.value("toFile").toBool(true);
+  if (logObj.contains("filePath")) {
+    const QString p = logObj.value("filePath").toString();
+    if (!p.isEmpty()) m_logFilePath = p;
+  }
+
   // Load text viewer settings
   QJsonObject textViewer = root.value("textViewer").toObject();
   if (textViewer.contains("extensions")) {
@@ -1234,6 +1252,15 @@ void Settings::save() const {
   }
   behavior["defaultBookmarksInstalled"] = m_defaultBookmarksInstalled;
   root["behavior"] = behavior;
+
+  // Save log settings
+  {
+    QJsonObject logObj;
+    logObj["visible"]  = m_logVisible;
+    logObj["toFile"]   = m_logToFile;
+    logObj["filePath"] = m_logFilePath;
+    root["log"] = logObj;
+  }
 
   // Save text viewer settings
   QJsonObject textViewer;

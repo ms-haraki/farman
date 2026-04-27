@@ -210,6 +210,56 @@ void BehaviorTab::setupUi() {
 
   mainLayout->addWidget(fileOpsGroup);
 
+  // Log settings
+  QGroupBox* logGroup = new QGroupBox(tr("Log"), this);
+  QVBoxLayout* logGroupLayout = new QVBoxLayout(logGroup);
+
+  m_logVisibleCheck = new QCheckBox(tr("Show log pane"), this);
+  m_logVisibleCheck->setToolTip(
+    tr("Show the log pane between the file panes and status bar. "
+       "Toggle from the View menu or with Ctrl+L."));
+  logGroupLayout->addWidget(m_logVisibleCheck);
+
+  m_logToFileCheck = new QCheckBox(tr("Write log to file"), this);
+  m_logToFileCheck->setToolTip(
+    tr("Append log entries to a file in addition to the log pane."));
+
+  m_logFilePathEdit = new QLineEdit(this);
+  m_logFilePathEdit->setPlaceholderText(tr("/path/to/farman.log"));
+
+  m_logFilePathBrowse = new QToolButton(this);
+  m_logFilePathBrowse->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
+  m_logFilePathBrowse->setToolTip(tr("Choose log file..."));
+
+  QHBoxLayout* logFileRow = new QHBoxLayout();
+  logFileRow->setContentsMargins(0, 0, 0, 0);
+  logFileRow->addWidget(m_logToFileCheck);
+  logFileRow->addWidget(new QLabel(tr("File:"), this));
+  logFileRow->addWidget(m_logFilePathEdit, 1);
+  logFileRow->addWidget(m_logFilePathBrowse);
+  logGroupLayout->addLayout(logFileRow);
+
+  auto updateLogFileEnabled = [this]() {
+    const bool enabled = m_logToFileCheck->isChecked();
+    m_logFilePathEdit->setEnabled(enabled);
+    m_logFilePathBrowse->setEnabled(enabled);
+  };
+  connect(m_logToFileCheck, &QCheckBox::toggled, this, updateLogFileEnabled);
+  connect(m_logFilePathBrowse, &QToolButton::clicked, this, [this]() {
+    const QString start = m_logFilePathEdit->text().isEmpty()
+                          ? QDir::homePath()
+                          : m_logFilePathEdit->text();
+    const QString selected = QFileDialog::getSaveFileName(
+      this, tr("Choose log file"), start,
+      tr("Log files (*.log);;All files (*)")
+    );
+    if (!selected.isEmpty()) {
+      m_logFilePathEdit->setText(selected);
+    }
+  });
+
+  mainLayout->addWidget(logGroup);
+
   // Startup settings
   QGroupBox* startupGroup = new QGroupBox(tr("Startup Settings"), this);
   QVBoxLayout* startupLayout = new QVBoxLayout(startupGroup);
@@ -400,6 +450,14 @@ void BehaviorTab::loadSettings() {
   m_defaultDeleteToTrashCheck->setChecked(settings.defaultDeleteToTrash());
   m_searchExcludeDirsEdit->setText(settings.searchExcludeDirs().join(QLatin1Char(' ')));
 
+  // Log settings
+  m_logVisibleCheck->setChecked(settings.logVisible());
+  m_logToFileCheck->setChecked(settings.logToFile());
+  m_logFilePathEdit->setText(settings.logFilePath());
+  const bool logFileEnabled = m_logToFileCheck->isChecked();
+  m_logFilePathEdit->setEnabled(logFileEnabled);
+  m_logFilePathBrowse->setEnabled(logFileEnabled);
+
   // Startup settings
   auto selectModeByData = [](QComboBox* combo, int value) {
     for (int i = 0; i < combo->count(); ++i) {
@@ -503,6 +561,11 @@ void BehaviorTab::save() {
       .split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
     settings.setSearchExcludeDirs(excludeList);
   }
+
+  // Save log settings
+  settings.setLogVisible(m_logVisibleCheck->isChecked());
+  settings.setLogToFile(m_logToFileCheck->isChecked());
+  settings.setLogFilePath(m_logFilePathEdit->text().trimmed());
 
   // Save startup settings
   settings.setInitialPathMode(

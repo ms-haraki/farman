@@ -1,6 +1,8 @@
 #include "FileManagerPanel.h"
 #include "FileListPane.h"
+#include "LogPane.h"
 #include "ProgressDialog.h"
+#include "core/Logger.h"
 #include "SortFilterDialog.h"
 #include "TransferConfirmDialog.h"
 #include "OverwriteDialog.h"
@@ -86,6 +88,19 @@ void FileManagerPanel::setupUi() {
 
   // Splitterのサイズを均等に
   m_splitter->setSizes(QList<int>() << 600 << 600);
+
+  // ===== Log Pane =====
+  m_logPane = new LogPane(this);
+  m_logPane->setVisible(Settings::instance().logVisible());
+  layout->addWidget(m_logPane);
+}
+
+void FileManagerPanel::setLogPaneVisible(bool visible) {
+  if (m_logPane) m_logPane->setVisible(visible);
+}
+
+bool FileManagerPanel::isLogPaneVisible() const {
+  return m_logPane && m_logPane->isVisible();
 }
 
 void FileManagerPanel::loadInitialPath() {
@@ -184,6 +199,9 @@ bool FileManagerPanel::navigatePane(PaneType paneType, const QString& path) {
   if (ok) {
     DirectoryHistory& hist = (paneType == PaneType::Left) ? m_leftHistory : m_rightHistory;
     hist.push(pane->currentPath());
+    Logger::instance().info(QStringLiteral("%1 pane: %2")
+      .arg(paneType == PaneType::Left ? QStringLiteral("Left") : QStringLiteral("Right"))
+      .arg(pane->currentPath()));
   }
   return ok;
 }
@@ -713,8 +731,17 @@ void FileManagerPanel::copySelectedFiles() {
   ProgressDialog* dialog = new ProgressDialog(tr("Copying files..."), this);
   dialog->setWorker(worker);
 
-  connect(worker, &WorkerBase::finished, this, [this, dialog, srcPane, destPane](bool success) {
+  const int copiedCount = selectedFiles.size();
+  const QString copiedDest = destDir;
+
+  connect(worker, &WorkerBase::finished, this,
+      [this, dialog, srcPane, destPane, copiedCount, copiedDest](bool success) {
     dialog->accept();
+    Logger::instance().log(success ? Logger::Info : Logger::Error,
+      QStringLiteral("Copy %1: %2 item(s) → %3")
+        .arg(success ? QStringLiteral("done") : QStringLiteral("failed"))
+        .arg(copiedCount)
+        .arg(copiedDest));
 
     // Save cursor positions
     QModelIndex srcCurrentIndex = srcPane->view()->currentIndex();
@@ -826,8 +853,17 @@ void FileManagerPanel::moveSelectedFiles() {
   ProgressDialog* dialog = new ProgressDialog(tr("Moving files..."), this);
   dialog->setWorker(worker);
 
-  connect(worker, &WorkerBase::finished, this, [this, dialog, srcPane, destPane](bool success) {
+  const int movedCount = selectedFiles.size();
+  const QString movedDest = destDir;
+
+  connect(worker, &WorkerBase::finished, this,
+      [this, dialog, srcPane, destPane, movedCount, movedDest](bool success) {
     dialog->accept();
+    Logger::instance().log(success ? Logger::Info : Logger::Error,
+      QStringLiteral("Move %1: %2 item(s) → %3")
+        .arg(success ? QStringLiteral("done") : QStringLiteral("failed"))
+        .arg(movedCount)
+        .arg(movedDest));
 
     // Save cursor positions
     QModelIndex srcCurrentIndex = srcPane->view()->currentIndex();
@@ -929,8 +965,17 @@ void FileManagerPanel::deleteSelectedFiles() {
   ProgressDialog* dialog = new ProgressDialog(tr("Deleting files..."), this);
   dialog->setWorker(worker);
 
-  connect(worker, &WorkerBase::finished, this, [this, dialog, srcPane](bool success) {
+  const int delCount = selectedFiles.size();
+  const bool delToTrash = toTrash;
+
+  connect(worker, &WorkerBase::finished, this,
+      [this, dialog, srcPane, delCount, delToTrash](bool success) {
     dialog->accept();
+    Logger::instance().log(success ? Logger::Info : Logger::Error,
+      QStringLiteral("%1 %2: %3 item(s)")
+        .arg(delToTrash ? QStringLiteral("Trash") : QStringLiteral("Delete"))
+        .arg(success ? QStringLiteral("done") : QStringLiteral("failed"))
+        .arg(delCount));
 
     // Save cursor position
     QModelIndex srcCurrentIndex = srcPane->view()->currentIndex();
@@ -1003,6 +1048,7 @@ void FileManagerPanel::createDirectory() {
   QString newDirPath = currentPath + "/" + dirName;
   QDir dir;
   if (!dir.mkpath(newDirPath)) {
+    Logger::instance().error(QStringLiteral("Mkdir failed: %1").arg(newDirPath));
     QMessageBox::critical(
       this,
       tr("Error"),
@@ -1010,6 +1056,7 @@ void FileManagerPanel::createDirectory() {
     );
     return;
   }
+  Logger::instance().info(QStringLiteral("Mkdir: %1").arg(newDirPath));
 
   // Refresh and move cursor to new directory
   srcPane->setPath(currentPath);
@@ -1056,6 +1103,7 @@ void FileManagerPanel::createFile() {
   // 空ファイルを作成
   QFile file(newFilePath);
   if (!file.open(QIODevice::WriteOnly)) {
+    Logger::instance().error(QStringLiteral("Create file failed: %1").arg(newFilePath));
     QMessageBox::critical(
       this, tr("Error"),
       tr("Failed to create file: %1").arg(fileName)
@@ -1063,6 +1111,7 @@ void FileManagerPanel::createFile() {
     return;
   }
   file.close();
+  Logger::instance().info(QStringLiteral("Created file: %1").arg(newFilePath));
 
   // リフレッシュして新規ファイルにカーソルを移動
   srcPane->setPath(currentPath);
@@ -1162,8 +1211,12 @@ void FileManagerPanel::createArchive() {
   dialog->setWorker(worker);
 
   connect(worker, &WorkerBase::finished, this,
-    [this, dialog, srcPane, destPane, outputPath](bool /*ok*/) {
+    [this, dialog, srcPane, destPane, outputPath](bool ok) {
     dialog->accept();
+    Logger::instance().log(ok ? Logger::Info : Logger::Error,
+      QStringLiteral("Archive %1: %2")
+        .arg(ok ? QStringLiteral("created") : QStringLiteral("create failed"))
+        .arg(outputPath));
     // 出力先が src/dest どちらかのペインと一致していれば refresh してカーソル移動
     const QString outputDir = QFileInfo(outputPath).absolutePath();
     const QString fileName  = QFileInfo(outputPath).fileName();
@@ -1247,7 +1300,11 @@ void FileManagerPanel::extractArchive() {
   dialog->setWorker(worker);
 
   connect(worker, &WorkerBase::finished, this,
-    [this, dialog, srcPane, destPane, outputDir, baseName](bool /*ok*/) {
+    [this, dialog, srcPane, destPane, outputDir, baseName, archivePath](bool ok) {
+    Logger::instance().log(ok ? Logger::Info : Logger::Error,
+      QStringLiteral("Archive %1: %2")
+        .arg(ok ? QStringLiteral("extracted") : QStringLiteral("extract failed"))
+        .arg(archivePath));
     dialog->accept();
     // 展開したサブディレクトリを含む親ディレクトリと一致するペインを refresh し、
     // サブディレクトリ名にカーソルを合わせる
@@ -1382,6 +1439,8 @@ void FileManagerPanel::renameItem() {
   }
 
   if (!success) {
+    Logger::instance().error(QStringLiteral("Rename failed: %1 → %2")
+      .arg(oldPath, newPath));
     QMessageBox::critical(
       this,
       tr("Error"),
@@ -1389,6 +1448,7 @@ void FileManagerPanel::renameItem() {
     );
     return;
   }
+  Logger::instance().info(QStringLiteral("Rename: %1 → %2").arg(oldName, newName));
 
   // Refresh and move cursor to renamed item
   QString currentPath = srcPane->currentPath();

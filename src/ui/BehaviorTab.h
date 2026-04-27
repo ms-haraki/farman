@@ -46,6 +46,12 @@ private:
   QCheckBox*  m_sortDotFirstCheck;
   QCheckBox*  m_sortCaseSensitiveCheck;
 
+  // Log settings
+  QCheckBox*  m_logVisibleCheck    = nullptr;
+  QCheckBox*  m_logToFileCheck     = nullptr;
+  QLineEdit*  m_logFilePathEdit    = nullptr;
+  class QToolButton* m_logFilePathBrowse = nullptr;
+
   // Display settings
   QCheckBox*  m_showHiddenCheck;
   QCheckBox*  m_cursorLoopCheck;

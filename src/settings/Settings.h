@@ -119,6 +119,14 @@ public:
   bool confirmOnExit()                  const;
   void setConfirmOnExit(bool confirm);
 
+  // ── ログ設定 ─────────────────────────────
+  bool    logVisible()                  const;
+  void    setLogVisible(bool visible);
+  bool    logToFile()                   const;
+  void    setLogToFile(bool toFile);
+  QString logFilePath()                 const;  // 既定: <AppConfigLocation>/farman.log
+  void    setLogFilePath(const QString& path);
+
   bool cursorLoop()                     const;
   void setCursorLoop(bool loop);
 
@@ -279,6 +287,9 @@ private:
   QString          m_customInitialPath[static_cast<int>(PaneType::Count)];
 
   bool             m_confirmOnExit   = false;
+  bool             m_logVisible      = true;
+  bool             m_logToFile       = true;
+  QString          m_logFilePath;  // 既定はコンストラクタで AppConfigLocation/farman.log
   bool             m_cursorLoop      = false;
   bool             m_typeAheadIncludeDotfiles = true;
 

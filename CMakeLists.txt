@@ -22,6 +22,7 @@ qt_add_executable(farman
   src/ui/FileListDelegate.cpp
   src/ui/FileManagerPanel.cpp
   src/ui/ViewerPanel.cpp
+  src/ui/LogPane.cpp
   src/ui/ProgressDialog.cpp
   src/ui/SettingsDialog.cpp
   src/ui/KeybindingTab.cpp
@@ -43,6 +44,7 @@ qt_add_executable(farman
   src/core/FileItem.cpp
   src/core/BookmarkManager.cpp
   src/core/DirectoryHistory.cpp
+  src/core/Logger.cpp
   src/utils/Dialogs.cpp
   src/core/workers/WorkerBase.cpp
   src/core/workers/CopyWorker.cpp

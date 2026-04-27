@@ -32,8 +32,8 @@ Total Commander / Double Commander に近い操作感を目指す。
 │──────────────────────────│──────────────────────────│
 │ Sort: ... │ Filter: ... │ Sort: ... │ Filter: ...  │ ← ペインフッター (sort/filter 状態)
 ├──────────────────────────┴──────────────────────────┤
-│ ログ ※未実装                                         │
-│                                                     │
+│ ログ (Ctrl+L で表示切替, デフォルト ON)              │
+│ [HH:mm:ss] [INFO] Copy done: 3 item(s) → /tmp       │
 ├─────────────────────────────────────────────────────┤
 │ /path/to/file.txt          128 items  3 selected... │ ← ステータスバー
 └─────────────────────────────────────────────────────┘
@@ -289,10 +289,42 @@ macOS の `Ctrl` は `⌘`（Command）に割り当てられる。
 
 ---
 
-## ログ *（未実装）*
+## ログ
 
-操作メッセージ (コピー完了 / 削除完了 / エラー等) を時系列で表示するエリアを
-ペインとステータスバーの間に持つ予定。現状は実装していない。
+操作メッセージ (コピー完了 / 削除完了 / ナビゲーション / エラー等) を時系列で
+表示するペインを、ファイルマネージャーペインとステータスバーの間に置く。
+
+### 表示
+- ペインのレイアウト位置: ファイルマネージャー（左右ペイン）の下、ステータスバーの上。
+- 等幅フォント、折り返しなし、読み取り専用。最新行が常に見えるように追記時に末尾へ
+  自動スクロール。
+- バッファは UI 側でリングバッファとして保持（古い行は順次破棄）。
+- 表示の ON/OFF を切り替え可能。デフォルトは ON。
+  - View メニュー「Toggle Log Pane」、ショートカットキー `Ctrl+L`、Settings からトグル。
+
+### ファイル出力
+- 表示用ペインとは別に、同じ内容をファイルへ追記出力するか選べる。デフォルトは ON。
+- 既定の出力先は `<AppConfigLocation>/farman.log`（macOS では
+  `~/Library/Application Support/farman/farman/farman.log` 相当）。Settings から
+  任意のパスへ変更可能。
+
+### メッセージ書式
+- 1 操作 1 行が原則。冗長な多段ログは避ける。
+- 共通フォーマット: `[YYYY-MM-DD HH:mm:ss] [LEVEL] message`
+  - LEVEL は `INFO` / `WARN` / `ERROR` の 3 段階。
+- 主な操作の例
+  - 起動: `farman started`
+  - ナビゲーション: `Left/Right pane: <path>`
+  - コピー / 移動: `Copy done: N item(s) → <dest>` / `Move failed: ...`
+  - 削除: `Trash done: N item(s)` / `Delete done: N item(s)`
+  - 作成系: `Mkdir: <path>` / `Created file: <path>` / `Rename: <old> → <new>`
+  - アーカイブ: `Archive created: <path>` / `Archive extracted: <path>`
+
+### Settings
+- Behavior タブの「Log」グループに以下を配置:
+  - `Show log pane` (チェックボックス, デフォルト ON)
+  - `Write log to file` (チェックボックス, デフォルト ON)
+  - `File:` 出力先パス入力 + Browse ボタン
 
 ---
 

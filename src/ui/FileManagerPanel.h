@@ -11,6 +11,7 @@ namespace Farman {
 
 class FileListPane;
 class FileListModel;
+class LogPane;
 
 class FileManagerPanel : public QWidget {
   Q_OBJECT
@@ -65,6 +66,10 @@ public:
   // カーソル行を選択トグル（カーソル据え置き）
   void toggleSelection();
 
+  // ── ログペイン ──────────────────────────
+  void setLogPaneVisible(bool visible);
+  bool isLogPaneVisible() const;
+
 signals:
   void pathChanged(const QString& leftPath, const QString& rightPath);
   void fileActivated(const QString& filePath);
@@ -100,6 +105,7 @@ private:
   QSplitter* m_splitter;
   FileListPane* m_leftPane;
   FileListPane* m_rightPane;
+  LogPane*      m_logPane = nullptr;
 
   PaneType m_activePane;
   bool m_singlePaneMode;

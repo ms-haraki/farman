@@ -6,6 +6,7 @@
 #include "BookmarkListDialog.h"
 #include "HistoryDialog.h"
 #include "SearchDialog.h"
+#include "../core/Logger.h"
 #include "../keybinding/ICommand.h"
 #include "../core/DirectoryHistory.h"
 #include "../utils/Dialogs.h"
@@ -33,6 +34,13 @@ MainWindow::MainWindow(QWidget* parent)
 
   // Load settings first (before setupUi to apply window size/position)
   Settings::instance().load();
+
+  // ロガーを設定 (ファイル出力 ON/OFF・出力先) し、起動の旨を 1 行残す
+  {
+    auto& s = Settings::instance();
+    Logger::instance().setFileOutput(s.logToFile(), s.logFilePath());
+    Logger::instance().info(QStringLiteral("farman started"));
+  }
 
   setupUi();
 
@@ -538,6 +546,18 @@ void MainWindow::registerCommands() {
     "view"
   ));
 
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "view.toggle_log",
+    "Toggle Log Pane",
+    [this]() {
+      const bool nowVisible = !m_fileManagerPanel->isLogPaneVisible();
+      m_fileManagerPanel->setLogPaneVisible(nowVisible);
+      Settings::instance().setLogVisible(nowVisible);
+      Settings::instance().save();
+    },
+    "view"
+  ));
+
   // Bookmark commands
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "bookmark.toggle",
@@ -673,6 +693,7 @@ void MainWindow::createMenus() {
   addCmd(viewMenu, "pane.sort_filter", tr("Sort && Filter..."));
   viewMenu->addSeparator();
   addCmd(viewMenu, "view.file", tr("View File"));
+  addCmd(viewMenu, "view.toggle_log", tr("Toggle Log Pane"));
 
   // Go
   QMenu* goMenu = bar->addMenu(tr("&Go"));
@@ -722,6 +743,11 @@ void MainWindow::onSettingsChanged() {
   // Settings have been changed and saved
   // Apply the new settings to the file manager panel
   m_fileManagerPanel->applySettings();
+
+  // ログ表示・ファイル出力の状態を Settings に追従
+  auto& s = Settings::instance();
+  m_fileManagerPanel->setLogPaneVisible(s.logVisible());
+  Logger::instance().setFileOutput(s.logToFile(), s.logFilePath());
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
