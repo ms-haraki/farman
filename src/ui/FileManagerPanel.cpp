@@ -141,6 +141,39 @@ void FileManagerPanel::loadInitialPath() {
 
 void FileManagerPanel::applySettings() {
   // Behavior タブでデフォルト設定が変更された際の再適用。
+  // setSortSettings / setAttrFilter / refresh は beginResetModel/endResetModel を
+  // 呼ぶため selection model の currentIndex が無効化され、戻ってきたときに
+  // カーソル下線が消えてしまう。前後でファイル名ベースに保存・復元する。
+  auto saveCursor = [](FileListPane* pane) -> QString {
+    auto* view = pane->view();
+    const QModelIndex idx = view->currentIndex();
+    if (!idx.isValid()) return {};
+    return pane->model()->data(pane->model()->index(idx.row(), FileListModel::Name)).toString();
+  };
+  auto restoreCursor = [](FileListPane* pane, const QString& fileName, int fallbackRow) {
+    auto* view  = pane->view();
+    auto* model = pane->model();
+    const int rows = model->rowCount();
+    if (rows == 0) return;
+    int target = -1;
+    if (!fileName.isEmpty()) {
+      for (int r = 0; r < rows; ++r) {
+        if (model->data(model->index(r, FileListModel::Name)).toString() == fileName) {
+          target = r;
+          break;
+        }
+      }
+    }
+    if (target < 0) target = qBound(0, fallbackRow, rows - 1);
+    const QModelIndex idx = model->index(target, FileListModel::Name);
+    view->setCurrentIndex(idx);
+  };
+
+  const QString leftName  = saveCursor(m_leftPane);
+  const QString rightName = saveCursor(m_rightPane);
+  const int leftRow  = m_leftPane->view()->currentIndex().row();
+  const int rightRow = m_rightPane->view()->currentIndex().row();
+
   // パス単位の override があればそちらを優先する。
   applyPathSortFilter(PaneType::Left);
   applyPathSortFilter(PaneType::Right);
@@ -151,6 +184,12 @@ void FileManagerPanel::applySettings() {
 
   m_leftPane->model()->refresh();
   m_rightPane->model()->refresh();
+
+  restoreCursor(m_leftPane,  leftName,  leftRow);
+  restoreCursor(m_rightPane, rightName, rightRow);
+
+  // ダイアログから戻った後にアクティブペインへフォーカスを戻す
+  activePane()->view()->setFocus();
 }
 
 void FileManagerPanel::applyPathSortFilter(PaneType paneType) {
