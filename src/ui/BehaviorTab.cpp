@@ -353,7 +353,22 @@ void BehaviorTab::setupUi() {
 
   m_confirmOnExitCheck = new QCheckBox(tr("Confirm on exit"), this);
   m_confirmOnExitCheck->setToolTip(tr("Show confirmation dialog when closing the application"));
-  startupLayout->addWidget(m_confirmOnExitCheck);
+
+  m_languageCombo = new QComboBox(this);
+  m_languageCombo->addItem(tr("Auto (System)"), static_cast<int>(LanguageMode::Auto));
+  m_languageCombo->addItem(tr("English"),       static_cast<int>(LanguageMode::English));
+  m_languageCombo->addItem(QStringLiteral("日本語 (Japanese)"),
+                           static_cast<int>(LanguageMode::Japanese));
+  m_languageCombo->setToolTip(tr("Takes effect on next launch."));
+
+  QHBoxLayout* startupRow = new QHBoxLayout();
+  startupRow->setContentsMargins(0, 0, 0, 0);
+  startupRow->addWidget(m_confirmOnExitCheck);
+  startupRow->addSpacing(16);
+  startupRow->addWidget(new QLabel(tr("Language:"), this));
+  startupRow->addWidget(m_languageCombo);
+  startupRow->addStretch(1);
+  startupLayout->addLayout(startupRow);
 
   mainLayout->addWidget(startupGroup);
 
@@ -518,6 +533,12 @@ void BehaviorTab::loadSettings() {
   onRightInitialPathModeChanged(m_rightInitialPathModeCombo->currentIndex());
 
   m_confirmOnExitCheck->setChecked(settings.confirmOnExit());
+  for (int i = 0; i < m_languageCombo->count(); ++i) {
+    if (m_languageCombo->itemData(i).toInt() == static_cast<int>(settings.language())) {
+      m_languageCombo->setCurrentIndex(i);
+      break;
+    }
+  }
 
   // Window settings
   for (int i = 0; i < m_windowSizeModeCombo->count(); ++i) {
@@ -624,6 +645,7 @@ void BehaviorTab::save() {
   settings.setCustomInitialPath(PaneType::Left,  m_leftCustomPathEdit->text().trimmed());
   settings.setCustomInitialPath(PaneType::Right, m_rightCustomPathEdit->text().trimmed());
   settings.setConfirmOnExit(m_confirmOnExitCheck->isChecked());
+  settings.setLanguage(static_cast<LanguageMode>(m_languageCombo->currentData().toInt()));
 
   // Save window settings
   WindowSizeMode sizeMode = static_cast<WindowSizeMode>(m_windowSizeModeCombo->currentData().toInt());

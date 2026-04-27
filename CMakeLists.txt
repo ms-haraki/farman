@@ -7,7 +7,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Core5Compat)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Core5Compat LinguistTools)
 
 # Homebrew の libarchive は keg-only なので明示的にパスを通す
 if(APPLE AND EXISTS /opt/homebrew/opt/libarchive)
@@ -82,6 +82,14 @@ target_include_directories(farman PRIVATE
 
 target_compile_definitions(farman PRIVATE
   FARMAN_VERSION=${PROJECT_VERSION}
+)
+
+# 翻訳: .ts → .qm を生成し、Qt リソースとして実行ファイルに埋め込む。
+# `cmake --build build --target update_translations` で .ts を更新できる。
+qt_add_translations(farman
+  TS_FILES translations/farman_ja.ts
+  RESOURCE_PREFIX /translations
+  LUPDATE_TARGET update_translations
 )
 
 target_link_libraries(farman PRIVATE

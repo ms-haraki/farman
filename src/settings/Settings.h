@@ -119,6 +119,11 @@ public:
   bool confirmOnExit()                  const;
   void setConfirmOnExit(bool confirm);
 
+  // ── 言語設定 ─────────────────────────────
+  // UI 言語。変更は次回起動時に反映される (実装上の制限、再起動を促す)。
+  LanguageMode language()               const;
+  void         setLanguage(LanguageMode lang);
+
   // ── ログ設定 ─────────────────────────────
   bool    logVisible()                  const;
   void    setLogVisible(bool visible);
@@ -295,6 +300,7 @@ private:
   QString          m_customInitialPath[static_cast<int>(PaneType::Count)];
 
   bool             m_confirmOnExit   = false;
+  LanguageMode     m_language         = LanguageMode::Auto;
   bool             m_logVisible       = true;
   int              m_logPaneHeight    = 120;  // px
   bool             m_logToFile        = true;

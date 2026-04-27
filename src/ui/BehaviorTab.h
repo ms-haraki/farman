@@ -76,6 +76,9 @@ private:
   QToolButton* m_rightBrowseButton;
   QCheckBox*   m_confirmOnExitCheck;
 
+  // Application language
+  QComboBox*   m_languageCombo = nullptr;
+
   // Window settings
   QComboBox*  m_windowSizeModeCombo;
   QSpinBox*   m_windowWidthSpin;

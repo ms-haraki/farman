@@ -246,6 +246,9 @@ void Settings::setConfirmOnExit(bool confirm) {
   m_confirmOnExit = confirm;
 }
 
+LanguageMode Settings::language() const { return m_language; }
+void Settings::setLanguage(LanguageMode lang) { m_language = lang; }
+
 bool    Settings::logVisible()  const { return m_logVisible; }
 void    Settings::setLogVisible(bool v) { m_logVisible = v; }
 int     Settings::logPaneHeight() const { return m_logPaneHeight; }
@@ -903,6 +906,12 @@ void Settings::load() {
   // Load behavior settings
   QJsonObject behavior = root.value("behavior").toObject();
   m_confirmOnExit = behavior.value("confirmOnExit").toBool(false);
+  {
+    const QString langStr = behavior.value("language").toString("auto");
+    if      (langStr == "en") m_language = LanguageMode::English;
+    else if (langStr == "ja") m_language = LanguageMode::Japanese;
+    else                       m_language = LanguageMode::Auto;
+  }
   m_cursorLoop = behavior.value("cursorLoop").toBool(false);
   m_typeAheadIncludeDotfiles = behavior.value("typeAheadIncludeDotfiles").toBool(true);
   m_persistHistory = behavior.value("persistHistory").toBool(false);
@@ -1253,6 +1262,11 @@ void Settings::save() const {
   // Save behavior settings
   QJsonObject behavior;
   behavior["confirmOnExit"] = m_confirmOnExit;
+  switch (m_language) {
+    case LanguageMode::English:  behavior["language"] = "en";   break;
+    case LanguageMode::Japanese: behavior["language"] = "ja";   break;
+    case LanguageMode::Auto:     behavior["language"] = "auto"; break;
+  }
   behavior["cursorLoop"] = m_cursorLoop;
   behavior["typeAheadIncludeDotfiles"] = m_typeAheadIncludeDotfiles;
   behavior["persistHistory"] = m_persistHistory;

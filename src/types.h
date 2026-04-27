@@ -87,6 +87,13 @@ enum class WindowPositionMode {
   Custom        // ユーザー指定の位置
 };
 
+// アプリの UI 言語
+enum class LanguageMode {
+  Auto,      // システムロケールに従う
+  English,   // 強制 en
+  Japanese   // 強制 ja
+};
+
 // 初期表示ディレクトリのモード（ペイン別）
 enum class InitialPathMode {
   Default,      // ホームディレクトリ

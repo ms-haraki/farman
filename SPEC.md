@@ -517,8 +517,15 @@ Settings ダイアログは 4 つのトップレベルタブ (`1. Behavior` / `2
 ##### その他
 - 終了時に確認するか（`Confirm on exit`）
 
+##### 言語設定
+- Behavior タブの Startup グループに `Language:` コンボを置く。
+- `Auto (System)` / `English` / `日本語 (Japanese)` から選択。デフォルトは Auto。
+- 翻訳ファイルは Qt Linguist の `.ts` を `qt_add_translations` でビルド時に
+  `.qm` 化してリソース埋め込み。`cmake --build build --target update_translations`
+  で `tr()` 文字列を抽出して `.ts` を更新する。
+- 切り替え後は **再起動が必要**（既存ウィジェットの再翻訳が完全には行えないため）。
+
 ##### 未実装
-- 言語設定
 - 全設定初期化
 
 #### 2. Appearance タブ
