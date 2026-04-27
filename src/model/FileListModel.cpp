@@ -277,6 +277,11 @@ QVariant FileListModel::data(const QModelIndex& index, int role) const {
         if (name == ".." || name == ".") {
           return name;
         }
+        // ディレクトリは拡張子を切り出さず、名前全体を表示する
+        // (例: "My.Project" のようなドット入りディレクトリ名でも分割しない)
+        if (item->isDir()) {
+          return name;
+        }
         // ドットファイル（.から始まる）の場合はファイル名全体を表示
         if (name.startsWith('.')) {
           return name;
@@ -290,6 +295,10 @@ QVariant FileListModel::data(const QModelIndex& index, int role) const {
         return name;
       }
       case Type: {
+        // ディレクトリは Type 列を空にする (拡張子相当の判定をしない)
+        if (item->isDir()) {
+          return QString("");
+        }
         QString name = item->name();
         // ドットファイル（.から始まる）の場合はTypeを空にする
         if (name.startsWith('.') && name != ".." && name != ".") {
@@ -488,8 +497,10 @@ int FileListModel::compareItems(const FileItem* a, const FileItem* b, SortKey ke
       return 0;
     }
     case SortKey::Type: {
-      QString typeA = a->suffix();
-      QString typeB = b->suffix();
+      // ディレクトリは Type 列を持たない扱いにするため、ソート時も
+      // 空文字として比較する (suffix() を見ない)。
+      QString typeA = a->isDir() ? QString() : a->suffix();
+      QString typeB = b->isDir() ? QString() : b->suffix();
       return typeA.compare(typeB, m_cs);
     }
     case SortKey::LastModified: {
