@@ -57,12 +57,12 @@ BehaviorTab::BehaviorTab(const QString& leftCurrentPath,
 void BehaviorTab::setupUi() {
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
-  // Sort settings
-  QGroupBox* sortGroup = new QGroupBox(tr("Default Sort Settings"), this);
+  // Sort & Filter settings
+  QGroupBox* sortGroup = new QGroupBox(tr("Default Sort && Filter Settings"), this);
   QVBoxLayout* sortGroupLayout = new QVBoxLayout(sortGroup);
 
   QLabel* sortLabel = new QLabel(
-    tr("These settings define the default sorting behavior for new panes. "
+    tr("These settings define the default sort and filter behavior for new panes. "
        "You can override them per-pane during use."),
     this
   );
@@ -112,26 +112,26 @@ void BehaviorTab::setupUi() {
 
   sortGroupLayout->addLayout(sortGrid);
 
-  // Checkboxes
+  // Checkboxes (Sort dot files / Case sensitive を 1 行に並べる)
   m_sortDotFirstCheck = new QCheckBox(tr("Sort dot files first"), this);
   m_sortDotFirstCheck->setToolTip(tr("Place files/folders starting with '.' at the beginning"));
-  sortGroupLayout->addWidget(m_sortDotFirstCheck);
 
   m_sortCaseSensitiveCheck = new QCheckBox(tr("Case sensitive sorting"), this);
   m_sortCaseSensitiveCheck->setToolTip(tr("Enable case-sensitive sorting (A-Z then a-z)"));
-  sortGroupLayout->addWidget(m_sortCaseSensitiveCheck);
 
-  mainLayout->addWidget(sortGroup);
-
-  // Display settings
-  QGroupBox* displayGroup = new QGroupBox(tr("Display Settings"), this);
-  QVBoxLayout* displayLayout = new QVBoxLayout(displayGroup);
+  QHBoxLayout* sortChecksRow = new QHBoxLayout();
+  sortChecksRow->setContentsMargins(0, 0, 0, 0);
+  sortChecksRow->addWidget(m_sortDotFirstCheck);
+  sortChecksRow->addSpacing(16);
+  sortChecksRow->addWidget(m_sortCaseSensitiveCheck);
+  sortChecksRow->addStretch(1);
+  sortGroupLayout->addLayout(sortChecksRow);
 
   m_showHiddenCheck = new QCheckBox(tr("Show hidden files by default"), this);
   m_showHiddenCheck->setToolTip(tr("Show files starting with '.' in file lists"));
-  displayLayout->addWidget(m_showHiddenCheck);
+  sortGroupLayout->addWidget(m_showHiddenCheck);
 
-  mainLayout->addWidget(displayGroup);
+  mainLayout->addWidget(sortGroup);
 
   // Navigation settings
   QGroupBox* navigationGroup = new QGroupBox(tr("Navigation Settings"), this);
