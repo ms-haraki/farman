@@ -10,6 +10,8 @@ class QPlainTextEdit;
 
 namespace Farman {
 
+class AddressHighlighter;
+
 // 16 進ダンプ表示用の読み取り専用ビュー。
 // 上部のツールバーで unit / endian / encoding をその場で変更できるが、
 // 設定ファイルには保存しない (Settings 側のデフォルトは別途 Appearance タブで編集)。
@@ -36,10 +38,11 @@ private:
   // 超過分は読み飛ばし、末尾に注記行を付与する。
   static constexpr qint64 kMaxBytes = 8 * 1024 * 1024;
 
-  QComboBox*      m_unitCombo     = nullptr;
-  QComboBox*      m_endianCombo   = nullptr;
-  QComboBox*      m_encodingCombo = nullptr;
-  QPlainTextEdit* m_textArea      = nullptr;
+  QComboBox*          m_unitCombo     = nullptr;
+  QComboBox*          m_endianCombo   = nullptr;
+  QComboBox*          m_encodingCombo = nullptr;
+  QPlainTextEdit*     m_textArea      = nullptr;
+  AddressHighlighter* m_addressHighlighter = nullptr;
 
   QString    m_filePath;
   QByteArray m_data;

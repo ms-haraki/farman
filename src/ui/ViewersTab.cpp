@@ -7,12 +7,13 @@
 #include <QFontDialog>
 #include <QFormLayout>
 #include <QGridLayout>
+#include <QFrame>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
 #include <QRadioButton>
-#include <QTabWidget>
+#include <QScrollArea>
 #include <QVBoxLayout>
 
 namespace Farman {
@@ -25,14 +26,35 @@ ViewersTab::ViewersTab(QWidget* parent)
 }
 
 void ViewersTab::setupUi() {
-  QVBoxLayout* mainLayout = new QVBoxLayout(this);
-  mainLayout->setContentsMargins(0, 0, 0, 0);
+  QVBoxLayout* outer = new QVBoxLayout(this);
+  outer->setContentsMargins(0, 0, 0, 0);
 
-  m_subTabs = new QTabWidget(this);
-  m_subTabs->addTab(buildTextViewerPage(),   tr("Text Viewer"));
-  m_subTabs->addTab(buildImageViewerPage(),  tr("Image Viewer"));
-  m_subTabs->addTab(buildBinaryViewerPage(), tr("Binary Viewer"));
-  mainLayout->addWidget(m_subTabs);
+  // 3 ビュアー分の設定を縦に並べる。長くなりがちなのでスクロール可能に。
+  // 他タブのウィンドウ背景に揃えるため、ビューポートを透過にする。
+  QScrollArea* scroll = new QScrollArea(this);
+  scroll->setWidgetResizable(true);
+  scroll->setFrameShape(QFrame::NoFrame);
+  scroll->setStyleSheet("QScrollArea { background: transparent; } "
+                        "QScrollArea > QWidget > QWidget { background: transparent; }");
+  QWidget* container = new QWidget(scroll);
+  QVBoxLayout* col = new QVBoxLayout(container);
+  col->setContentsMargins(0, 0, 0, 0);
+
+  auto wrap = [container](const QString& title, QWidget* page) -> QGroupBox* {
+    QGroupBox* box = new QGroupBox(title, container);
+    QVBoxLayout* l = new QVBoxLayout(box);
+    l->setContentsMargins(8, 4, 8, 4);
+    l->addWidget(page);
+    return box;
+  };
+
+  col->addWidget(wrap(tr("Text Viewer"),   buildTextViewerPage()));
+  col->addWidget(wrap(tr("Image Viewer"),  buildImageViewerPage()));
+  col->addWidget(wrap(tr("Binary Viewer"), buildBinaryViewerPage()));
+  col->addStretch();
+
+  scroll->setWidget(container);
+  outer->addWidget(scroll);
 }
 
 QWidget* ViewersTab::buildTextViewerPage() {
@@ -65,8 +87,13 @@ QWidget* ViewersTab::buildTextViewerPage() {
     return btn;
   };
 
-  // ── 上段: Font / Encoding / Line Numbers / Word Wrap ─────
-  QFormLayout* form = new QFormLayout();
+  // ── 上段: Font / Encoding / Line Numbers / Word Wrap を横並び (左寄せ) ─
+  QHBoxLayout* row = new QHBoxLayout();
+  row->setSpacing(12);
+  auto addPair = [page, row](const QString& labelText, QWidget* w) {
+    row->addWidget(new QLabel(labelText, page));
+    row->addWidget(w);
+  };
 
   m_textFontButton = new QPushButton(tr("Select Font..."), page);
   m_textFontButton->setToolTip(tr("Choose the font for the text viewer"));
@@ -81,7 +108,7 @@ QWidget* ViewersTab::buildTextViewerPage() {
         .arg(m_textSelectedFont.pointSize()));
     }
   });
-  form->addRow(tr("Font:"), m_textFontButton);
+  addPair(tr("Font:"), m_textFontButton);
 
   m_textEncodingCombo = new QComboBox(page);
   m_textEncodingCombo->setEditable(true);
@@ -92,43 +119,46 @@ QWidget* ViewersTab::buildTextViewerPage() {
   m_textEncodingCombo->addItem(QStringLiteral("EUC-JP"));
   m_textEncodingCombo->addItem(QStringLiteral("ISO-8859-1"));
   m_textEncodingCombo->setToolTip(tr("Default encoding for opening text files"));
-  form->addRow(tr("Encoding:"), m_textEncodingCombo);
+  addPair(tr("Encoding:"), m_textEncodingCombo);
 
   m_textShowLineNumbersCheck = new QCheckBox(tr("Show line numbers"), page);
-  form->addRow(QString(), m_textShowLineNumbersCheck);
+  row->addWidget(m_textShowLineNumbersCheck);
 
   m_textWordWrapCheck = new QCheckBox(tr("Word wrap"), page);
-  form->addRow(QString(), m_textWordWrapCheck);
+  row->addWidget(m_textWordWrapCheck);
 
-  outer->addLayout(form);
+  row->addStretch();
+  outer->addLayout(row);
 
   // ── 下段: カラー (Normal / Selected / Line Number) ───────
   QGridLayout* colors = new QGridLayout();
-  int row = 0;
-  colors->addWidget(new QLabel(tr("Foreground"), page), row, 1, Qt::AlignCenter);
-  colors->addWidget(new QLabel(tr("Background"), page), row, 2, Qt::AlignCenter);
-  ++row;
+  // ラベルとボタン列を左に詰めるため、末尾列で残り幅を吸収する
+  colors->setColumnStretch(3, 1);
+  int r = 0;
+  colors->addWidget(new QLabel(tr("Foreground"), page), r, 1, Qt::AlignCenter);
+  colors->addWidget(new QLabel(tr("Background"), page), r, 2, Qt::AlignCenter);
+  ++r;
 
   m_textNormalFgButton = makeColorButton(m_textNormalFgValue,   tr("Normal Foreground"));
   m_textNormalBgButton = makeColorButton(m_textNormalBgValue,   tr("Normal Background"));
-  colors->addWidget(new QLabel(tr("Normal:"), page), row, 0);
-  colors->addWidget(m_textNormalFgButton, row, 1);
-  colors->addWidget(m_textNormalBgButton, row, 2);
-  ++row;
+  colors->addWidget(new QLabel(tr("Normal:"), page), r, 0);
+  colors->addWidget(m_textNormalFgButton, r, 1);
+  colors->addWidget(m_textNormalBgButton, r, 2);
+  ++r;
 
   m_textSelectedFgButton = makeColorButton(m_textSelectedFgValue, tr("Selected Foreground"));
   m_textSelectedBgButton = makeColorButton(m_textSelectedBgValue, tr("Selected Background"));
-  colors->addWidget(new QLabel(tr("Selected:"), page), row, 0);
-  colors->addWidget(m_textSelectedFgButton, row, 1);
-  colors->addWidget(m_textSelectedBgButton, row, 2);
-  ++row;
+  colors->addWidget(new QLabel(tr("Selected:"), page), r, 0);
+  colors->addWidget(m_textSelectedFgButton, r, 1);
+  colors->addWidget(m_textSelectedBgButton, r, 2);
+  ++r;
 
   m_textLineNumberFgButton = makeColorButton(m_textLineNumberFgValue, tr("Line Number Foreground"));
   m_textLineNumberBgButton = makeColorButton(m_textLineNumberBgValue, tr("Line Number Background"));
-  colors->addWidget(new QLabel(tr("Line Number:"), page), row, 0);
-  colors->addWidget(m_textLineNumberFgButton, row, 1);
-  colors->addWidget(m_textLineNumberBgButton, row, 2);
-  ++row;
+  colors->addWidget(new QLabel(tr("Line Number:"), page), r, 0);
+  colors->addWidget(m_textLineNumberFgButton, r, 1);
+  colors->addWidget(m_textLineNumberBgButton, r, 2);
+  ++r;
 
   outer->addLayout(colors);
   outer->addStretch();
@@ -139,26 +169,29 @@ QWidget* ViewersTab::buildImageViewerPage() {
   QWidget* page = new QWidget(this);
   QVBoxLayout* outer = new QVBoxLayout(page);
 
-  // 上段: Zoom / Fit / Animation
-  QFormLayout* form = new QFormLayout();
+  // 上段: Zoom / Fit / Animation を横並び (左寄せ)
+  QHBoxLayout* topRow = new QHBoxLayout();
+  topRow->setSpacing(12);
 
+  topRow->addWidget(new QLabel(tr("Zoom:"), page));
   m_imageZoomCombo = new QComboBox(page);
   m_imageZoomCombo->setEditable(true);
   for (int p : { 25, 50, 75, 100, 200 }) {
     m_imageZoomCombo->addItem(QString::number(p) + QLatin1Char('%'), p);
   }
   m_imageZoomCombo->setToolTip(tr("Default zoom factor (used when 'Fit to window' is off)"));
-  form->addRow(tr("Zoom:"), m_imageZoomCombo);
+  topRow->addWidget(m_imageZoomCombo);
 
   m_imageFitToWindowCheck = new QCheckBox(tr("Fit image to window"), page);
   m_imageFitToWindowCheck->setToolTip(
     tr("Scale the image to fit within the viewer; zoom factor is ignored while this is on."));
-  form->addRow(QString(), m_imageFitToWindowCheck);
+  topRow->addWidget(m_imageFitToWindowCheck);
 
-  m_imageAnimationCheck = new QCheckBox(tr("Play animation (GIF / APNG / WebP)"), page);
-  form->addRow(QString(), m_imageAnimationCheck);
+  m_imageAnimationCheck = new QCheckBox(tr("Play animation (GIF / WebP)"), page);
+  topRow->addWidget(m_imageAnimationCheck);
 
-  outer->addLayout(form);
+  topRow->addStretch();
+  outer->addLayout(topRow);
 
   // 色ボタン生成のヘルパー
   auto makeColorButton = [this, page](QColor& storedValue, const QString& dialogTitle) -> QPushButton* {
@@ -215,37 +248,35 @@ QWidget* ViewersTab::buildImageViewerPage() {
 
 QWidget* ViewersTab::buildBinaryViewerPage() {
   QWidget* page = new QWidget(this);
-  QFormLayout* form = new QFormLayout(page);
+  QVBoxLayout* outer = new QVBoxLayout(page);
 
-  m_binaryUnitCombo = new QComboBox(page);
-  m_binaryUnitCombo->addItem(tr("1 Byte"), 1);
-  m_binaryUnitCombo->addItem(tr("2 Byte"), 2);
-  m_binaryUnitCombo->addItem(tr("4 Byte"), 4);
-  m_binaryUnitCombo->addItem(tr("8 Byte"), 8);
-  m_binaryUnitCombo->setToolTip(
-    tr("Number of bytes per hex column (each line still shows 16 bytes)"));
-  form->addRow(tr("Unit:"), m_binaryUnitCombo);
+  // 色ボタン生成のヘルパー
+  auto makeColorButton = [this, page](QColor& storedValue, const QString& dialogTitle) -> QPushButton* {
+    QPushButton* btn = new QPushButton(page);
+    btn->setFixedWidth(100);
+    QObject::connect(btn, &QPushButton::clicked, this,
+        [this, &storedValue, btn, dialogTitle]() {
+      QColor picked = QColorDialog::getColor(
+        storedValue.isValid() ? storedValue : QColor(Qt::black),
+        this, dialogTitle, QColorDialog::ShowAlphaChannel);
+      if (picked.isValid()) {
+        storedValue = picked;
+        btn->setStyleSheet(QString("background-color: %1; color: %2;")
+          .arg(picked.name(),
+               picked.lightness() > 128 ? "black" : "white"));
+        btn->setText(picked.name());
+      }
+    });
+    return btn;
+  };
 
-  m_binaryEndianCombo = new QComboBox(page);
-  m_binaryEndianCombo->addItem(tr("Little Endian"),
-    static_cast<int>(BinaryViewerEndian::Little));
-  m_binaryEndianCombo->addItem(tr("Big Endian"),
-    static_cast<int>(BinaryViewerEndian::Big));
-  m_binaryEndianCombo->setToolTip(
-    tr("Byte order applied when the unit is larger than 1 byte"));
-  form->addRow(tr("Endian:"), m_binaryEndianCombo);
-
-  m_binaryEncodingCombo = new QComboBox(page);
-  m_binaryEncodingCombo->setEditable(true);
-  m_binaryEncodingCombo->addItem(QStringLiteral("UTF-8"));
-  m_binaryEncodingCombo->addItem(QStringLiteral("UTF-16LE"));
-  m_binaryEncodingCombo->addItem(QStringLiteral("UTF-16BE"));
-  m_binaryEncodingCombo->addItem(QStringLiteral("Shift_JIS"));
-  m_binaryEncodingCombo->addItem(QStringLiteral("EUC-JP"));
-  m_binaryEncodingCombo->addItem(QStringLiteral("ISO-8859-1"));
-  m_binaryEncodingCombo->setToolTip(
-    tr("Text encoding for the string column on the right"));
-  form->addRow(tr("String Encoding:"), m_binaryEncodingCombo);
+  // 上段: Font / Unit / Endian / String Encoding を 1 行に横並び (左寄せ)
+  QHBoxLayout* topRow = new QHBoxLayout();
+  topRow->setSpacing(12);
+  auto addPair = [page](QHBoxLayout* row, const QString& labelText, QWidget* w) {
+    row->addWidget(new QLabel(labelText, page));
+    row->addWidget(w);
+  };
 
   m_binaryFontButton = new QPushButton(tr("Select Font..."), page);
   m_binaryFontButton->setToolTip(tr("Choose the font for the binary viewer hex dump"));
@@ -260,8 +291,71 @@ QWidget* ViewersTab::buildBinaryViewerPage() {
         .arg(m_binarySelectedFont.pointSize()));
     }
   });
-  form->addRow(tr("Font:"), m_binaryFontButton);
+  addPair(topRow, tr("Font:"), m_binaryFontButton);
 
+  m_binaryUnitCombo = new QComboBox(page);
+  m_binaryUnitCombo->addItem(tr("1 Byte"), 1);
+  m_binaryUnitCombo->addItem(tr("2 Byte"), 2);
+  m_binaryUnitCombo->addItem(tr("4 Byte"), 4);
+  m_binaryUnitCombo->addItem(tr("8 Byte"), 8);
+  m_binaryUnitCombo->setToolTip(
+    tr("Number of bytes per hex column (each line still shows 16 bytes)"));
+  addPair(topRow, tr("Unit:"), m_binaryUnitCombo);
+
+  m_binaryEndianCombo = new QComboBox(page);
+  m_binaryEndianCombo->addItem(tr("Little Endian"),
+    static_cast<int>(BinaryViewerEndian::Little));
+  m_binaryEndianCombo->addItem(tr("Big Endian"),
+    static_cast<int>(BinaryViewerEndian::Big));
+  m_binaryEndianCombo->setToolTip(
+    tr("Byte order applied when the unit is larger than 1 byte"));
+  addPair(topRow, tr("Endian:"), m_binaryEndianCombo);
+
+  m_binaryEncodingCombo = new QComboBox(page);
+  m_binaryEncodingCombo->setEditable(true);
+  m_binaryEncodingCombo->addItem(QStringLiteral("UTF-8"));
+  m_binaryEncodingCombo->addItem(QStringLiteral("UTF-16LE"));
+  m_binaryEncodingCombo->addItem(QStringLiteral("UTF-16BE"));
+  m_binaryEncodingCombo->addItem(QStringLiteral("Shift_JIS"));
+  m_binaryEncodingCombo->addItem(QStringLiteral("EUC-JP"));
+  m_binaryEncodingCombo->addItem(QStringLiteral("ISO-8859-1"));
+  m_binaryEncodingCombo->setToolTip(
+    tr("Text encoding for the string column on the right"));
+  addPair(topRow, tr("String Encoding:"), m_binaryEncodingCombo);
+  topRow->addStretch();
+  outer->addLayout(topRow);
+
+  // 下段: カラー (Normal / Selected / Address)
+  QGridLayout* colors = new QGridLayout();
+  colors->setColumnStretch(3, 1);
+  int r = 0;
+  colors->addWidget(new QLabel(tr("Foreground"), page), r, 1, Qt::AlignCenter);
+  colors->addWidget(new QLabel(tr("Background"), page), r, 2, Qt::AlignCenter);
+  ++r;
+
+  m_binaryNormalFgButton = makeColorButton(m_binaryNormalFgValue, tr("Normal Foreground"));
+  m_binaryNormalBgButton = makeColorButton(m_binaryNormalBgValue, tr("Normal Background"));
+  colors->addWidget(new QLabel(tr("Normal:"), page), r, 0);
+  colors->addWidget(m_binaryNormalFgButton, r, 1);
+  colors->addWidget(m_binaryNormalBgButton, r, 2);
+  ++r;
+
+  m_binarySelectedFgButton = makeColorButton(m_binarySelectedFgValue, tr("Selected Foreground"));
+  m_binarySelectedBgButton = makeColorButton(m_binarySelectedBgValue, tr("Selected Background"));
+  colors->addWidget(new QLabel(tr("Selected:"), page), r, 0);
+  colors->addWidget(m_binarySelectedFgButton, r, 1);
+  colors->addWidget(m_binarySelectedBgButton, r, 2);
+  ++r;
+
+  m_binaryAddressFgButton = makeColorButton(m_binaryAddressFgValue, tr("Address Foreground"));
+  m_binaryAddressBgButton = makeColorButton(m_binaryAddressBgValue, tr("Address Background"));
+  colors->addWidget(new QLabel(tr("Address:"), page), r, 0);
+  colors->addWidget(m_binaryAddressFgButton, r, 1);
+  colors->addWidget(m_binaryAddressBgButton, r, 2);
+  ++r;
+
+  outer->addLayout(colors);
+  outer->addStretch();
   return page;
 }
 
@@ -337,6 +431,19 @@ void ViewersTab::loadSettings() {
   m_binaryFontButton->setText(QString("%1, %2pt")
     .arg(m_binarySelectedFont.family())
     .arg(m_binarySelectedFont.pointSize()));
+
+  m_binaryNormalFgValue   = settings.binaryViewerNormalForeground();
+  m_binaryNormalBgValue   = settings.binaryViewerNormalBackground();
+  m_binarySelectedFgValue = settings.binaryViewerSelectedForeground();
+  m_binarySelectedBgValue = settings.binaryViewerSelectedBackground();
+  m_binaryAddressFgValue  = settings.binaryViewerAddressForeground();
+  m_binaryAddressBgValue  = settings.binaryViewerAddressBackground();
+  applyButton(m_binaryNormalFgButton,   m_binaryNormalFgValue);
+  applyButton(m_binaryNormalBgButton,   m_binaryNormalBgValue);
+  applyButton(m_binarySelectedFgButton, m_binarySelectedFgValue);
+  applyButton(m_binarySelectedBgButton, m_binarySelectedBgValue);
+  applyButton(m_binaryAddressFgButton,  m_binaryAddressFgValue);
+  applyButton(m_binaryAddressBgButton,  m_binaryAddressBgValue);
 }
 
 void ViewersTab::save() {
@@ -378,6 +485,12 @@ void ViewersTab::save() {
     static_cast<BinaryViewerEndian>(m_binaryEndianCombo->currentData().toInt()));
   settings.setBinaryViewerEncoding(m_binaryEncodingCombo->currentText().trimmed());
   settings.setBinaryViewerFont(m_binarySelectedFont);
+  settings.setBinaryViewerNormalForeground(m_binaryNormalFgValue);
+  settings.setBinaryViewerNormalBackground(m_binaryNormalBgValue);
+  settings.setBinaryViewerSelectedForeground(m_binarySelectedFgValue);
+  settings.setBinaryViewerSelectedBackground(m_binarySelectedBgValue);
+  settings.setBinaryViewerAddressForeground(m_binaryAddressFgValue);
+  settings.setBinaryViewerAddressBackground(m_binaryAddressBgValue);
 }
 
 } // namespace Farman

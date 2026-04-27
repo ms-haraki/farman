@@ -8,7 +8,6 @@ class QCheckBox;
 class QComboBox;
 class QPushButton;
 class QRadioButton;
-class QTabWidget;
 
 namespace Farman {
 
@@ -30,8 +29,6 @@ private:
   QWidget* buildTextViewerPage();
   QWidget* buildImageViewerPage();
   QWidget* buildBinaryViewerPage();
-
-  QTabWidget* m_subTabs = nullptr;
 
   // Text viewer widgets
   QPushButton* m_textFontButton          = nullptr;
@@ -74,6 +71,19 @@ private:
   QComboBox*   m_binaryEncodingCombo = nullptr;
   QPushButton* m_binaryFontButton    = nullptr;
   QFont        m_binarySelectedFont;
+  // 色ボタン: Normal / Selected / Address × Foreground / Background
+  QPushButton* m_binaryNormalFgButton   = nullptr;
+  QPushButton* m_binaryNormalBgButton   = nullptr;
+  QPushButton* m_binarySelectedFgButton = nullptr;
+  QPushButton* m_binarySelectedBgButton = nullptr;
+  QPushButton* m_binaryAddressFgButton  = nullptr;
+  QPushButton* m_binaryAddressBgButton  = nullptr;
+  QColor       m_binaryNormalFgValue;
+  QColor       m_binaryNormalBgValue;
+  QColor       m_binarySelectedFgValue;
+  QColor       m_binarySelectedBgValue;
+  QColor       m_binaryAddressFgValue;
+  QColor       m_binaryAddressBgValue;
 };
 
 } // namespace Farman

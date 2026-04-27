@@ -20,7 +20,8 @@ class ImageDisplay;
 //   - 上部のツールバーで Zoom (%) / Fit / Animation をその場で上書き可能
 //     (上書き内容は Settings に保存されない)
 //   - 透明部分の表示方法 (単色 / チェック柄) と背景色は Settings から取得
-//   - GIF / APNG / WebP (アニメあり) は QMovie で再生
+//   - GIF / WebP (アニメあり) は QMovie で再生 (APNG は Qt PNG プラグインの
+//     ビルド依存のため現状非対応)
 //   - Settings::settingsChanged でローカルの上書きはリセットされる
 class ImageView : public QWidget {
   Q_OBJECT

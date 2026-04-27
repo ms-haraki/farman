@@ -335,6 +335,19 @@ void Settings::setBinaryViewerFont(const QFont& font) {
   m_binaryViewerFont = font;
 }
 
+QColor Settings::binaryViewerNormalForeground()   const { return m_binaryViewerNormalFg; }
+QColor Settings::binaryViewerNormalBackground()   const { return m_binaryViewerNormalBg; }
+QColor Settings::binaryViewerSelectedForeground() const { return m_binaryViewerSelectedFg; }
+QColor Settings::binaryViewerSelectedBackground() const { return m_binaryViewerSelectedBg; }
+QColor Settings::binaryViewerAddressForeground()  const { return m_binaryViewerAddressFg; }
+QColor Settings::binaryViewerAddressBackground()  const { return m_binaryViewerAddressBg; }
+void   Settings::setBinaryViewerNormalForeground(const QColor& c)   { m_binaryViewerNormalFg = c; }
+void   Settings::setBinaryViewerNormalBackground(const QColor& c)   { m_binaryViewerNormalBg = c; }
+void   Settings::setBinaryViewerSelectedForeground(const QColor& c) { m_binaryViewerSelectedFg = c; }
+void   Settings::setBinaryViewerSelectedBackground(const QColor& c) { m_binaryViewerSelectedBg = c; }
+void   Settings::setBinaryViewerAddressForeground(const QColor& c)  { m_binaryViewerAddressFg = c; }
+void   Settings::setBinaryViewerAddressBackground(const QColor& c)  { m_binaryViewerAddressBg = c; }
+
 bool Settings::persistHistory() const {
   return m_persistHistory;
 }
@@ -939,6 +952,18 @@ void Settings::load() {
       m_binaryViewerFont = f;
     }
   }
+  auto loadBinColor = [&](const QString& key, QColor& dst) {
+    if (binaryViewer.contains(key)) {
+      QColor c(binaryViewer.value(key).toString());
+      if (c.isValid()) dst = c;
+    }
+  };
+  loadBinColor("normalFg",   m_binaryViewerNormalFg);
+  loadBinColor("normalBg",   m_binaryViewerNormalBg);
+  loadBinColor("selectedFg", m_binaryViewerSelectedFg);
+  loadBinColor("selectedBg", m_binaryViewerSelectedBg);
+  loadBinColor("addressFg",  m_binaryViewerAddressFg);
+  loadBinColor("addressBg",  m_binaryViewerAddressBg);
 
   // ペイン履歴（ON の時のみ読む。OFF の時は必ず空にする）
   for (int i = 0; i < static_cast<int>(PaneType::Count); ++i) {
@@ -1203,6 +1228,14 @@ void Settings::save() const {
   binaryViewer["endian"]    = binaryViewerEndianToString(m_binaryViewerEndian);
   binaryViewer["encoding"]  = m_binaryViewerEncoding;
   binaryViewer["font"]      = m_binaryViewerFont.toString();
+  binaryViewer["normalFg"]   = m_binaryViewerNormalFg.name(QColor::HexArgb);
+  if (m_binaryViewerNormalBg.isValid()) {
+    binaryViewer["normalBg"] = m_binaryViewerNormalBg.name(QColor::HexArgb);
+  }
+  binaryViewer["selectedFg"] = m_binaryViewerSelectedFg.name(QColor::HexArgb);
+  binaryViewer["selectedBg"] = m_binaryViewerSelectedBg.name(QColor::HexArgb);
+  binaryViewer["addressFg"]  = m_binaryViewerAddressFg.name(QColor::HexArgb);
+  binaryViewer["addressBg"]  = m_binaryViewerAddressBg.name(QColor::HexArgb);
   root["binaryViewer"] = binaryViewer;
 
   // ペイン履歴（ON のときだけディスクに出す）

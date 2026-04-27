@@ -6,13 +6,36 @@
 #include <QFontDatabase>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QPalette>
 #include <QPlainTextEdit>
+#include <QRegularExpression>
 #include <QSignalBlocker>
 #include <QStringDecoder>
+#include <QSyntaxHighlighter>
 #include <QTextCodec>
 #include <QVBoxLayout>
 
 namespace Farman {
+
+// 各行先頭 8 桁の 16 進アドレスをハイライトする。色は Settings から都度取得する。
+class AddressHighlighter : public QSyntaxHighlighter {
+public:
+  using QSyntaxHighlighter::QSyntaxHighlighter;
+
+protected:
+  void highlightBlock(const QString& text) override {
+    static const QRegularExpression re(QStringLiteral("^[0-9a-fA-F]{8}"));
+    const auto m = re.match(text);
+    if (!m.hasMatch()) return;
+    const Settings& s = Settings::instance();
+    QTextCharFormat fmt;
+    fmt.setForeground(s.binaryViewerAddressForeground());
+    if (s.binaryViewerAddressBackground().isValid()) {
+      fmt.setBackground(s.binaryViewerAddressBackground());
+    }
+    setFormat(m.capturedStart(), m.capturedLength(), fmt);
+  }
+};
 
 namespace {
 
@@ -180,6 +203,8 @@ void BinaryView::setupUi() {
   m_textArea = new QPlainTextEdit(this);
   m_textArea->setReadOnly(true);
   m_textArea->setLineWrapMode(QPlainTextEdit::NoWrap);
+  // 行頭 8 桁のアドレスを別色で塗るシンタックスハイライタ
+  m_addressHighlighter = new AddressHighlighter(m_textArea->document());
   root->addWidget(m_textArea, /*stretch*/ 1);
 
   // ローカルでの変更は Settings に保存しない (render のみ)
@@ -215,6 +240,20 @@ void BinaryView::syncFromSettings() {
   m_endian   = s.binaryViewerEndian();
   m_encoding = s.binaryViewerEncoding();
   m_textArea->setFont(s.binaryViewerFont());
+
+  // 通常 / 選択カラーは QPalette 経由で適用
+  QPalette pal = m_textArea->palette();
+  pal.setColor(QPalette::Text, s.binaryViewerNormalForeground());
+  if (s.binaryViewerNormalBackground().isValid()) {
+    pal.setColor(QPalette::Base, s.binaryViewerNormalBackground());
+  }
+  pal.setColor(QPalette::HighlightedText, s.binaryViewerSelectedForeground());
+  pal.setColor(QPalette::Highlight,       s.binaryViewerSelectedBackground());
+  m_textArea->setPalette(pal);
+
+  // アドレス列の色は AddressHighlighter が描画時に Settings から直接読むので
+  // 明示的に再ハイライトを要求して反映させる
+  if (m_addressHighlighter) m_addressHighlighter->rehighlight();
 
   // コンボの再選択 (シグナルを抑止して二重 render を防ぐ)
   {

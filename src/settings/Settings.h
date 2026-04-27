@@ -175,6 +175,19 @@ public:
   void               setBinaryViewerEncoding(const QString& encoding);
   QFont              binaryViewerFont()     const;
   void               setBinaryViewerFont(const QFont& font);
+  // 通常テキスト / 選択範囲 / アドレス列の前景・背景色
+  QColor             binaryViewerNormalForeground()    const;
+  QColor             binaryViewerNormalBackground()    const;
+  QColor             binaryViewerSelectedForeground()  const;
+  QColor             binaryViewerSelectedBackground()  const;
+  QColor             binaryViewerAddressForeground()   const;
+  QColor             binaryViewerAddressBackground()   const;
+  void               setBinaryViewerNormalForeground(const QColor& c);
+  void               setBinaryViewerNormalBackground(const QColor& c);
+  void               setBinaryViewerSelectedForeground(const QColor& c);
+  void               setBinaryViewerSelectedBackground(const QColor& c);
+  void               setBinaryViewerAddressForeground(const QColor& c);
+  void               setBinaryViewerAddressBackground(const QColor& c);
 
   // ディレクトリ履歴を終了時に保存し、起動時に復元するか
   bool persistHistory()                 const;
@@ -285,6 +298,12 @@ private:
   BinaryViewerEndian m_binaryViewerEndian   = BinaryViewerEndian::Little;
   QString            m_binaryViewerEncoding = QStringLiteral("UTF-8");
   QFont              m_binaryViewerFont;  // 既定は monospace (コンストラクタで初期化)
+  QColor             m_binaryViewerNormalFg     = QColor(Qt::black);
+  QColor             m_binaryViewerNormalBg;                 // 不正値ならパレット既定
+  QColor             m_binaryViewerSelectedFg   = QColor(Qt::white);
+  QColor             m_binaryViewerSelectedBg   = QColor(0x31, 0x6A, 0xC5);
+  QColor             m_binaryViewerAddressFg    = QColor(Qt::darkGray);
+  QColor             m_binaryViewerAddressBg    = QColor(0xF0, 0xF0, 0xF0);
   bool             m_persistHistory  = false;
   QStringList      m_paneHistory[static_cast<int>(PaneType::Count)];
   QString          m_autoRenameTemplate = QStringLiteral(" ({n})");
