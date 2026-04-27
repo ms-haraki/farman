@@ -68,6 +68,11 @@ public:
 signals:
   void pathChanged(const QString& leftPath, const QString& rightPath);
   void fileActivated(const QString& filePath);
+  // ステータスバー連携用: アクティブペインのフォーカス中ファイルの絶対パス。
+  // 何も選択されていない場合は空文字列。
+  void activeFocusedPathChanged(const QString& path);
+  // ステータスバー連携用: アクティブペインの要約 (件数 / 選択数 / サイズ)。
+  void activeSummaryChanged(const QString& summary);
 
 private slots:
   void onLeftPaneCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
@@ -78,6 +83,8 @@ private slots:
 private:
   void setupUi();
   void handleEnterKey();
+  // アクティブペインの状態をステータスバー向けに再計算してシグナル送出する
+  void emitActivePaneStatus();
   void handleBackspaceKey();
   void handleSpaceKey();
   void handleAsteriskKey();

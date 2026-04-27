@@ -21,6 +21,7 @@
 #include <QVBoxLayout>
 #include <QSplitter>
 #include <QFileDialog>
+#include <QLocale>
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QDir>
@@ -56,12 +57,31 @@ void FileManagerPanel::setupUi() {
   m_leftPane = new FileListPane(this);
   connect(m_leftPane, &FileListPane::currentChanged, this, &FileManagerPanel::onLeftPaneCurrentChanged);
   connect(m_leftPane, &FileListPane::folderButtonClicked, this, &FileManagerPanel::onLeftFolderButtonClicked);
+  // ステータスバー更新: カーソル移動・モデル変化・選択変化を監視
+  connect(m_leftPane, &FileListPane::currentChanged, this, [this](const QModelIndex&, const QModelIndex&) {
+    emitActivePaneStatus();
+  });
+  connect(m_leftPane->model(), &QAbstractItemModel::dataChanged, this, [this](auto&&...) {
+    emitActivePaneStatus();
+  });
+  connect(m_leftPane->model(), &QAbstractItemModel::modelReset, this, [this] {
+    emitActivePaneStatus();
+  });
   m_splitter->addWidget(m_leftPane);
 
   // ===== Right Pane =====
   m_rightPane = new FileListPane(this);
   connect(m_rightPane, &FileListPane::currentChanged, this, &FileManagerPanel::onRightPaneCurrentChanged);
   connect(m_rightPane, &FileListPane::folderButtonClicked, this, &FileManagerPanel::onRightFolderButtonClicked);
+  connect(m_rightPane, &FileListPane::currentChanged, this, [this](const QModelIndex&, const QModelIndex&) {
+    emitActivePaneStatus();
+  });
+  connect(m_rightPane->model(), &QAbstractItemModel::dataChanged, this, [this](auto&&...) {
+    emitActivePaneStatus();
+  });
+  connect(m_rightPane->model(), &QAbstractItemModel::modelReset, this, [this] {
+    emitActivePaneStatus();
+  });
   m_splitter->addWidget(m_rightPane);
 
   // Splitterのサイズを均等に
@@ -538,6 +558,60 @@ void FileManagerPanel::setActivePane(PaneType pane) {
 
   // アクティブペインにフォーカスを設定
   activePane()->view()->setFocus();
+
+  // ステータスバーをアクティブペインの状態に追従
+  emitActivePaneStatus();
+}
+
+void FileManagerPanel::emitActivePaneStatus() {
+  FileListPane* pane = activePane();
+  if (!pane) {
+    emit activeFocusedPathChanged(QString());
+    emit activeSummaryChanged(QString());
+    return;
+  }
+  FileListModel* model = pane->model();
+  if (!model) {
+    emit activeFocusedPathChanged(QString());
+    emit activeSummaryChanged(QString());
+    return;
+  }
+
+  // フォーカス中ファイルの絶対パス
+  QString focusedPath;
+  const QModelIndex idx = pane->view()->currentIndex();
+  if (idx.isValid()) {
+    if (const FileItem* item = model->itemAt(idx)) {
+      focusedPath = item->absolutePath();
+    }
+  }
+  emit activeFocusedPathChanged(focusedPath);
+
+  // 要約: 総アイテム数 ('..' 除外) / 選択数 / 選択合計サイズ
+  int totalCount = 0;
+  int selectedCount = 0;
+  qint64 selectedBytes = 0;
+  const int rows = model->rowCount();
+  for (int r = 0; r < rows; ++r) {
+    const FileItem* item = model->itemAt(r);
+    if (!item || item->isDotDot()) continue;
+    ++totalCount;
+    if (item->isSelected()) {
+      ++selectedCount;
+      const qint64 sz = item->size();
+      if (sz > 0) selectedBytes += sz;
+    }
+  }
+  QString summary;
+  if (selectedCount > 0) {
+    summary = tr("%1 / %2 items selected (%3)")
+                .arg(selectedCount)
+                .arg(totalCount)
+                .arg(QLocale().formattedDataSize(selectedBytes));
+  } else {
+    summary = tr("%1 items").arg(totalCount);
+  }
+  emit activeSummaryChanged(summary);
 }
 
 void FileManagerPanel::onLeftFolderButtonClicked() {

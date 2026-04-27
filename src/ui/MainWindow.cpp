@@ -10,6 +10,9 @@
 #include "../core/DirectoryHistory.h"
 #include "../utils/Dialogs.h"
 #include <QStackedWidget>
+#include <QStatusBar>
+#include <QLabel>
+#include <QFontMetrics>
 #include <QVBoxLayout>
 #include <QKeyEvent>
 #include <QCloseEvent>
@@ -118,6 +121,25 @@ void MainWindow::setupUi() {
   m_viewerPanel = new ViewerPanel(this);
   m_viewerPanel->installEventFilter(this);
   m_stack->addWidget(m_viewerPanel);
+
+  // ===== Status Bar =====
+  m_statusPathLabel = new QLabel(this);
+  m_statusPathLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  // 長いパスは末尾を表示できるよう中央付近を省略 (... で省略表示)
+  m_statusPathLabel->setMinimumWidth(0);
+  m_statusPathLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+  m_statusSummaryLabel = new QLabel(this);
+  m_statusSummaryLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  statusBar()->addWidget(m_statusPathLabel, /*stretch*/ 1);
+  statusBar()->addPermanentWidget(m_statusSummaryLabel);
+
+  connect(m_fileManagerPanel, &FileManagerPanel::activeFocusedPathChanged,
+          this, [this](const QString& path) {
+    m_statusPathLabel->setText(path);
+    m_statusPathLabel->setToolTip(path);
+  });
+  connect(m_fileManagerPanel, &FileManagerPanel::activeSummaryChanged,
+          m_statusSummaryLabel, &QLabel::setText);
 }
 
 void MainWindow::showFileManager() {

@@ -7,6 +7,7 @@
 #include "../keybinding/KeyBindingManager.h"
 
 class QStackedWidget;
+class QLabel;
 
 namespace Farman {
 
@@ -42,6 +43,9 @@ private:
   QStackedWidget* m_stack;
   FileManagerPanel* m_fileManagerPanel;
   ViewerPanel* m_viewerPanel;
+  // ステータスバー (左: フォーカス中ファイルの絶対パス / 右: 件数・選択要約)
+  QLabel*      m_statusPathLabel    = nullptr;
+  QLabel*      m_statusSummaryLabel = nullptr;
 };
 
 } // namespace Farman
