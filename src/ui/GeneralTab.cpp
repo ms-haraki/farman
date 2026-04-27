@@ -320,6 +320,11 @@ void GeneralTab::loadSettings() {
 void GeneralTab::save() {
   auto& settings = Settings::instance();
 
+  // 言語の変更検知 (再起動確認のため、setLanguage の前に比較する)
+  const LanguageMode newLanguage =
+    static_cast<LanguageMode>(m_languageCombo->currentData().toInt());
+  m_languageChangedOnSave = (newLanguage != settings.language());
+
   settings.setInitialPathMode(
     PaneType::Left,
     static_cast<InitialPathMode>(m_leftInitialPathModeCombo->currentData().toInt())

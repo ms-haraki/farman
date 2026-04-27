@@ -28,6 +28,10 @@ public:
 
   void save();
 
+  // 直前の save() で言語設定が変更されたか。SettingsDialog 側で
+  // 「再起動するか確認」ダイアログを出すために使う。
+  bool languageChangedOnSave() const { return m_languageChangedOnSave; }
+
 private slots:
   void onWindowSizeModeChanged(int index);
   void onWindowPositionModeChanged(int index);
@@ -74,6 +78,9 @@ private:
   // 保持日数。0 を「永久」として扱うため、専用チェックボックス + SpinBox の組み合わせ
   QCheckBox*   m_logRetentionForeverCheck  = nullptr;
   QSpinBox*    m_logRetentionDaysSpin      = nullptr;
+
+  // 直前の save() で言語が変更されたか
+  bool         m_languageChangedOnSave     = false;
 };
 
 } // namespace Farman

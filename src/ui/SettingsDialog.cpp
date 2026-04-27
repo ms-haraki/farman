@@ -7,14 +7,17 @@
 #include "settings/Settings.h"
 #include "keybinding/KeyBindingManager.h"
 #include "utils/Dialogs.h"
-#include <QVBoxLayout>
-#include <QTabWidget>
-#include <QDialogButtonBox>
-#include <QPushButton>
-#include <QKeyEvent>
-#include <QShortcut>
-#include <QLabel>
+#include <QApplication>
 #include <QDebug>
+#include <QDialogButtonBox>
+#include <QKeyEvent>
+#include <QLabel>
+#include <QMessageBox>
+#include <QProcess>
+#include <QPushButton>
+#include <QShortcut>
+#include <QTabWidget>
+#include <QVBoxLayout>
 
 namespace Farman {
 
@@ -146,6 +149,21 @@ void SettingsDialog::onApply() {
 
   // Notify that settings have changed
   emit settingsChanged();
+
+  // 言語が変わっていたら、現プロセスでは適切に切り替えられないので
+  // 再起動を促す。Yes なら同じ実行ファイルを起動して終了。
+  if (m_generalTab->languageChangedOnSave()) {
+    QMessageBox::StandardButton ans = QMessageBox::question(
+      this,
+      tr("Language Changed"),
+      tr("Restart farman now to apply the new language?"),
+      QMessageBox::Yes | QMessageBox::No,
+      QMessageBox::Yes);
+    if (ans == QMessageBox::Yes) {
+      QProcess::startDetached(QApplication::applicationFilePath(), QStringList());
+      QApplication::quit();
+    }
+  }
 }
 
 void SettingsDialog::onClearBinding() {
