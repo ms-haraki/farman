@@ -12,7 +12,6 @@
 #include <QDialogButtonBox>
 #include <QKeyEvent>
 #include <QLabel>
-#include <QMessageBox>
 #include <QProcess>
 #include <QPushButton>
 #include <QShortcut>
@@ -152,14 +151,12 @@ void SettingsDialog::onApply() {
 
   // 言語が変わっていたら、現プロセスでは適切に切り替えられないので
   // 再起動を促す。Yes なら同じ実行ファイルを起動して終了。
+  // Y/N の単押し対応のため独自の confirm() ヘルパを使う。
   if (m_generalTab->languageChangedOnSave()) {
-    QMessageBox::StandardButton ans = QMessageBox::question(
-      this,
-      tr("Language Changed"),
-      tr("Restart farman now to apply the new language?"),
-      QMessageBox::Yes | QMessageBox::No,
-      QMessageBox::Yes);
-    if (ans == QMessageBox::Yes) {
+    if (confirm(this,
+                tr("Language Changed"),
+                tr("Restart farman now to apply the new language?"),
+                /*defaultYes=*/true)) {
       QProcess::startDetached(QApplication::applicationFilePath(), QStringList());
       QApplication::quit();
     }
