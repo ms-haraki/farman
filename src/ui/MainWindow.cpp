@@ -805,10 +805,12 @@ void MainWindow::createMenus() {
 }
 
 void MainWindow::showAboutDialog() {
+  const QString version = QStringLiteral(QT_STRINGIFY(FARMAN_VERSION));
   QMessageBox::about(this, tr("About farman"),
-    tr("<b>farman</b> - File Manager<br><br>"
-       "A keyboard-driven Qt6 file manager inspired by "
-       "Total Commander / Double Commander."));
+    tr("<b>farman</b> %1<br><br>"
+       "Copyright &copy; Mashsoft Inc.<br>"
+       "<a href=\"https://www.mashsoft.co.jp\">https://www.mashsoft.co.jp</a>")
+      .arg(version));
 }
 
 void MainWindow::showSettingsDialog() {

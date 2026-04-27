@@ -80,6 +80,10 @@ target_include_directories(farman PRIVATE
   ${CMAKE_SOURCE_DIR}/src
 )
 
+target_compile_definitions(farman PRIVATE
+  FARMAN_VERSION=${PROJECT_VERSION}
+)
+
 target_link_libraries(farman PRIVATE
   Qt6::Core
   Qt6::Widgets
