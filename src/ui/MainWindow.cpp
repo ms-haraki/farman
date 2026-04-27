@@ -38,7 +38,7 @@ MainWindow::MainWindow(QWidget* parent)
   // ロガーを設定 (ファイル出力 ON/OFF・出力先) し、起動の旨を 1 行残す
   {
     auto& s = Settings::instance();
-    Logger::instance().setFileOutput(s.logToFile(), s.logFilePath());
+    Logger::instance().setFileOutput(s.logToFile(), s.logFilePath(), s.logRetentionDays());
     Logger::instance().info(QStringLiteral("farman started"));
   }
 
@@ -747,7 +747,8 @@ void MainWindow::onSettingsChanged() {
   // ログ表示・ファイル出力の状態を Settings に追従
   auto& s = Settings::instance();
   m_fileManagerPanel->setLogPaneVisible(s.logVisible());
-  Logger::instance().setFileOutput(s.logToFile(), s.logFilePath());
+  m_fileManagerPanel->setLogPaneHeight(s.logPaneHeight());
+  Logger::instance().setFileOutput(s.logToFile(), s.logFilePath(), s.logRetentionDays());
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {

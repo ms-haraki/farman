@@ -69,6 +69,7 @@ public:
   // ── ログペイン ──────────────────────────
   void setLogPaneVisible(bool visible);
   bool isLogPaneVisible() const;
+  void setLogPaneHeight(int px);
 
 signals:
   void pathChanged(const QString& leftPath, const QString& rightPath);

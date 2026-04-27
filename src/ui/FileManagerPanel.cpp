@@ -92,6 +92,7 @@ void FileManagerPanel::setupUi() {
   // ===== Log Pane =====
   m_logPane = new LogPane(this);
   m_logPane->setVisible(Settings::instance().logVisible());
+  setLogPaneHeight(Settings::instance().logPaneHeight());
   layout->addWidget(m_logPane);
 }
 
@@ -101,6 +102,12 @@ void FileManagerPanel::setLogPaneVisible(bool visible) {
 
 bool FileManagerPanel::isLogPaneVisible() const {
   return m_logPane && m_logPane->isVisible();
+}
+
+void FileManagerPanel::setLogPaneHeight(int px) {
+  if (!m_logPane) return;
+  if (px < 40) px = 40;
+  m_logPane->setFixedHeight(px);
 }
 
 void FileManagerPanel::loadInitialPath() {

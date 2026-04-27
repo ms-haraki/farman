@@ -249,10 +249,21 @@ void Settings::setConfirmOnExit(bool confirm) {
 
 bool    Settings::logVisible()  const { return m_logVisible; }
 void    Settings::setLogVisible(bool v) { m_logVisible = v; }
+int     Settings::logPaneHeight() const { return m_logPaneHeight; }
+void    Settings::setLogPaneHeight(int px) {
+  if (px < 40) px = 40;
+  if (px > 4000) px = 4000;
+  m_logPaneHeight = px;
+}
 bool    Settings::logToFile()   const { return m_logToFile; }
 void    Settings::setLogToFile(bool v) { m_logToFile = v; }
 QString Settings::logFilePath() const { return m_logFilePath; }
 void    Settings::setLogFilePath(const QString& p) { m_logFilePath = p; }
+int     Settings::logRetentionDays() const { return m_logRetentionDays; }
+void    Settings::setLogRetentionDays(int days) {
+  if (days < 0) days = 0;
+  m_logRetentionDays = days;
+}
 
 bool Settings::cursorLoop() const {
   return m_cursorLoop;
@@ -910,12 +921,15 @@ void Settings::load() {
 
   // Load log settings
   QJsonObject logObj = root.value("log").toObject();
-  m_logVisible  = logObj.value("visible").toBool(true);
-  m_logToFile   = logObj.value("toFile").toBool(true);
+  m_logVisible    = logObj.value("visible").toBool(true);
+  m_logPaneHeight = logObj.value("paneHeight").toInt(m_logPaneHeight);
+  m_logToFile     = logObj.value("toFile").toBool(true);
   if (logObj.contains("filePath")) {
     const QString p = logObj.value("filePath").toString();
     if (!p.isEmpty()) m_logFilePath = p;
   }
+  m_logRetentionDays = logObj.value("retentionDays").toInt(m_logRetentionDays);
+  if (m_logRetentionDays < 0) m_logRetentionDays = 0;
 
   // Load text viewer settings
   QJsonObject textViewer = root.value("textViewer").toObject();
@@ -1256,8 +1270,10 @@ void Settings::save() const {
   // Save log settings
   {
     QJsonObject logObj;
-    logObj["visible"]  = m_logVisible;
-    logObj["toFile"]   = m_logToFile;
+    logObj["visible"]       = m_logVisible;
+    logObj["paneHeight"]    = m_logPaneHeight;
+    logObj["toFile"]        = m_logToFile;
+    logObj["retentionDays"] = m_logRetentionDays;
     logObj["filePath"] = m_logFilePath;
     root["log"] = logObj;
   }

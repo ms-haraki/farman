@@ -14,10 +14,9 @@ LogPane::LogPane(QWidget* parent)
   setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
   setMaximumBlockCount(2000);
 
-  // 4 行ぶん程度の高さに収める (1 操作 1 行を想定)
-  const int lineHeight = fontMetrics().lineSpacing();
-  setMinimumHeight(lineHeight * 2);
-  setMaximumHeight(lineHeight * 5);
+  // 高さは Settings の logPaneHeight を FileManagerPanel 側で setFixedHeight する。
+  // 最低限 1 行ぶんは確保しておく。
+  setMinimumHeight(fontMetrics().lineSpacing());
 
   // 既存の履歴を流し込む
   for (const QString& line : Logger::instance().recent()) {

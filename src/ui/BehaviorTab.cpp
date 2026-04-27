@@ -214,18 +214,51 @@ void BehaviorTab::setupUi() {
   QGroupBox* logGroup = new QGroupBox(tr("Log"), this);
   QVBoxLayout* logGroupLayout = new QVBoxLayout(logGroup);
 
+  // Row 1: Show log pane + height + retention
   m_logVisibleCheck = new QCheckBox(tr("Show log pane"), this);
   m_logVisibleCheck->setToolTip(
     tr("Show the log pane between the file panes and status bar. "
        "Toggle from the View menu or with Ctrl+L."));
-  logGroupLayout->addWidget(m_logVisibleCheck);
 
+  m_logPaneHeightSpin = new QSpinBox(this);
+  m_logPaneHeightSpin->setRange(40, 4000);
+  m_logPaneHeightSpin->setSingleStep(10);
+  m_logPaneHeightSpin->setSuffix(tr(" px"));
+  m_logPaneHeightSpin->setToolTip(tr("Fixed height of the log pane in pixels."));
+
+  m_logRetentionDaysSpin = new QSpinBox(this);
+  m_logRetentionDaysSpin->setRange(1, 36500);
+  m_logRetentionDaysSpin->setSuffix(tr(" days"));
+  m_logRetentionDaysSpin->setToolTip(
+    tr("Daily log files older than this number of days are deleted on startup and on rotation."));
+
+  m_logRetentionForeverCheck = new QCheckBox(tr("Keep forever"), this);
+  m_logRetentionForeverCheck->setToolTip(
+    tr("If checked, never delete old daily log files."));
+
+  QHBoxLayout* logVisibleRow = new QHBoxLayout();
+  logVisibleRow->setContentsMargins(0, 0, 0, 0);
+  logVisibleRow->addWidget(m_logVisibleCheck);
+  logVisibleRow->addSpacing(16);
+  logVisibleRow->addWidget(new QLabel(tr("Height:"), this));
+  logVisibleRow->addWidget(m_logPaneHeightSpin);
+  logVisibleRow->addSpacing(16);
+  logVisibleRow->addWidget(new QLabel(tr("Retention:"), this));
+  logVisibleRow->addWidget(m_logRetentionDaysSpin);
+  logVisibleRow->addSpacing(8);
+  logVisibleRow->addWidget(m_logRetentionForeverCheck);
+  logVisibleRow->addStretch(1);
+  logGroupLayout->addLayout(logVisibleRow);
+
+  // Row 2: Write to file + path
   m_logToFileCheck = new QCheckBox(tr("Write log to file"), this);
   m_logToFileCheck->setToolTip(
-    tr("Append log entries to a file in addition to the log pane."));
+    tr("Append log entries to a date-stamped file (rotated daily) in addition to the log pane."));
 
   m_logFilePathEdit = new QLineEdit(this);
   m_logFilePathEdit->setPlaceholderText(tr("/path/to/farman.log"));
+  m_logFilePathEdit->setToolTip(
+    tr("Base path. Daily files are written as <name>-YYYY-MM-DD.<ext> in the same directory."));
 
   m_logFilePathBrowse = new QToolButton(this);
   m_logFilePathBrowse->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
@@ -240,11 +273,14 @@ void BehaviorTab::setupUi() {
   logGroupLayout->addLayout(logFileRow);
 
   auto updateLogFileEnabled = [this]() {
-    const bool enabled = m_logToFileCheck->isChecked();
-    m_logFilePathEdit->setEnabled(enabled);
-    m_logFilePathBrowse->setEnabled(enabled);
+    const bool fileEnabled = m_logToFileCheck->isChecked();
+    m_logFilePathEdit->setEnabled(fileEnabled);
+    m_logFilePathBrowse->setEnabled(fileEnabled);
+    m_logRetentionForeverCheck->setEnabled(fileEnabled);
+    m_logRetentionDaysSpin->setEnabled(fileEnabled && !m_logRetentionForeverCheck->isChecked());
   };
   connect(m_logToFileCheck, &QCheckBox::toggled, this, updateLogFileEnabled);
+  connect(m_logRetentionForeverCheck, &QCheckBox::toggled, this, updateLogFileEnabled);
   connect(m_logFilePathBrowse, &QToolButton::clicked, this, [this]() {
     const QString start = m_logFilePathEdit->text().isEmpty()
                           ? QDir::homePath()
@@ -452,11 +488,17 @@ void BehaviorTab::loadSettings() {
 
   // Log settings
   m_logVisibleCheck->setChecked(settings.logVisible());
+  m_logPaneHeightSpin->setValue(settings.logPaneHeight());
   m_logToFileCheck->setChecked(settings.logToFile());
   m_logFilePathEdit->setText(settings.logFilePath());
+  const int retention = settings.logRetentionDays();
+  m_logRetentionForeverCheck->setChecked(retention == 0);
+  m_logRetentionDaysSpin->setValue(retention > 0 ? retention : 7);
   const bool logFileEnabled = m_logToFileCheck->isChecked();
   m_logFilePathEdit->setEnabled(logFileEnabled);
   m_logFilePathBrowse->setEnabled(logFileEnabled);
+  m_logRetentionForeverCheck->setEnabled(logFileEnabled);
+  m_logRetentionDaysSpin->setEnabled(logFileEnabled && !m_logRetentionForeverCheck->isChecked());
 
   // Startup settings
   auto selectModeByData = [](QComboBox* combo, int value) {
@@ -564,8 +606,11 @@ void BehaviorTab::save() {
 
   // Save log settings
   settings.setLogVisible(m_logVisibleCheck->isChecked());
+  settings.setLogPaneHeight(m_logPaneHeightSpin->value());
   settings.setLogToFile(m_logToFileCheck->isChecked());
   settings.setLogFilePath(m_logFilePathEdit->text().trimmed());
+  settings.setLogRetentionDays(
+    m_logRetentionForeverCheck->isChecked() ? 0 : m_logRetentionDaysSpin->value());
 
   // Save startup settings
   settings.setInitialPathMode(

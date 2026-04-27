@@ -47,10 +47,14 @@ private:
   QCheckBox*  m_sortCaseSensitiveCheck;
 
   // Log settings
-  QCheckBox*  m_logVisibleCheck    = nullptr;
-  QCheckBox*  m_logToFileCheck     = nullptr;
-  QLineEdit*  m_logFilePathEdit    = nullptr;
+  QCheckBox*  m_logVisibleCheck       = nullptr;
+  QSpinBox*   m_logPaneHeightSpin     = nullptr;
+  QCheckBox*  m_logToFileCheck        = nullptr;
+  QLineEdit*  m_logFilePathEdit       = nullptr;
   class QToolButton* m_logFilePathBrowse = nullptr;
+  // 保持日数。0 を「永久」として扱うため、専用チェックボックス + SpinBox の組み合わせ
+  QCheckBox*  m_logRetentionForeverCheck = nullptr;
+  QSpinBox*   m_logRetentionDaysSpin     = nullptr;
 
   // Display settings
   QCheckBox*  m_showHiddenCheck;

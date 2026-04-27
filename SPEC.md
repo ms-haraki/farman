@@ -301,12 +301,21 @@ macOS の `Ctrl` は `⌘`（Command）に割り当てられる。
 - バッファは UI 側でリングバッファとして保持（古い行は順次破棄）。
 - 表示の ON/OFF を切り替え可能。デフォルトは ON。
   - View メニュー「Toggle Log Pane」、ショートカットキー `Ctrl+L`、Settings からトグル。
+- ペインの高さ（px）を Settings で指定可能。
 
 ### ファイル出力
 - 表示用ペインとは別に、同じ内容をファイルへ追記出力するか選べる。デフォルトは ON。
-- 既定の出力先は `<AppConfigLocation>/farman.log`（macOS では
-  `~/Library/Application Support/farman/farman/farman.log` 相当）。Settings から
-  任意のパスへ変更可能。
+- 設定する「ベースパス」のディレクトリ／ファイル名を元に、**1 日 1 ファイル**で
+  自動ローテーションする。実ファイル名は `<base>-YYYY-MM-DD.<ext>`。
+  - 例: ベースパス `farman.log` → 当日のファイルは `farman-2026-04-27.log`
+  - 日付が変わったタイミングで次のログ行を書く際にファイルを切り替える。
+- 既定のベースパスは `<AppConfigLocation>/farman.log`（macOS では
+  `~/Library/Preferences/Farman/farman/farman.log` 相当）。Settings から任意の
+  パスへ変更可能。
+- **保持日数 (Retention)** を Settings で指定。
+  - 1 以上の値: 起動時 / ローテーション時に、その日数より古い日付ファイル
+    (`<base>-YYYY-MM-DD.<ext>` パターンに一致するもののみ) を削除。
+  - 「Keep forever」ON: 削除しない（永久保持）。デフォルトは 7 日。
 
 ### メッセージ書式
 - 1 操作 1 行が原則。冗長な多段ログは避ける。
@@ -322,9 +331,9 @@ macOS の `Ctrl` は `⌘`（Command）に割り当てられる。
 
 ### Settings
 - Behavior タブの「Log」グループに以下を配置:
-  - `Show log pane` (チェックボックス, デフォルト ON)
-  - `Write log to file` (チェックボックス, デフォルト ON)
-  - `File:` 出力先パス入力 + Browse ボタン
+  - 1 行目 (横並び): `Show log pane` (デフォルト ON) / `Height:` SpinBox /
+    `Retention:` SpinBox / `Keep forever` (チェックボックス)
+  - 2 行目: `Write log to file` (デフォルト ON) / `File:` 出力先ベースパス入力 + Browse ボタン
 
 ---
 
