@@ -135,11 +135,29 @@ void MainWindow::setupUi() {
 
   connect(m_fileManagerPanel, &FileManagerPanel::activeFocusedPathChanged,
           this, [this](const QString& path) {
-    m_statusPathLabel->setText(path);
-    m_statusPathLabel->setToolTip(path);
+    m_fmStatusPath = path;
+    if (m_stack->currentWidget() == m_fileManagerPanel) updateStatusBar();
   });
   connect(m_fileManagerPanel, &FileManagerPanel::activeSummaryChanged,
-          m_statusSummaryLabel, &QLabel::setText);
+          this, [this](const QString& summary) {
+    m_fmStatusSummary = summary;
+    if (m_stack->currentWidget() == m_fileManagerPanel) updateStatusBar();
+  });
+  connect(m_viewerPanel, &ViewerPanel::viewerStatusChanged,
+          this, [this](const QString& path, const QString& summary) {
+    m_viewerStatusPath = path;
+    m_viewerStatusSummary = summary;
+    if (m_stack->currentWidget() == m_viewerPanel) updateStatusBar();
+  });
+}
+
+void MainWindow::updateStatusBar() {
+  const bool fm = (m_stack && m_stack->currentWidget() == m_fileManagerPanel);
+  const QString& path    = fm ? m_fmStatusPath    : m_viewerStatusPath;
+  const QString& summary = fm ? m_fmStatusSummary : m_viewerStatusSummary;
+  m_statusPathLabel->setText(path);
+  m_statusPathLabel->setToolTip(path);
+  m_statusSummaryLabel->setText(summary);
 }
 
 void MainWindow::showFileManager() {
@@ -149,6 +167,7 @@ void MainWindow::showFileManager() {
 
     // フォーカスをアクティブペインに戻す
     m_fileManagerPanel->activePane()->view()->setFocus();
+    updateStatusBar();
   }
 }
 
@@ -156,6 +175,7 @@ void MainWindow::showViewer(const QString& filePath) {
   if (m_viewerPanel->openFile(filePath)) {
     m_stack->setCurrentWidget(m_viewerPanel);
     m_viewerPanel->setFocus();
+    updateStatusBar();
   }
 }
 

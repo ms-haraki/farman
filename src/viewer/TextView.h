@@ -28,6 +28,9 @@ public:
   // 表示中ファイルをクリア。
   void clearContent();
 
+  // ステータスバー表示用の要約 ("1234 lines · UTF-8 · 56 KB" 等)。
+  QString statusInfo() const;
+
   // 内部 TextEditArea が paintEvent から呼び出すアクセサ群。
   bool   showLineNumbers() const { return m_showLineNumbers; }
   QColor lineNumberForeground() const;

@@ -40,6 +40,14 @@ private:
   void createMenus();
   void showAboutDialog();
 
+  // どちらのパネルがアクティブかでステータスバーの表示元を切り替えるため、
+  // それぞれの最新ステータスをキャッシュしておく
+  void updateStatusBar();
+  QString m_fmStatusPath;
+  QString m_fmStatusSummary;
+  QString m_viewerStatusPath;
+  QString m_viewerStatusSummary;
+
   QStackedWidget* m_stack;
   FileManagerPanel* m_fileManagerPanel;
   ViewerPanel* m_viewerPanel;

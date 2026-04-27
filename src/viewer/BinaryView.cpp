@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QFontDatabase>
 #include <QHBoxLayout>
+#include <QLocale>
 #include <QLabel>
 #include <QPalette>
 #include <QPlainTextEdit>
@@ -303,6 +304,16 @@ void BinaryView::clearContent() {
   m_totalSize  = 0;
   m_loadedSize = 0;
   m_textArea->clear();
+}
+
+QString BinaryView::statusInfo() const {
+  if (m_filePath.isEmpty()) return QString();
+  QString s = QLocale(QLocale::English).formattedDataSize(m_totalSize);
+  if (m_totalSize > m_loadedSize) {
+    s += tr("  ·  truncated to first %1")
+           .arg(QLocale(QLocale::English).formattedDataSize(m_loadedSize));
+  }
+  return s;
 }
 
 void BinaryView::render() {

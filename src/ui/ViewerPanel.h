@@ -30,6 +30,9 @@ public:
 signals:
   void fileOpened(const QString& filePath);
   void fileClosed();
+  // ステータスバー連携用: 表示中ファイルのパスと、ビュアー固有の要約。
+  // 何も表示していなければ両方空文字列。
+  void viewerStatusChanged(const QString& path, const QString& summary);
 
 private:
   void setupUi();

@@ -35,6 +35,9 @@ public:
   // 表示中ファイルをクリア。
   void clearContent();
 
+  // ステータスバー表示用の要約 ("PNG · 800x600 · 24 KB" 等、アニメ時はフレーム数も)
+  QString statusInfo() const;
+
   // ImageDisplay から参照される実効透明モード (ローカル上書き)。
   ImageTransparencyMode transparencyMode() const { return m_transparencyMode; }
 

@@ -8,6 +8,7 @@
 #include <QHBoxLayout>
 #include <QImageReader>
 #include <QLabel>
+#include <QLocale>
 #include <QMovie>
 #include <QPainter>
 #include <QPaintEvent>
@@ -376,6 +377,22 @@ bool ImageView::eventFilter(QObject* watched, QEvent* event) {
 bool ImageView::detectAnimated(const QString& filePath) {
   QImageReader reader(filePath);
   return reader.supportsAnimation() && reader.imageCount() > 1;
+}
+
+QString ImageView::statusInfo() const {
+  if (m_filePath.isEmpty()) return QString();
+  QImageReader reader(m_filePath);
+  const QString fmt = QString::fromLatin1(reader.format()).toUpper();
+  const QSize sz   = reader.size();
+  const qint64 bytes = QFileInfo(m_filePath).size();
+  QString s = QStringLiteral("%1  ·  %2x%3")
+                .arg(fmt.isEmpty() ? QStringLiteral("?") : fmt)
+                .arg(sz.width()).arg(sz.height());
+  if (m_fileIsAnimated && m_movie) {
+    s += QStringLiteral("  ·  %1 frames").arg(m_movie->frameCount());
+  }
+  s += QStringLiteral("  ·  %1").arg(QLocale(QLocale::English).formattedDataSize(bytes));
+  return s;
 }
 
 } // namespace Farman

@@ -28,6 +28,9 @@ public:
   // 表示中ファイルをクリア。
   void clearContent();
 
+  // ステータスバー表示用の要約 ("56 KB" 等。truncated 時はその旨)。
+  QString statusInfo() const;
+
 private:
   void setupUi();
   void render();

@@ -136,6 +136,7 @@ bool ViewerPanel::openTextFile(const QString& filePath) {
   setFocusProxy(m_textView);
   m_currentFilePath = filePath;
   emit fileOpened(filePath);
+  emit viewerStatusChanged(filePath, m_textView->statusInfo());
   return true;
 }
 
@@ -147,6 +148,7 @@ bool ViewerPanel::openImageFile(const QString& filePath) {
   setFocusProxy(m_imageView);
   m_currentFilePath = filePath;
   emit fileOpened(filePath);
+  emit viewerStatusChanged(filePath, m_imageView->statusInfo());
   return true;
 }
 
@@ -158,6 +160,7 @@ bool ViewerPanel::openBinaryFile(const QString& filePath) {
   setFocusProxy(m_binaryView);
   m_currentFilePath = filePath;
   emit fileOpened(filePath);
+  emit viewerStatusChanged(filePath, m_binaryView->statusInfo());
   return true;
 }
 
@@ -167,6 +170,7 @@ void ViewerPanel::clear() {
   m_binaryView->clearContent();
   m_currentFilePath.clear();
   emit fileClosed();
+  emit viewerStatusChanged(QString(), QString());
 }
 
 } // namespace Farman

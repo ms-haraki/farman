@@ -13,6 +13,7 @@
 #include <QPlainTextEdit>
 #include <QResizeEvent>
 #include <QSignalBlocker>
+#include <QLocale>
 #include <QStringDecoder>
 #include <QTextBlock>
 #include <QTextCodec>
@@ -273,6 +274,15 @@ QColor TextView::lineNumberForeground() const {
 
 QColor TextView::lineNumberBackground() const {
   return Settings::instance().textViewerLineNumberBackground();
+}
+
+QString TextView::statusInfo() const {
+  if (m_filePath.isEmpty()) return QString();
+  const int lines = m_editArea ? m_editArea->blockCount() : 0;
+  return QStringLiteral("%1  ·  %2  ·  %3 lines")
+    .arg(m_encoding)
+    .arg(QLocale(QLocale::English).formattedDataSize(static_cast<qint64>(m_data.size())))
+    .arg(lines);
 }
 
 } // namespace Farman

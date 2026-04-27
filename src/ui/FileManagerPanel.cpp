@@ -607,7 +607,7 @@ void FileManagerPanel::emitActivePaneStatus() {
     summary = tr("%1 / %2 items selected (%3)")
                 .arg(selectedCount)
                 .arg(totalCount)
-                .arg(QLocale().formattedDataSize(selectedBytes));
+                .arg(QLocale(QLocale::English).formattedDataSize(selectedBytes));
   } else {
     summary = tr("%1 items").arg(totalCount);
   }
