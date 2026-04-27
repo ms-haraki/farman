@@ -11,9 +11,11 @@
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QRadioButton>
-#include <QScrollArea>
+#include <QRegularExpression>
+#include <QToolBox>
 #include <QVBoxLayout>
 
 namespace Farman {
@@ -26,35 +28,20 @@ ViewersTab::ViewersTab(QWidget* parent)
 }
 
 void ViewersTab::setupUi() {
+  // 他タブと同じデフォルトマージンを使う (周囲に余白を入れる)
   QVBoxLayout* outer = new QVBoxLayout(this);
-  outer->setContentsMargins(0, 0, 0, 0);
 
-  // 3 ビュアー分の設定を縦に並べる。長くなりがちなのでスクロール可能に。
-  // 他タブのウィンドウ背景に揃えるため、ビューポートを透過にする。
-  QScrollArea* scroll = new QScrollArea(this);
-  scroll->setWidgetResizable(true);
-  scroll->setFrameShape(QFrame::NoFrame);
-  scroll->setStyleSheet("QScrollArea { background: transparent; } "
-                        "QScrollArea > QWidget > QWidget { background: transparent; }");
-  QWidget* container = new QWidget(scroll);
-  QVBoxLayout* col = new QVBoxLayout(container);
-  col->setContentsMargins(0, 0, 0, 0);
-
-  auto wrap = [container](const QString& title, QWidget* page) -> QGroupBox* {
-    QGroupBox* box = new QGroupBox(title, container);
-    QVBoxLayout* l = new QVBoxLayout(box);
-    l->setContentsMargins(8, 4, 8, 4);
-    l->addWidget(page);
-    return box;
-  };
-
-  col->addWidget(wrap(tr("Text Viewer"),   buildTextViewerPage()));
-  col->addWidget(wrap(tr("Image Viewer"),  buildImageViewerPage()));
-  col->addWidget(wrap(tr("Binary Viewer"), buildBinaryViewerPage()));
-  col->addStretch();
-
-  scroll->setWidget(container);
-  outer->addWidget(scroll);
+  // QToolBox で 3 ビュアー分の設定を排他的なアコーディオンとして表示。
+  // 一度に開けるのは 1 セクションのみ、ヘッダーをクリックで切り替わる。
+  QToolBox* toolBox = new QToolBox(this);
+  // 各ページの背景がデフォルトでは白になるため、ウィンドウ背景に合わせて透過にする
+  toolBox->setStyleSheet(
+    "QToolBox QScrollArea { background: transparent; } "
+    "QToolBox QScrollArea > QWidget > QWidget { background: transparent; }");
+  toolBox->addItem(buildTextViewerPage(),   tr("Text Viewer"));
+  toolBox->addItem(buildImageViewerPage(),  tr("Image Viewer"));
+  toolBox->addItem(buildBinaryViewerPage(), tr("Binary Viewer"));
+  outer->addWidget(toolBox);
 }
 
 QWidget* ViewersTab::buildTextViewerPage() {
@@ -86,6 +73,25 @@ QWidget* ViewersTab::buildTextViewerPage() {
     });
     return btn;
   };
+
+  // ── 0 段目: 拡張子 / MIME パターン (このビュアーで開くファイル) ─────────
+  m_textExtensionsEdit = new QLineEdit(page);
+  m_textExtensionsEdit->setToolTip(
+    tr("Whitespace-separated list of extensions (without leading dot). "
+       "Wildcards `*` and `?` are supported (e.g. c*, htm*). "
+       "Prefix with `!` to exclude (e.g. `c* !class` matches c-prefixed extensions except 'class')"));
+  m_textExtensionsEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  m_textMimePatternsEdit = new QLineEdit(page);
+  m_textMimePatternsEdit->setToolTip(
+    tr("Whitespace-separated MIME patterns. Use trailing '*' for prefix match (e.g. text/*)"));
+  m_textMimePatternsEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  {
+    QFormLayout* assoc = new QFormLayout();
+    assoc->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+    assoc->addRow(tr("Extensions:"), m_textExtensionsEdit);
+    assoc->addRow(tr("MIME patterns:"), m_textMimePatternsEdit);
+    outer->addLayout(assoc);
+  }
 
   // ── 上段: Font / Encoding / Line Numbers / Word Wrap を横並び (左寄せ) ─
   QHBoxLayout* row = new QHBoxLayout();
@@ -168,6 +174,25 @@ QWidget* ViewersTab::buildTextViewerPage() {
 QWidget* ViewersTab::buildImageViewerPage() {
   QWidget* page = new QWidget(this);
   QVBoxLayout* outer = new QVBoxLayout(page);
+
+  // 0 段目: 拡張子 / MIME パターン
+  m_imageExtensionsEdit = new QLineEdit(page);
+  m_imageExtensionsEdit->setToolTip(
+    tr("Whitespace-separated list of extensions (without leading dot). "
+       "Wildcards `*` and `?` are supported (e.g. c*, htm*). "
+       "Prefix with `!` to exclude (e.g. `c* !class` matches c-prefixed extensions except 'class')"));
+  m_imageExtensionsEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  m_imageMimePatternsEdit = new QLineEdit(page);
+  m_imageMimePatternsEdit->setToolTip(
+    tr("Whitespace-separated MIME patterns. Use trailing '*' for prefix match (e.g. image/*)"));
+  m_imageMimePatternsEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  {
+    QFormLayout* assoc = new QFormLayout();
+    assoc->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+    assoc->addRow(tr("Extensions:"), m_imageExtensionsEdit);
+    assoc->addRow(tr("MIME patterns:"), m_imageMimePatternsEdit);
+    outer->addLayout(assoc);
+  }
 
   // 上段: Zoom / Fit / Animation を横並び (左寄せ)
   QHBoxLayout* topRow = new QHBoxLayout();
@@ -363,6 +388,8 @@ void ViewersTab::loadSettings() {
   const Settings& settings = Settings::instance();
 
   // Text viewer
+  m_textExtensionsEdit->setText(settings.textViewerExtensions().join(QLatin1Char(' ')));
+  m_textMimePatternsEdit->setText(settings.textViewerMimePatterns().join(QLatin1Char(' ')));
   m_textSelectedFont = settings.textViewerFont();
   m_textFontButton->setText(QString("%1, %2pt")
     .arg(m_textSelectedFont.family())
@@ -395,6 +422,8 @@ void ViewersTab::loadSettings() {
   applyButton(m_textLineNumberBgButton, m_textLineNumberBgValue);
 
   // Image viewer
+  m_imageExtensionsEdit->setText(settings.imageViewerExtensions().join(QLatin1Char(' ')));
+  m_imageMimePatternsEdit->setText(settings.imageViewerMimePatterns().join(QLatin1Char(' ')));
   m_imageZoomCombo->setCurrentText(QString::number(settings.imageViewerZoomPercent()) + QLatin1Char('%'));
   m_imageFitToWindowCheck->setChecked(settings.imageViewerFitToWindow());
   m_imageAnimationCheck->setChecked(settings.imageViewerAnimation());
@@ -449,7 +478,13 @@ void ViewersTab::loadSettings() {
 void ViewersTab::save() {
   Settings& settings = Settings::instance();
 
+  auto splitList = [](const QString& text) {
+    return text.split(QRegularExpression(QStringLiteral("\\s+")), Qt::SkipEmptyParts);
+  };
+
   // Text viewer
+  settings.setTextViewerExtensions(splitList(m_textExtensionsEdit->text()));
+  settings.setTextViewerMimePatterns(splitList(m_textMimePatternsEdit->text()));
   settings.setTextViewerFont(m_textSelectedFont);
   settings.setTextViewerEncoding(m_textEncodingCombo->currentText().trimmed());
   settings.setTextViewerShowLineNumbers(m_textShowLineNumbersCheck->isChecked());
@@ -462,6 +497,8 @@ void ViewersTab::save() {
   settings.setTextViewerLineNumberBackground(m_textLineNumberBgValue);
 
   // Image viewer
+  settings.setImageViewerExtensions(splitList(m_imageExtensionsEdit->text()));
+  settings.setImageViewerMimePatterns(splitList(m_imageMimePatternsEdit->text()));
   {
     QString s = m_imageZoomCombo->currentText().trimmed();
     if (s.endsWith(QLatin1Char('%'))) s.chop(1);

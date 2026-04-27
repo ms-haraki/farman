@@ -261,6 +261,11 @@ void Settings::setTypeAheadIncludeDotfiles(bool include) {
   m_typeAheadIncludeDotfiles = include;
 }
 
+QStringList Settings::textViewerExtensions() const { return m_textViewerExtensions; }
+void Settings::setTextViewerExtensions(const QStringList& exts) { m_textViewerExtensions = exts; }
+QStringList Settings::textViewerMimePatterns() const { return m_textViewerMimePatterns; }
+void Settings::setTextViewerMimePatterns(const QStringList& patterns) { m_textViewerMimePatterns = patterns; }
+
 QFont Settings::textViewerFont() const { return m_textViewerFont; }
 void  Settings::setTextViewerFont(const QFont& font) { m_textViewerFont = font; }
 
@@ -285,6 +290,11 @@ void   Settings::setTextViewerSelectedForeground(const QColor& c)   { m_textView
 void   Settings::setTextViewerSelectedBackground(const QColor& c)   { m_textViewerSelectedBg = c; }
 void   Settings::setTextViewerLineNumberForeground(const QColor& c) { m_textViewerLineNumberFg = c; }
 void   Settings::setTextViewerLineNumberBackground(const QColor& c) { m_textViewerLineNumberBg = c; }
+
+QStringList Settings::imageViewerExtensions() const { return m_imageViewerExtensions; }
+void Settings::setImageViewerExtensions(const QStringList& exts) { m_imageViewerExtensions = exts; }
+QStringList Settings::imageViewerMimePatterns() const { return m_imageViewerMimePatterns; }
+void Settings::setImageViewerMimePatterns(const QStringList& patterns) { m_imageViewerMimePatterns = patterns; }
 
 int   Settings::imageViewerZoomPercent() const { return m_imageViewerZoomPercent; }
 void  Settings::setImageViewerZoomPercent(int percent) {
@@ -891,6 +901,22 @@ void Settings::load() {
 
   // Load text viewer settings
   QJsonObject textViewer = root.value("textViewer").toObject();
+  if (textViewer.contains("extensions")) {
+    QStringList list;
+    for (const QJsonValue& v : textViewer.value("extensions").toArray()) {
+      const QString s = v.toString().trimmed();
+      if (!s.isEmpty()) list.append(s);
+    }
+    if (!list.isEmpty()) m_textViewerExtensions = list;
+  }
+  if (textViewer.contains("mimePatterns")) {
+    QStringList list;
+    for (const QJsonValue& v : textViewer.value("mimePatterns").toArray()) {
+      const QString s = v.toString().trimmed();
+      if (!s.isEmpty()) list.append(s);
+    }
+    if (!list.isEmpty()) m_textViewerMimePatterns = list;
+  }
   if (textViewer.contains("font")) {
     QFont f;
     if (f.fromString(textViewer.value("font").toString())) {
@@ -915,6 +941,22 @@ void Settings::load() {
 
   // Load image viewer settings
   QJsonObject imageViewer = root.value("imageViewer").toObject();
+  if (imageViewer.contains("extensions")) {
+    QStringList list;
+    for (const QJsonValue& v : imageViewer.value("extensions").toArray()) {
+      const QString s = v.toString().trimmed();
+      if (!s.isEmpty()) list.append(s);
+    }
+    if (!list.isEmpty()) m_imageViewerExtensions = list;
+  }
+  if (imageViewer.contains("mimePatterns")) {
+    QStringList list;
+    for (const QJsonValue& v : imageViewer.value("mimePatterns").toArray()) {
+      const QString s = v.toString().trimmed();
+      if (!s.isEmpty()) list.append(s);
+    }
+    if (!list.isEmpty()) m_imageViewerMimePatterns = list;
+  }
   m_imageViewerZoomPercent = qBound(1, imageViewer.value("zoomPercent").toInt(100), 1000);
   m_imageViewerFitToWindow = imageViewer.value("fitToWindow").toBool(false);
   m_imageViewerAnimation   = imageViewer.value("animation").toBool(false);
@@ -1195,6 +1237,16 @@ void Settings::save() const {
 
   // Save text viewer settings
   QJsonObject textViewer;
+  {
+    QJsonArray arr;
+    for (const QString& s : m_textViewerExtensions) arr.append(s);
+    textViewer["extensions"] = arr;
+  }
+  {
+    QJsonArray arr;
+    for (const QString& s : m_textViewerMimePatterns) arr.append(s);
+    textViewer["mimePatterns"] = arr;
+  }
   textViewer["font"]            = m_textViewerFont.toString();
   textViewer["encoding"]        = m_textViewerEncoding;
   textViewer["showLineNumbers"] = m_textViewerShowLineNumbers;
@@ -1211,6 +1263,16 @@ void Settings::save() const {
 
   // Save image viewer settings
   QJsonObject imageViewer;
+  {
+    QJsonArray arr;
+    for (const QString& s : m_imageViewerExtensions) arr.append(s);
+    imageViewer["extensions"] = arr;
+  }
+  {
+    QJsonArray arr;
+    for (const QString& s : m_imageViewerMimePatterns) arr.append(s);
+    imageViewer["mimePatterns"] = arr;
+  }
   imageViewer["zoomPercent"]      = m_imageViewerZoomPercent;
   imageViewer["fitToWindow"]      = m_imageViewerFitToWindow;
   imageViewer["animation"]        = m_imageViewerAnimation;

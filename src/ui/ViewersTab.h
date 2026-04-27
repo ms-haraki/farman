@@ -6,6 +6,7 @@
 
 class QCheckBox;
 class QComboBox;
+class QLineEdit;
 class QPushButton;
 class QRadioButton;
 
@@ -31,6 +32,8 @@ private:
   QWidget* buildBinaryViewerPage();
 
   // Text viewer widgets
+  QLineEdit*   m_textExtensionsEdit       = nullptr;
+  QLineEdit*   m_textMimePatternsEdit     = nullptr;
   QPushButton* m_textFontButton          = nullptr;
   QFont        m_textSelectedFont;
   QComboBox*   m_textEncodingCombo       = nullptr;
@@ -51,6 +54,8 @@ private:
   QColor       m_textLineNumberBgValue;
 
   // Image viewer widgets
+  QLineEdit*    m_imageExtensionsEdit          = nullptr;
+  QLineEdit*    m_imageMimePatternsEdit        = nullptr;
   QComboBox*    m_imageZoomCombo               = nullptr;
   QCheckBox*    m_imageFitToWindowCheck        = nullptr;
   QCheckBox*    m_imageAnimationCheck          = nullptr;

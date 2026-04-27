@@ -1,4 +1,5 @@
 #include "ViewerPanel.h"
+#include "settings/Settings.h"
 #include "viewer/BinaryView.h"
 #include "viewer/ImageView.h"
 #include "viewer/TextView.h"
@@ -7,6 +8,7 @@
 #include <QFileInfo>
 #include <QMimeDatabase>
 #include <QMimeType>
+#include <QRegularExpression>
 
 namespace Farman {
 
@@ -38,6 +40,62 @@ void ViewerPanel::setupUi() {
   m_stack->addWidget(m_binaryView);
 }
 
+namespace {
+
+// 拡張子パターン (大文字小文字無視) とマッチするか。
+//   - `*` / `?` を含む場合はグロブとして解釈 (例: "c*" は "c", "cc", "cpp" などに一致)
+//   - `!` プレフィックスは除外パターン (例: "c* !class" は class を除く c 系拡張子)
+//   - 除外がマッチすると即座に不一致確定
+//   - 通常パターンが 1 つもなければ何もマッチしない
+bool extensionMatches(const QStringList& patterns, const QString& extension) {
+  auto patternMatches = [&](const QString& p) {
+    if (p.contains(QLatin1Char('*')) || p.contains(QLatin1Char('?'))) {
+      QRegularExpression re(
+        QRegularExpression::wildcardToRegularExpression(p),
+        QRegularExpression::CaseInsensitiveOption);
+      return re.match(extension).hasMatch();
+    }
+    return extension.compare(p, Qt::CaseInsensitive) == 0;
+  };
+
+  bool anyInclude = false;
+  bool included   = false;
+  for (const QString& raw : patterns) {
+    QString p = raw.trimmed();
+    if (p.isEmpty()) continue;
+    const bool isExclude = p.startsWith(QLatin1Char('!'));
+    if (isExclude) {
+      p = p.mid(1).trimmed();
+      if (p.isEmpty()) continue;
+      if (patternMatches(p)) return false;  // 除外マッチで即不一致
+    } else {
+      anyInclude = true;
+      if (patternMatches(p)) included = true;
+    }
+  }
+  return anyInclude && included;
+}
+
+// MIME パターンとマッチするか。末尾 `*` で前方一致、それ以外は完全一致
+// または inherits 判定。
+bool mimeMatches(const QStringList& patterns, const QMimeType& mime) {
+  const QString name = mime.name();
+  for (const QString& p : patterns) {
+    const QString trimmed = p.trimmed();
+    if (trimmed.isEmpty()) continue;
+    if (trimmed.endsWith(QLatin1Char('*'))) {
+      const QString prefix = trimmed.left(trimmed.size() - 1);
+      if (name.startsWith(prefix, Qt::CaseInsensitive)) return true;
+    } else {
+      if (name.compare(trimmed, Qt::CaseInsensitive) == 0) return true;
+      if (mime.inherits(trimmed)) return true;
+    }
+  }
+  return false;
+}
+
+} // anonymous namespace
+
 bool ViewerPanel::openFile(const QString& filePath) {
   if (filePath.isEmpty()) {
     return false;
@@ -49,20 +107,20 @@ bool ViewerPanel::openFile(const QString& filePath) {
   }
 
   const QString extension = fileInfo.suffix().toLower();
-
-  // 画像ファイル判定 (拡張子 or MIME)
-  static const QStringList imageExtensions = {
-    "png", "jpg", "jpeg", "gif", "bmp", "svg", "webp", "ico", "tiff", "tif"};
   QMimeDatabase mimeDb;
   const QMimeType mime = mimeDb.mimeTypeForFile(filePath);
-  const QString mimeName = mime.name();
 
-  if (imageExtensions.contains(extension) || mimeName.startsWith(QLatin1String("image/"))) {
+  const Settings& s = Settings::instance();
+
+  // 画像ビュアー: 拡張子 (グロブ可) または MIME パターンマッチ
+  if (extensionMatches(s.imageViewerExtensions(), extension)
+      || mimeMatches(s.imageViewerMimePatterns(), mime)) {
     return openImageFile(filePath);
   }
 
-  // テキスト判定: MIME が text/* または text/plain 派生
-  if (mimeName.startsWith(QLatin1String("text/")) || mime.inherits(QStringLiteral("text/plain"))) {
+  // テキストビュアー: 拡張子 (グロブ可) または MIME パターンマッチ
+  if (extensionMatches(s.textViewerExtensions(), extension)
+      || mimeMatches(s.textViewerMimePatterns(), mime)) {
     return openTextFile(filePath);
   }
 

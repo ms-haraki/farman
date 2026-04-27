@@ -127,6 +127,12 @@ public:
   void setTypeAheadIncludeDotfiles(bool include);
 
   // ── テキストビュアー設定 ───────────────────
+  // ファイルを開く際にテキストビュアーで処理する拡張子と MIME パターン。
+  // MIME は末尾 `*` で前方一致 (例: "text/*")、それ以外は完全一致または inherits 判定。
+  QStringList textViewerExtensions()    const;
+  void        setTextViewerExtensions(const QStringList& exts);
+  QStringList textViewerMimePatterns()  const;
+  void        setTextViewerMimePatterns(const QStringList& patterns);
   QFont   textViewerFont()              const;
   void    setTextViewerFont(const QFont& font);
   QString textViewerEncoding()          const;
@@ -150,6 +156,10 @@ public:
   void    setTextViewerLineNumberBackground(const QColor& c);
 
   // ── 画像ビュアー設定 ───────────────────────
+  QStringList           imageViewerExtensions()        const;
+  void                  setImageViewerExtensions(const QStringList& exts);
+  QStringList           imageViewerMimePatterns()      const;
+  void                  setImageViewerMimePatterns(const QStringList& patterns);
   int                   imageViewerZoomPercent()       const;
   void                  setImageViewerZoomPercent(int percent);
   bool                  imageViewerFitToWindow()       const;
@@ -273,6 +283,23 @@ private:
   bool             m_typeAheadIncludeDotfiles = true;
 
   // Text viewer
+  QStringList        m_textViewerExtensions   = {
+    // テキスト系
+    "txt", "log", "md*",
+    // c/cc/cpp/cxx/cs/css/conf/cfg — c から始まるテキスト系全般
+    // Java の class はバイナリなので除外、Windows 系バイナリ (cab/chm/com) も除外
+    "c*", "!class", "!cab", "!chm", "!com",
+    "h", "hpp",
+    // 言語
+    "py", "js", "ts", "java", "rs", "go", "rb", "php", "pl", "pm",
+    // Web
+    "htm*", "json", "xml",
+    // シェル
+    "*sh", "fish",
+    // 設定
+    "yml", "yaml", "toml", "ini"
+  };
+  QStringList        m_textViewerMimePatterns = { "text/*", "text/plain" };
   QFont              m_textViewerFont;  // 既定は monospace (コンストラクタで初期化)
   QString            m_textViewerEncoding         = QStringLiteral("UTF-8");
   bool               m_textViewerShowLineNumbers  = true;
@@ -285,6 +312,10 @@ private:
   QColor             m_textViewerLineNumberBg     = QColor(0xF0, 0xF0, 0xF0);
 
   // Image viewer
+  QStringList           m_imageViewerExtensions   = {
+    "png", "jp*g", "gif", "bmp", "svg", "webp", "ico", "tif*"
+  };
+  QStringList           m_imageViewerMimePatterns = { "image/*" };
   int                   m_imageViewerZoomPercent      = 100;
   bool                  m_imageViewerFitToWindow      = false;
   bool                  m_imageViewerAnimation        = false;
