@@ -172,12 +172,12 @@ macOS の `Ctrl` は `⌘`（Command）に割り当てられる。
 | `Ctrl+,` | 設定ダイアログ |
 | `Ctrl+Q` | 終了 |
 
-### 未実装のコマンド
+### 任意のビュアーで開く / ファイル実行
 
-以下は SPEC として検討中で、コマンド実装前の状態。
-
-- 任意のビュアーで開く（`Ctrl+Enter`）
-- ファイル実行（`Shift+Enter`）
+- `Ctrl+Enter` (`view.choose`): カーソル行のファイルを Text / Image / Binary
+  どのビュアーで開くかを小ポップアップから選択。Settings の対応表に依らず強制ルーティング。
+- `Shift+Enter` (`file.execute`): カーソル行のファイル / ディレクトリを
+  OS 既定アプリで開く (内部的に `QDesktopServices::openUrl`)。実行可否はログに残る。
 
 ---
 

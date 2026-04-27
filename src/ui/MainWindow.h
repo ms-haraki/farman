@@ -5,6 +5,7 @@
 #include "../settings/Settings.h"
 #include "../keybinding/CommandRegistry.h"
 #include "../keybinding/KeyBindingManager.h"
+#include "ViewerPanel.h"
 
 class QStackedWidget;
 class QLabel;
@@ -12,7 +13,6 @@ class QLabel;
 namespace Farman {
 
 class FileManagerPanel;
-class ViewerPanel;
 
 class MainWindow : public QMainWindow {
   Q_OBJECT
@@ -35,6 +35,8 @@ private:
   void setupUi();
   void showFileManager();
   void showViewer(const QString& filePath);
+  // ビュアーを呼び出し側で固定して開く（任意ビュアー機能から使う）
+  void showViewerWith(const QString& filePath, ViewerPanel::ViewerKind kind);
   void showSettingsDialog();
   void registerCommands();
   void createMenus();

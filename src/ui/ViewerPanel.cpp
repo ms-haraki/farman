@@ -96,7 +96,7 @@ bool mimeMatches(const QStringList& patterns, const QMimeType& mime) {
 
 } // anonymous namespace
 
-bool ViewerPanel::openFile(const QString& filePath) {
+bool ViewerPanel::openFile(const QString& filePath, ViewerKind kind) {
   if (filePath.isEmpty()) {
     return false;
   }
@@ -104,6 +104,14 @@ bool ViewerPanel::openFile(const QString& filePath) {
   QFileInfo fileInfo(filePath);
   if (!fileInfo.exists() || !fileInfo.isFile()) {
     return false;
+  }
+
+  // 呼び出し側がビュアーを強制している場合はルーティングをスキップ
+  switch (kind) {
+    case ViewerKind::Text:   return openTextFile(filePath);
+    case ViewerKind::Image:  return openImageFile(filePath);
+    case ViewerKind::Binary: return openBinaryFile(filePath);
+    case ViewerKind::Auto:   break;
   }
 
   const QString extension = fileInfo.suffix().toLower();

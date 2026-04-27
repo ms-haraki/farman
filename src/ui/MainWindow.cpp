@@ -6,14 +6,18 @@
 #include "BookmarkListDialog.h"
 #include "HistoryDialog.h"
 #include "SearchDialog.h"
+#include "../core/FileItem.h"
 #include "../core/Logger.h"
 #include "../keybinding/ICommand.h"
 #include "../core/DirectoryHistory.h"
+#include "../model/FileListModel.h"
 #include "../utils/Dialogs.h"
+#include <QDesktopServices>
 #include <QStackedWidget>
 #include <QStatusBar>
 #include <QLabel>
 #include <QFontMetrics>
+#include <QUrl>
 #include <QVBoxLayout>
 #include <QKeyEvent>
 #include <QCloseEvent>
@@ -180,7 +184,11 @@ void MainWindow::showFileManager() {
 }
 
 void MainWindow::showViewer(const QString& filePath) {
-  if (m_viewerPanel->openFile(filePath)) {
+  showViewerWith(filePath, ViewerPanel::ViewerKind::Auto);
+}
+
+void MainWindow::showViewerWith(const QString& filePath, ViewerPanel::ViewerKind kind) {
+  if (m_viewerPanel->openFile(filePath, kind)) {
     m_stack->setCurrentWidget(m_viewerPanel);
     m_viewerPanel->setFocus();
     updateStatusBar();
@@ -565,6 +573,57 @@ void MainWindow::registerCommands() {
   ));
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
+    "view.choose",
+    "Open With Viewer...",
+    [this]() {
+      auto* pane = m_fileManagerPanel->activePane();
+      auto* model = pane->model();
+      const QModelIndex idx = pane->view()->currentIndex();
+      if (!idx.isValid()) return;
+      const FileItem* item = model->itemAt(idx.row());
+      if (!item || item->isDir()) return;
+      const QString path = item->absolutePath();
+
+      QMenu menu(this);
+      menu.addAction(tr("Text Viewer"), this, [this, path]() {
+        showViewerWith(path, ViewerPanel::ViewerKind::Text);
+      });
+      menu.addAction(tr("Image Viewer"), this, [this, path]() {
+        showViewerWith(path, ViewerPanel::ViewerKind::Image);
+      });
+      menu.addAction(tr("Binary Viewer"), this, [this, path]() {
+        showViewerWith(path, ViewerPanel::ViewerKind::Binary);
+      });
+      // カーソル行の左端付近に出す
+      const QRect rect = pane->view()->visualRect(idx);
+      const QPoint pos = pane->view()->viewport()->mapToGlobal(rect.bottomLeft());
+      menu.exec(pos);
+    },
+    "view"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "file.execute",
+    "Execute / Open Externally",
+    [this]() {
+      auto* pane = m_fileManagerPanel->activePane();
+      auto* model = pane->model();
+      const QModelIndex idx = pane->view()->currentIndex();
+      if (!idx.isValid()) return;
+      const FileItem* item = model->itemAt(idx.row());
+      if (!item) return;
+      const QString path = item->absolutePath();
+      const bool ok = QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+      if (ok) {
+        Logger::instance().info(QStringLiteral("Execute: %1").arg(path));
+      } else {
+        Logger::instance().warn(QStringLiteral("Execute failed: %1").arg(path));
+      }
+    },
+    "file"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
     "view.toggle_log",
     "Toggle Log Pane",
     [this]() {
@@ -680,6 +739,8 @@ void MainWindow::createMenus() {
   fileMenu->addSeparator();
   addCmd(fileMenu, "file.attributes", tr("Change Attributes..."));
   fileMenu->addSeparator();
+  addCmd(fileMenu, "file.execute",    tr("Execute / Open Externally"));
+  fileMenu->addSeparator();
   addCmd(fileMenu, "file.pack",       tr("Create Archive..."));
   addCmd(fileMenu, "file.unpack",     tr("Extract Archive..."));
   fileMenu->addSeparator();
@@ -714,6 +775,7 @@ void MainWindow::createMenus() {
   addCmd(viewMenu, "pane.sync_active_to_other", tr("Sync Active Pane to Other"));
   viewMenu->addSeparator();
   addCmd(viewMenu, "view.file", tr("View File"));
+  addCmd(viewMenu, "view.choose", tr("Open With Viewer..."));
   addCmd(viewMenu, "view.toggle_log", tr("Toggle Log Pane"));
 
   // Go

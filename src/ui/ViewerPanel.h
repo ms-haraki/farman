@@ -15,11 +15,15 @@ class ViewerPanel : public QWidget {
   Q_OBJECT
 
 public:
+  // どのビュアーで開くかを呼び出し側から強制したい場合に使う。
+  // Auto は拡張子・MIME ルーティングに従う通常動作。
+  enum class ViewerKind { Auto, Text, Image, Binary };
+
   explicit ViewerPanel(QWidget* parent = nullptr);
   ~ViewerPanel() override;
 
-  // ファイルを開く
-  bool openFile(const QString& filePath);
+  // ファイルを開く（kind=Auto のとき Settings の対応表に従って自動判定）
+  bool openFile(const QString& filePath, ViewerKind kind = ViewerKind::Auto);
 
   // 現在のファイルパス
   QString currentFilePath() const { return m_currentFilePath; }

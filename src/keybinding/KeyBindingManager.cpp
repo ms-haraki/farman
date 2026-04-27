@@ -106,10 +106,16 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::Key_F), "file.search"     },
     { QKeySequence(Qt::Key_P), "file.pack"       },
     { QKeySequence(Qt::Key_U), "file.unpack"     },
+    // ファイル実行 (OS 既定アプリで開く)。Enter / Return の両方をバインド。
+    { QKeySequence(Qt::SHIFT | Qt::Key_Return), "file.execute" },
+    { QKeySequence(Qt::SHIFT | Qt::Key_Enter),  "file.execute" },
 
     // View
     { QKeySequence(Qt::Key_V), "view.file" },
-    { QKeySequence(Qt::CTRL | Qt::Key_L), "view.toggle_log" },
+    // 任意ビュアー選択ポップアップ。Enter / Return の両方をバインド。
+    { QKeySequence(Qt::CTRL | Qt::Key_Return),  "view.choose"  },
+    { QKeySequence(Qt::CTRL | Qt::Key_Enter),   "view.choose"  },
+    { QKeySequence(Qt::CTRL | Qt::Key_L),       "view.toggle_log" },
 
     // Bookmark
     { QKeySequence(Qt::Key_B),            "bookmark.toggle" },
