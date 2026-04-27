@@ -127,8 +127,10 @@ public:
   void    setLogPaneHeight(int px);
   bool    logToFile()                   const;
   void    setLogToFile(bool toFile);
-  QString logFilePath()                 const;  // 既定: <AppConfigLocation>/farman.log
-  void    setLogFilePath(const QString& path);
+  // ログを保存するディレクトリ。日次ファイル `farman-YYYY-MM-DD.log` がこの中に作られる。
+  // 既定: <AppConfigLocation>
+  QString logDirectory()                const;
+  void    setLogDirectory(const QString& dir);
   // ログファイルの保持日数。0 は永久保持。
   int     logRetentionDays()            const;
   void    setLogRetentionDays(int days);
@@ -296,7 +298,7 @@ private:
   bool             m_logVisible       = true;
   int              m_logPaneHeight    = 120;  // px
   bool             m_logToFile        = true;
-  QString          m_logFilePath;  // 既定はコンストラクタで AppConfigLocation/farman.log
+  QString          m_logDirectory;  // 既定はコンストラクタで AppConfigLocation
   int              m_logRetentionDays = 7;  // 0 = 永久保持
   bool             m_cursorLoop      = false;
   bool             m_typeAheadIncludeDotfiles = true;

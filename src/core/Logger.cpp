@@ -10,6 +10,12 @@
 
 namespace Farman {
 
+namespace {
+// 日次ログファイルの命名パターン: farman-YYYY-MM-DD.log
+constexpr const char* kFilePrefix = "farman-";
+constexpr const char* kFileSuffix = ".log";
+}
+
 Logger& Logger::instance() {
   static Logger inst;
   return inst;
@@ -54,19 +60,19 @@ QStringList Logger::recent() const {
   return m_buffer;
 }
 
-void Logger::setFileOutput(bool enabled, const QString& basePath, int retentionDays) {
+void Logger::setFileOutput(bool enabled, const QString& directory, int retentionDays) {
   if (retentionDays < 0) retentionDays = 0;
   QMutexLocker lock(&m_mutex);
   // 状態が変わらなければ何もしない
   const bool sameAll = (enabled == m_fileEnabled)
-                    && (basePath == m_basePath)
+                    && (directory == m_directory)
                     && (retentionDays == m_retentionDays)
                     && (!enabled || m_file);
   if (sameAll) return;
 
   closeFileLocked();
   m_fileEnabled   = enabled;
-  m_basePath      = basePath;
+  m_directory     = directory;
   m_retentionDays = retentionDays;
   if (m_fileEnabled) {
     const QDate today = QDate::currentDate();
@@ -82,26 +88,19 @@ QString Logger::format(Level level, const QString& message) const {
 }
 
 QString Logger::datedFilePath(const QDate& date) const {
-  if (m_basePath.isEmpty()) return QString();
-  QFileInfo fi(m_basePath);
-  const QString dir    = fi.absolutePath();
-  const QString base   = fi.completeBaseName();   // 拡張子を除く
-  const QString suffix = fi.suffix();              // 拡張子 (なし可)
-  const QString stamp  = date.toString(QStringLiteral("yyyy-MM-dd"));
-  if (suffix.isEmpty()) {
-    return QStringLiteral("%1/%2-%3").arg(dir, base, stamp);
-  }
-  return QStringLiteral("%1/%2-%3.%4").arg(dir, base, stamp, suffix);
+  if (m_directory.isEmpty()) return QString();
+  const QString stamp = date.toString(QStringLiteral("yyyy-MM-dd"));
+  return QStringLiteral("%1/%2%3%4")
+    .arg(m_directory, QString::fromLatin1(kFilePrefix), stamp, QString::fromLatin1(kFileSuffix));
 }
 
 void Logger::openFileLocked(const QDate& date) {
-  if (m_basePath.isEmpty()) {
+  if (m_directory.isEmpty()) {
     m_fileEnabled = false;
     return;
   }
+  QDir().mkpath(m_directory);
   const QString path = datedFilePath(date);
-  QFileInfo fi(path);
-  QDir().mkpath(fi.absolutePath());
   m_file = new QFile(path);
   if (!m_file->open(QIODevice::Append | QIODevice::Text)) {
     delete m_file;
@@ -121,20 +120,16 @@ void Logger::closeFileLocked() {
 
 void Logger::purgeOldFilesLocked(const QDate& referenceDate) {
   if (m_retentionDays <= 0) return;  // 0 は永久保持
-  if (m_basePath.isEmpty()) return;
+  if (m_directory.isEmpty()) return;
 
-  QFileInfo fi(m_basePath);
-  const QString dir    = fi.absolutePath();
-  const QString base   = fi.completeBaseName();
-  const QString suffix = fi.suffix();
+  // パターン: farman-YYYY-MM-DD.log
+  const QRegularExpression re(
+    QStringLiteral("^") + QRegularExpression::escape(QString::fromLatin1(kFilePrefix))
+    + QStringLiteral("(\\d{4}-\\d{2}-\\d{2})")
+    + QRegularExpression::escape(QString::fromLatin1(kFileSuffix))
+    + QStringLiteral("$"));
 
-  // パターン: {base}-YYYY-MM-DD(.{suffix})?
-  const QString stampPattern = QStringLiteral("(\\d{4}-\\d{2}-\\d{2})");
-  const QString suffixPart = suffix.isEmpty() ? QString() : QStringLiteral("\\.") + QRegularExpression::escape(suffix);
-  const QRegularExpression re(QStringLiteral("^") + QRegularExpression::escape(base)
-                              + QStringLiteral("-") + stampPattern + suffixPart + QStringLiteral("$"));
-
-  QDir d(dir);
+  QDir d(m_directory);
   const QStringList entries = d.entryList(QDir::Files | QDir::NoSymLinks);
   for (const QString& name : entries) {
     auto m = re.match(name);

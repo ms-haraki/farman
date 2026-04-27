@@ -305,16 +305,15 @@ macOS の `Ctrl` は `⌘`（Command）に割り当てられる。
 
 ### ファイル出力
 - 表示用ペインとは別に、同じ内容をファイルへ追記出力するか選べる。デフォルトは ON。
-- 設定する「ベースパス」のディレクトリ／ファイル名を元に、**1 日 1 ファイル**で
-  自動ローテーションする。実ファイル名は `<base>-YYYY-MM-DD.<ext>`。
-  - 例: ベースパス `farman.log` → 当日のファイルは `farman-2026-04-27.log`
+- 出力先は **ディレクトリ** を指定する。**1 日 1 ファイル**で自動ローテーションし、
+  実ファイル名は `farman-YYYY-MM-DD.log` に固定。
+  - 例: 当日のファイルは `<dir>/farman-2026-04-27.log`
   - 日付が変わったタイミングで次のログ行を書く際にファイルを切り替える。
-- 既定のベースパスは `<AppConfigLocation>/farman.log`（macOS では
-  `~/Library/Preferences/Farman/farman/farman.log` 相当）。Settings から任意の
-  パスへ変更可能。
+- 既定のディレクトリは `<AppConfigLocation>`（macOS では
+  `~/Library/Preferences/Farman/farman` 相当）。Settings から任意のディレクトリへ変更可能。
 - **保持日数 (Retention)** を Settings で指定。
   - 1 以上の値: 起動時 / ローテーション時に、その日数より古い日付ファイル
-    (`<base>-YYYY-MM-DD.<ext>` パターンに一致するもののみ) を削除。
+    (`farman-YYYY-MM-DD.log` パターンに一致するもののみ) を削除。
   - 「Keep forever」ON: 削除しない（永久保持）。デフォルトは 7 日。
 
 ### メッセージ書式
@@ -333,7 +332,7 @@ macOS の `Ctrl` は `⌘`（Command）に割り当てられる。
 - Behavior タブの「Log」グループに以下を配置:
   - 1 行目 (横並び): `Show log pane` (デフォルト ON) / `Height:` SpinBox /
     `Retention:` SpinBox / `Keep forever` (チェックボックス)
-  - 2 行目: `Write log to file` (デフォルト ON) / `File:` 出力先ベースパス入力 + Browse ボタン
+  - 2 行目: `Write log to file` (デフォルト ON) / `Directory:` 出力先ディレクトリ入力 + Browse ボタン
 
 ---
 

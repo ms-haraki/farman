@@ -250,47 +250,47 @@ void BehaviorTab::setupUi() {
   logVisibleRow->addStretch(1);
   logGroupLayout->addLayout(logVisibleRow);
 
-  // Row 2: Write to file + path
+  // Row 2: Write to file + directory
   m_logToFileCheck = new QCheckBox(tr("Write log to file"), this);
   m_logToFileCheck->setToolTip(
     tr("Append log entries to a date-stamped file (rotated daily) in addition to the log pane."));
 
-  m_logFilePathEdit = new QLineEdit(this);
-  m_logFilePathEdit->setPlaceholderText(tr("/path/to/farman.log"));
-  m_logFilePathEdit->setToolTip(
-    tr("Base path. Daily files are written as <name>-YYYY-MM-DD.<ext> in the same directory."));
+  m_logDirectoryEdit = new QLineEdit(this);
+  m_logDirectoryEdit->setPlaceholderText(tr("/path/to/log/dir"));
+  m_logDirectoryEdit->setToolTip(
+    tr("Directory where daily log files (farman-YYYY-MM-DD.log) are stored."));
 
-  m_logFilePathBrowse = new QToolButton(this);
-  m_logFilePathBrowse->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
-  m_logFilePathBrowse->setToolTip(tr("Choose log file..."));
+  m_logDirectoryBrowse = new QToolButton(this);
+  m_logDirectoryBrowse->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
+  m_logDirectoryBrowse->setToolTip(tr("Choose log directory..."));
 
   QHBoxLayout* logFileRow = new QHBoxLayout();
   logFileRow->setContentsMargins(0, 0, 0, 0);
   logFileRow->addWidget(m_logToFileCheck);
-  logFileRow->addWidget(new QLabel(tr("File:"), this));
-  logFileRow->addWidget(m_logFilePathEdit, 1);
-  logFileRow->addWidget(m_logFilePathBrowse);
+  logFileRow->addWidget(new QLabel(tr("Directory:"), this));
+  logFileRow->addWidget(m_logDirectoryEdit, 1);
+  logFileRow->addWidget(m_logDirectoryBrowse);
   logGroupLayout->addLayout(logFileRow);
 
   auto updateLogFileEnabled = [this]() {
     const bool fileEnabled = m_logToFileCheck->isChecked();
-    m_logFilePathEdit->setEnabled(fileEnabled);
-    m_logFilePathBrowse->setEnabled(fileEnabled);
+    m_logDirectoryEdit->setEnabled(fileEnabled);
+    m_logDirectoryBrowse->setEnabled(fileEnabled);
     m_logRetentionForeverCheck->setEnabled(fileEnabled);
     m_logRetentionDaysSpin->setEnabled(fileEnabled && !m_logRetentionForeverCheck->isChecked());
   };
   connect(m_logToFileCheck, &QCheckBox::toggled, this, updateLogFileEnabled);
   connect(m_logRetentionForeverCheck, &QCheckBox::toggled, this, updateLogFileEnabled);
-  connect(m_logFilePathBrowse, &QToolButton::clicked, this, [this]() {
-    const QString start = m_logFilePathEdit->text().isEmpty()
+  connect(m_logDirectoryBrowse, &QToolButton::clicked, this, [this]() {
+    const QString start = m_logDirectoryEdit->text().isEmpty()
                           ? QDir::homePath()
-                          : m_logFilePathEdit->text();
-    const QString selected = QFileDialog::getSaveFileName(
-      this, tr("Choose log file"), start,
-      tr("Log files (*.log);;All files (*)")
+                          : m_logDirectoryEdit->text();
+    const QString selected = QFileDialog::getExistingDirectory(
+      this, tr("Choose log directory"), start,
+      QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
     );
     if (!selected.isEmpty()) {
-      m_logFilePathEdit->setText(selected);
+      m_logDirectoryEdit->setText(selected);
     }
   });
 
@@ -490,13 +490,13 @@ void BehaviorTab::loadSettings() {
   m_logVisibleCheck->setChecked(settings.logVisible());
   m_logPaneHeightSpin->setValue(settings.logPaneHeight());
   m_logToFileCheck->setChecked(settings.logToFile());
-  m_logFilePathEdit->setText(settings.logFilePath());
+  m_logDirectoryEdit->setText(settings.logDirectory());
   const int retention = settings.logRetentionDays();
   m_logRetentionForeverCheck->setChecked(retention == 0);
   m_logRetentionDaysSpin->setValue(retention > 0 ? retention : 7);
   const bool logFileEnabled = m_logToFileCheck->isChecked();
-  m_logFilePathEdit->setEnabled(logFileEnabled);
-  m_logFilePathBrowse->setEnabled(logFileEnabled);
+  m_logDirectoryEdit->setEnabled(logFileEnabled);
+  m_logDirectoryBrowse->setEnabled(logFileEnabled);
   m_logRetentionForeverCheck->setEnabled(logFileEnabled);
   m_logRetentionDaysSpin->setEnabled(logFileEnabled && !m_logRetentionForeverCheck->isChecked());
 
@@ -608,7 +608,7 @@ void BehaviorTab::save() {
   settings.setLogVisible(m_logVisibleCheck->isChecked());
   settings.setLogPaneHeight(m_logPaneHeightSpin->value());
   settings.setLogToFile(m_logToFileCheck->isChecked());
-  settings.setLogFilePath(m_logFilePathEdit->text().trimmed());
+  settings.setLogDirectory(m_logDirectoryEdit->text().trimmed());
   settings.setLogRetentionDays(
     m_logRetentionForeverCheck->isChecked() ? 0 : m_logRetentionDaysSpin->value());
 

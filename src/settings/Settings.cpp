@@ -23,8 +23,7 @@ Settings& Settings::instance() {
 Settings::Settings(QObject* parent) : QObject(parent) {
   // Initialize with default font
   m_font = QGuiApplication::font();
-  m_logFilePath = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)
-                  + QStringLiteral("/farman.log");
+  m_logDirectory = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
   m_pathFont = QGuiApplication::font();
   m_textViewerFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
   m_binaryViewerFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
@@ -257,8 +256,8 @@ void    Settings::setLogPaneHeight(int px) {
 }
 bool    Settings::logToFile()   const { return m_logToFile; }
 void    Settings::setLogToFile(bool v) { m_logToFile = v; }
-QString Settings::logFilePath() const { return m_logFilePath; }
-void    Settings::setLogFilePath(const QString& p) { m_logFilePath = p; }
+QString Settings::logDirectory() const { return m_logDirectory; }
+void    Settings::setLogDirectory(const QString& d) { m_logDirectory = d; }
 int     Settings::logRetentionDays() const { return m_logRetentionDays; }
 void    Settings::setLogRetentionDays(int days) {
   if (days < 0) days = 0;
@@ -924,9 +923,9 @@ void Settings::load() {
   m_logVisible    = logObj.value("visible").toBool(true);
   m_logPaneHeight = logObj.value("paneHeight").toInt(m_logPaneHeight);
   m_logToFile     = logObj.value("toFile").toBool(true);
-  if (logObj.contains("filePath")) {
-    const QString p = logObj.value("filePath").toString();
-    if (!p.isEmpty()) m_logFilePath = p;
+  if (logObj.contains("directory")) {
+    const QString p = logObj.value("directory").toString();
+    if (!p.isEmpty()) m_logDirectory = p;
   }
   m_logRetentionDays = logObj.value("retentionDays").toInt(m_logRetentionDays);
   if (m_logRetentionDays < 0) m_logRetentionDays = 0;
@@ -1274,7 +1273,7 @@ void Settings::save() const {
     logObj["paneHeight"]    = m_logPaneHeight;
     logObj["toFile"]        = m_logToFile;
     logObj["retentionDays"] = m_logRetentionDays;
-    logObj["filePath"] = m_logFilePath;
+    logObj["directory"]     = m_logDirectory;
     root["log"] = logObj;
   }
 
