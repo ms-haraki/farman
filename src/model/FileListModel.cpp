@@ -354,7 +354,10 @@ QVariant FileListModel::data(const QModelIndex& index, int role) const {
                                         : FileCategory::Normal;
     const bool inactive = !m_active && Settings::instance().useInactivePaneColors();
     if (Settings::instance().categoryColor(cat, item->isSelected(), inactive).bold) {
-      QFont f = QGuiApplication::font();
+      // ベースにビューに設定したファイルリスト用フォントを使う。
+      // ここで QGuiApplication::font() を使うと、ユーザーが Settings で
+      // フォントを変えても太字カテゴリ (既定でディレクトリ) だけ反映されない。
+      QFont f = Settings::instance().font();
       f.setBold(true);
       return f;
     }

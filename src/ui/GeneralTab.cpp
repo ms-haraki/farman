@@ -151,23 +151,6 @@ void GeneralTab::setupUi() {
 
   mainLayout->addWidget(startupGroup);
 
-  // 「終了時確認」「言語」は構築だけ先に。実際の配置はログの下。
-  m_confirmOnExitCheck = new QCheckBox(tr("Confirm on exit"), this);
-  m_confirmOnExitCheck->setToolTip(tr("Show confirmation dialog when closing the application"));
-
-  m_languageCombo = new QComboBox(this);
-  m_languageCombo->addItem(tr("Auto (System)"), static_cast<int>(LanguageMode::Auto));
-  m_languageCombo->addItem(tr("English"),       static_cast<int>(LanguageMode::English));
-  m_languageCombo->addItem(QStringLiteral("日本語 (Japanese)"),
-                           static_cast<int>(LanguageMode::Japanese));
-  m_languageCombo->setToolTip(tr("Takes effect on next launch."));
-
-  QHBoxLayout* languageRow = new QHBoxLayout();
-  languageRow->setContentsMargins(0, 0, 0, 0);
-  languageRow->addWidget(new QLabel(tr("Language:"), this));
-  languageRow->addWidget(m_languageCombo);
-  languageRow->addStretch(1);
-
   // ── Log settings ────────────────────────────────
   QGroupBox* logGroup = new QGroupBox(tr("Log"), this);
   QVBoxLayout* logGroupLayout = new QVBoxLayout(logGroup);
@@ -253,7 +236,24 @@ void GeneralTab::setupUi() {
   mainLayout->addWidget(logGroup);
 
   // Log の下: Confirm on exit / Language
+  // (Tab 順を「ログ → 終了時確認 → 言語」にするため、Confirm/Language は
+  //  ログのウィジェットを構築し終えてからここで生成する)
+  m_confirmOnExitCheck = new QCheckBox(tr("Confirm on exit"), this);
+  m_confirmOnExitCheck->setToolTip(tr("Show confirmation dialog when closing the application"));
   mainLayout->addWidget(m_confirmOnExitCheck);
+
+  m_languageCombo = new QComboBox(this);
+  m_languageCombo->addItem(tr("Auto (System)"), static_cast<int>(LanguageMode::Auto));
+  m_languageCombo->addItem(tr("English"),       static_cast<int>(LanguageMode::English));
+  m_languageCombo->addItem(QStringLiteral("日本語 (Japanese)"),
+                           static_cast<int>(LanguageMode::Japanese));
+  m_languageCombo->setToolTip(tr("Takes effect on next launch."));
+
+  QHBoxLayout* languageRow = new QHBoxLayout();
+  languageRow->setContentsMargins(0, 0, 0, 0);
+  languageRow->addWidget(new QLabel(tr("Language:"), this));
+  languageRow->addWidget(m_languageCombo);
+  languageRow->addStretch(1);
   mainLayout->addLayout(languageRow);
 
   mainLayout->addStretch();
