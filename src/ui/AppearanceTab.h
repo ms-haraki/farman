@@ -62,6 +62,9 @@ private:
   // Date/time format
   QComboBox*     m_dateTimeFormatCombo;
 
+  // ファイルリスト 1 行の縦幅 (0 = Auto)
+  QSpinBox*      m_rowHeightSpin = nullptr;
+
   // Category colors (Normal / Hidden / Directory)
   CategoryRow m_categoryRows[static_cast<int>(FileCategory::Count)];
   // 非アクティブパネル設定 (グループ自体が checkable で ON/OFF を兼ねる)

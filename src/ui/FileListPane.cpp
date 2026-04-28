@@ -105,6 +105,10 @@ void FileListPane::setupUi() {
   m_view->setColumnWidth(FileListModel::Size, 100);
   m_view->setColumnWidth(FileListModel::LastModified, 150);
 
+  // 構築時の Qt 既定の行高を覚えておく。Settings で行高 = 0 (Auto) を
+  // 選んだときにこの値に戻す。
+  m_defaultRowHeight = m_view->verticalHeader()->defaultSectionSize();
+
   mainLayout->addWidget(m_view);
 
   // ソート・フィルタ条件の現在値をリスト下部に表示
@@ -136,6 +140,12 @@ void FileListPane::refreshAppearance() {
   if (m_folderButton) m_folderButton->setStyleSheet(buttonStyle);
   if (m_view) {
     m_view->setFont(Settings::instance().font());
+    // Settings の行高を反映 (0 = Auto → 構築時のデフォルトに戻す)
+    const int customH = Settings::instance().fileListRowHeight();
+    const int targetH = (customH > 0) ? customH : m_defaultRowHeight;
+    if (targetH > 0) {
+      m_view->verticalHeader()->setDefaultSectionSize(targetH);
+    }
     m_view->viewport()->update();  // cursor 再描画
   }
 

@@ -38,6 +38,7 @@ void Settings::applyDefaults() {
 
   // ── 表示設定 ─────────────────────
   m_fileSizeFormat        = FileSizeFormat::Auto;
+  m_fileListRowHeight     = 0;
   m_dateTimeFormat        = QStringLiteral("yyyy/MM/dd HH:mm:ss");
   m_colorRules.clear();
   m_useInactivePaneColors = false;
@@ -233,6 +234,12 @@ FileSizeFormat Settings::fileSizeFormat() const {
 
 void Settings::setFileSizeFormat(FileSizeFormat fmt) {
   m_fileSizeFormat = fmt;
+}
+
+int  Settings::fileListRowHeight() const { return m_fileListRowHeight; }
+void Settings::setFileListRowHeight(int px) {
+  if (px < 0) px = 0;
+  m_fileListRowHeight = px;
 }
 
 QString Settings::dateTimeFormat() const {
@@ -902,6 +909,8 @@ void Settings::load() {
   }
 
   m_fileSizeFormat = stringToFileSizeFormat(appearance.value("fileSizeFormat").toString());
+  m_fileListRowHeight = appearance.value("fileListRowHeight").toInt(0);
+  if (m_fileListRowHeight < 0) m_fileListRowHeight = 0;
   m_dateTimeFormat = appearance.value("dateTimeFormat").toString("yyyy/MM/dd HH:mm:ss");
 
   // Load color rules
@@ -1318,7 +1327,8 @@ void Settings::save() const {
   addressFontObj["family"] = m_addressFont.family();
   addressFontObj["pointSize"] = m_addressFont.pointSize();
   appearance["addressFont"] = addressFontObj;
-  appearance["fileSizeFormat"] = fileSizeFormatToString(m_fileSizeFormat);
+  appearance["fileSizeFormat"]    = fileSizeFormatToString(m_fileSizeFormat);
+  appearance["fileListRowHeight"] = m_fileListRowHeight;
   appearance["dateTimeFormat"] = m_dateTimeFormat;
 
   QJsonArray colorRulesArray;

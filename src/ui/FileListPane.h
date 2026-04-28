@@ -65,6 +65,8 @@ private:
   QLabel* m_sortFilterStatusLabel;
   FileListModel* m_model;
   FileListDelegate* m_delegate;
+  // Settings の "Auto" を復元するために、構築時の Qt 既定行高を覚えておく
+  int m_defaultRowHeight = 0;
 };
 
 } // namespace Farman

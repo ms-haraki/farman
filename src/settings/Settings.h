@@ -74,6 +74,10 @@ public:
   QFont  addressFont()                 const;
   void   setAddressFont(const QFont& font);
 
+  // ファイルリスト 1 行の縦幅 (px)。0 で「Auto」(Qt のデフォルト)。
+  int    fileListRowHeight()           const;
+  void   setFileListRowHeight(int px);
+
   FileSizeFormat fileSizeFormat()       const;
   void           setFileSizeFormat(FileSizeFormat fmt);
 
@@ -283,6 +287,7 @@ private:
   QMap<QString, PaneSettings> m_pathOverrides;
   QFont            m_font;
   QFont            m_addressFont;
+  int              m_fileListRowHeight = 0;  // 0 = Auto
   FileSizeFormat   m_fileSizeFormat  = FileSizeFormat::Auto;
   QString          m_dateTimeFormat  = "yyyy/MM/dd HH:mm:ss";
   QList<ColorRule> m_colorRules;

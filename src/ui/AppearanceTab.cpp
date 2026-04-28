@@ -133,10 +133,28 @@ void AppearanceTab::setupUi() {
   m_dateTimeFormatCombo->addItem("dd/MM/yyyy HH:mm:ss");
   m_dateTimeFormatCombo->addItem("MM/dd/yyyy HH:mm:ss");
   m_dateTimeFormatCombo->addItem("yyyy/MM/dd");
-  m_dateTimeFormatCombo->setToolTip(tr("Choose the date/time format (Qt format string)"));
+  m_dateTimeFormatCombo->setToolTip(
+    tr("Choose the date/time format. Use yyyy=year, MM=month, dd=day, "
+       "HH=hour, mm=minute, ss=second."));
   addPair(fileListRow, tr("Date/Time:"), m_dateTimeFormatCombo);
   fileListRow->addStretch();
   fileListOuter->addLayout(fileListRow);
+
+  // 1 行目に詰めると横に溢れるので、Row Height は 2 行目に分離する。
+  // 0 を「Auto」(Qt 既定) として扱うため specialValueText を使う。
+  m_rowHeightSpin = new QSpinBox(this);
+  m_rowHeightSpin->setRange(0, 200);
+  m_rowHeightSpin->setSpecialValueText(tr("Auto"));
+  m_rowHeightSpin->setSuffix(tr(" px"));
+  m_rowHeightSpin->setToolTip(
+    tr("Custom row height for the file list, in pixels. 'Auto' uses the default height."));
+
+  QHBoxLayout* fileListRow2 = new QHBoxLayout();
+  addPair(fileListRow2, tr("Row Height:"), m_rowHeightSpin);
+  fileListRow2->addStretch();
+  fileListOuter->addLayout(fileListRow2);
+  // 下のアクティブパネルグループとの間に余白を入れる
+  fileListOuter->addSpacing(8);
 
   // ファイル種別ごとのカラーリング (4 グリッド)
   QVBoxLayout* categoryOuter = fileListOuter;
@@ -202,6 +220,9 @@ void AppearanceTab::loadSettings() {
   // Load date/time format
   m_pendingDateTimeFormat = settings.dateTimeFormat();
   m_dateTimeFormatCombo->setCurrentText(m_pendingDateTimeFormat);
+
+  // Load file list row height (0 = Auto = SpinBox の specialValueText が出る)
+  m_rowHeightSpin->setValue(settings.fileListRowHeight());
 
 
   // Load category colors: 4 states (active/inactive × normal/selected)
@@ -347,6 +368,7 @@ void AppearanceTab::save() {
 
   // Save date/time format
   settings.setDateTimeFormat(m_dateTimeFormatCombo->currentText());
+  settings.setFileListRowHeight(m_rowHeightSpin->value());
 
 
   // Save category colors: 4 states
