@@ -52,7 +52,11 @@ private:
   QByteArray m_data;
 
   // 表示に使う実効設定 (ローカル上書き)。Settings 変更で再同期される。
+  // m_encoding は「ユーザーが選択したエンコード」("Auto" or 具体名)、
+  // m_actualEncoding は実際にデコードに使った具体名 (Auto の場合は uchardet
+  // で検出した結果が入る)。ステータスバー表示にも m_actualEncoding を使う。
   QString m_encoding         = QStringLiteral("UTF-8");
+  QString m_actualEncoding   = QStringLiteral("UTF-8");
   bool    m_showLineNumbers  = true;
   bool    m_wordWrap         = false;
 };

@@ -15,6 +15,27 @@ if(APPLE AND EXISTS /opt/homebrew/opt/libarchive)
 endif()
 find_package(LibArchive REQUIRED)
 
+# uchardet (Mozilla Universal Charset Detector) — テキストビュアーの
+# エンコード自動判定に使う。Homebrew では keg ではないので pkg-config 経由か
+# 直接パスを通して見つける。
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+  pkg_check_modules(UCHARDET QUIET IMPORTED_TARGET uchardet)
+endif()
+if(NOT UCHARDET_FOUND)
+  # uchardet.h は通常 .../include/uchardet/uchardet.h に置かれる。
+  # PATH_SUFFIXES uchardet で「uchardet/ サブディレクトリ内の uchardet.h」を
+  # 探し、結果のパス (`.../include/uchardet`) をそのまま include に通す。
+  find_path(UCHARDET_INCLUDE_DIR uchardet.h
+    PATHS /opt/homebrew/include /usr/local/include /usr/include
+    PATH_SUFFIXES uchardet)
+  find_library(UCHARDET_LIBRARY uchardet
+    PATHS /opt/homebrew/lib /usr/local/lib /usr/lib)
+  if(NOT UCHARDET_INCLUDE_DIR OR NOT UCHARDET_LIBRARY)
+    message(FATAL_ERROR "uchardet not found. Install via 'brew install uchardet' (macOS) or 'apt install libuchardet-dev' (Linux).")
+  endif()
+endif()
+
 qt_add_executable(farman
   src/main.cpp
   src/ui/MainWindow.cpp
@@ -116,6 +137,15 @@ target_link_libraries(farman PRIVATE
   Qt6::Core5Compat
   LibArchive::LibArchive
 )
+
+# uchardet をリンク (pkg-config が見つけたら IMPORTED ターゲット、
+# そうでなければ直接 find_library で得たパスを使う)
+if(TARGET PkgConfig::UCHARDET)
+  target_link_libraries(farman PRIVATE PkgConfig::UCHARDET)
+else()
+  target_include_directories(farman PRIVATE ${UCHARDET_INCLUDE_DIR})
+  target_link_libraries(farman PRIVATE ${UCHARDET_LIBRARY})
+endif()
 
 # Test executable for Worker functionality
 qt_add_executable(test_worker

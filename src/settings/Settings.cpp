@@ -83,7 +83,7 @@ void Settings::applyDefaults() {
     "yml", "yaml", "toml", "ini"
   };
   m_textViewerMimePatterns    = { "text/*", "text/plain" };
-  m_textViewerEncoding        = QStringLiteral("UTF-8");
+  m_textViewerEncoding        = QStringLiteral("Auto");
   m_textViewerShowLineNumbers = true;
   m_textViewerWordWrap        = false;
   m_textViewerNormalFg        = QColor(Qt::black);

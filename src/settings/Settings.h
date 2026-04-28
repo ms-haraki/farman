@@ -340,7 +340,7 @@ private:
   };
   QStringList        m_textViewerMimePatterns = { "text/*", "text/plain" };
   QFont              m_textViewerFont;  // 既定は monospace (コンストラクタで初期化)
-  QString            m_textViewerEncoding         = QStringLiteral("UTF-8");
+  QString            m_textViewerEncoding         = QStringLiteral("Auto");
   bool               m_textViewerShowLineNumbers  = true;
   bool               m_textViewerWordWrap         = false;
   QColor             m_textViewerNormalFg         = QColor(Qt::black);

@@ -28,7 +28,6 @@ protected:
 
 private slots:
   void onFileActivated(const QString& filePath);
-  void onPathChanged(const QString& leftPath, const QString& rightPath);
   void onSettingsChanged();
 
 private:

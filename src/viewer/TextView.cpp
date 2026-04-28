@@ -15,6 +15,10 @@
 #include <QSignalBlocker>
 #include <QLocale>
 #include <QStringDecoder>
+// uchardet のインストール先によって <uchardet.h> 直下にあるか
+// <uchardet/uchardet.h> にあるかが分かれる。CMake 側で両方の include パスを
+// 通しているため、ここではシンプルな名前で参照する。
+#include <uchardet.h>
 #include <QTextBlock>
 #include <QTextCodec>
 #include <QVBoxLayout>
@@ -164,6 +168,7 @@ void TextView::setupUi() {
   tb->addWidget(new QLabel(tr("Encoding:"), toolbar));
   m_encodingCombo = new QComboBox(toolbar);
   m_encodingCombo->setEditable(true);
+  m_encodingCombo->addItem(QStringLiteral("Auto"));
   m_encodingCombo->addItem(QStringLiteral("UTF-8"));
   m_encodingCombo->addItem(QStringLiteral("UTF-16LE"));
   m_encodingCombo->addItem(QStringLiteral("UTF-16BE"));
@@ -252,7 +257,26 @@ void TextView::clearContent() {
 }
 
 void TextView::reloadFromBuffer() {
-  const QString text = decodeBytes(m_data, m_encoding);
+  // m_encoding が "Auto" のときだけ uchardet で検出。それ以外はそのまま
+  // ユーザーが選んだ具体名を使う。検出失敗時 (ファイルが小さすぎる等) は
+  // UTF-8 を仮定する。
+  if (m_encoding.compare(QStringLiteral("Auto"), Qt::CaseInsensitive) == 0) {
+    uchardet_t det = uchardet_new();
+    QString detected;
+    if (det) {
+      if (uchardet_handle_data(det, m_data.constData(),
+                               static_cast<size_t>(m_data.size())) == 0) {
+        uchardet_data_end(det);
+        detected = QString::fromLatin1(uchardet_get_charset(det));
+      }
+      uchardet_delete(det);
+    }
+    m_actualEncoding = detected.isEmpty() ? QStringLiteral("UTF-8")
+                                          : detected;
+  } else {
+    m_actualEncoding = m_encoding;
+  }
+  const QString text = decodeBytes(m_data, m_actualEncoding);
   m_editArea->setPlainText(text);
   m_editArea->moveCursor(QTextCursor::Start);
 }
@@ -279,8 +303,14 @@ QColor TextView::lineNumberBackground() const {
 QString TextView::statusInfo() const {
   if (m_filePath.isEmpty()) return QString();
   const int lines = m_editArea ? m_editArea->blockCount() : 0;
+  // ユーザーが Auto を選んでいる場合は実際の検出結果を見せる:
+  //   "UTF-8 (auto)  ·  5.4 KB  ·  123 lines"
+  const bool isAuto = (m_encoding.compare(QStringLiteral("Auto"), Qt::CaseInsensitive) == 0);
+  const QString encStr = isAuto
+    ? QStringLiteral("%1 (auto)").arg(m_actualEncoding)
+    : m_actualEncoding;
   return QStringLiteral("%1  ·  %2  ·  %3 lines")
-    .arg(m_encoding)
+    .arg(encStr)
     .arg(QLocale(QLocale::English).formattedDataSize(static_cast<qint64>(m_data.size())))
     .arg(lines);
 }

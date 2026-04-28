@@ -118,13 +118,15 @@ QWidget* ViewersTab::buildTextViewerPage() {
 
   m_textEncodingCombo = new QComboBox(page);
   m_textEncodingCombo->setEditable(true);
+  m_textEncodingCombo->addItem(QStringLiteral("Auto"));
   m_textEncodingCombo->addItem(QStringLiteral("UTF-8"));
   m_textEncodingCombo->addItem(QStringLiteral("UTF-16LE"));
   m_textEncodingCombo->addItem(QStringLiteral("UTF-16BE"));
   m_textEncodingCombo->addItem(QStringLiteral("Shift_JIS"));
   m_textEncodingCombo->addItem(QStringLiteral("EUC-JP"));
   m_textEncodingCombo->addItem(QStringLiteral("ISO-8859-1"));
-  m_textEncodingCombo->setToolTip(tr("Default encoding for opening text files"));
+  m_textEncodingCombo->setToolTip(tr("Default encoding for opening text files. "
+                                     "'Auto' detects the encoding from the file content."));
   addPair(tr("Encoding:"), m_textEncodingCombo);
 
   m_textShowLineNumbersCheck = new QCheckBox(tr("Show line numbers"), page);

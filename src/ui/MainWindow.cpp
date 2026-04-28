@@ -75,7 +75,9 @@ MainWindow::MainWindow(QWidget* parent)
 MainWindow::~MainWindow() = default;
 
 void MainWindow::setupUi() {
-  setWindowTitle("farman - File Manager");
+  // タイトルバーはアプリ名 + バージョンのみ。左右ペインのパスは
+  // ステータスバーに既に出ているのでタイトルでは繰り返さない。
+  setWindowTitle(QStringLiteral("farman ") + QStringLiteral(QT_STRINGIFY(FARMAN_VERSION)));
 
   // Apply window size settings
   auto& settings = Settings::instance();
@@ -121,7 +123,7 @@ void MainWindow::setupUi() {
   // ===== File Manager Panel =====
   m_fileManagerPanel = new FileManagerPanel(this);
   connect(m_fileManagerPanel, &FileManagerPanel::fileActivated, this, &MainWindow::onFileActivated);
-  connect(m_fileManagerPanel, &FileManagerPanel::pathChanged, this, &MainWindow::onPathChanged);
+  // pathChanged はステータスバー側で扱う。タイトルには反映しない。
 
   // Install event filter on both panes
   m_fileManagerPanel->leftPane()->view()->installEventFilter(this);
@@ -249,11 +251,6 @@ void MainWindow::onFileActivated(const QString& filePath) {
   showViewer(filePath);
 }
 
-void MainWindow::onPathChanged(const QString& leftPath, const QString& rightPath) {
-  setWindowTitle(QString("farman - L:%1 | R:%2")
-    .arg(leftPath)
-    .arg(rightPath));
-}
 
 void MainWindow::registerCommands() {
   auto& registry = CommandRegistry::instance();
