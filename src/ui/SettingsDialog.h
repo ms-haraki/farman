@@ -20,6 +20,8 @@ class SettingsDialog : public QDialog {
 public:
   SettingsDialog(const QString& leftCurrentPath,
                  const QString& rightCurrentPath,
+                 const QSize&   currentWindowSize,
+                 const QPoint&  currentWindowPosition,
                  QWidget* parent = nullptr);
   ~SettingsDialog() override = default;
 
@@ -43,6 +45,8 @@ private:
 
   QString m_leftCurrentPath;
   QString m_rightCurrentPath;
+  QSize   m_currentWindowSize;
+  QPoint  m_currentWindowPosition;
 
   QTabWidget*     m_tabWidget;
   KeybindingTab*  m_keybindingTab;

@@ -817,6 +817,7 @@ void MainWindow::showSettingsDialog() {
   SettingsDialog* dialog = new SettingsDialog(
     m_fileManagerPanel->leftPath(),
     m_fileManagerPanel->rightPath(),
+    size(), pos(),
     this
   );
   connect(dialog, &SettingsDialog::settingsChanged, this, &MainWindow::onSettingsChanged);

@@ -18,10 +18,14 @@ namespace Farman {
 
 GeneralTab::GeneralTab(const QString& leftCurrentPath,
                        const QString& rightCurrentPath,
+                       const QSize&   currentWindowSize,
+                       const QPoint&  currentWindowPosition,
                        QWidget* parent)
   : QWidget(parent)
   , m_leftCurrentPath(leftCurrentPath)
-  , m_rightCurrentPath(rightCurrentPath) {
+  , m_rightCurrentPath(rightCurrentPath)
+  , m_currentWindowSize(currentWindowSize)
+  , m_currentWindowPosition(currentWindowPosition) {
   setupUi();
   loadSettings();
 }
@@ -291,9 +295,11 @@ void GeneralTab::loadSettings() {
       break;
     }
   }
-  QSize customSize = settings.customWindowSize();
-  m_windowWidthSpin->setValue(customSize.width());
-  m_windowHeightSpin->setValue(customSize.height());
+  // SpinBox は「現在のウィンドウ」の値で初期化する。モードが Custom 以外でも
+  // 同じく現状を見せるので、ユーザーがそのまま Custom に切り替えれば「今の
+  // サイズ・位置」がそのまま採用される直感的な動きになる。
+  m_windowWidthSpin->setValue(m_currentWindowSize.width());
+  m_windowHeightSpin->setValue(m_currentWindowSize.height());
 
   for (int i = 0; i < m_windowPositionModeCombo->count(); ++i) {
     if (m_windowPositionModeCombo->itemData(i).toInt() == static_cast<int>(settings.windowPositionMode())) {
@@ -301,9 +307,8 @@ void GeneralTab::loadSettings() {
       break;
     }
   }
-  QPoint customPos = settings.customWindowPosition();
-  m_windowXSpin->setValue(customPos.x());
-  m_windowYSpin->setValue(customPos.y());
+  m_windowXSpin->setValue(m_currentWindowPosition.x());
+  m_windowYSpin->setValue(m_currentWindowPosition.y());
 
   onWindowSizeModeChanged(m_windowSizeModeCombo->currentIndex());
   onWindowPositionModeChanged(m_windowPositionModeCombo->currentIndex());

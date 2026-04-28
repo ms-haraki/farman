@@ -21,8 +21,13 @@ class GeneralTab : public QWidget {
   Q_OBJECT
 
 public:
+  // currentWindowSize / currentWindowPosition: ダイアログ表示時点のメイン
+  // ウィンドウの状態。「カスタムサイズ・位置」コンボのモードに関わらず、
+  // SpinBox の初期値として常にこの値を出すために使う。
   GeneralTab(const QString& leftCurrentPath,
              const QString& rightCurrentPath,
+             const QSize&   currentWindowSize,
+             const QPoint&  currentWindowPosition,
              QWidget* parent = nullptr);
   ~GeneralTab() override = default;
 
@@ -48,6 +53,12 @@ private:
   // Custom Path 未設定時のデフォルトや、Default/LastSession 選択時の表示値として使う。
   QString m_leftCurrentPath;
   QString m_rightCurrentPath;
+
+  // ダイアログ起動時のメインウィンドウのサイズ / 位置。
+  // SpinBox のプリセットとして常にこれを使う (Custom モード以外でも
+  // 「現在の状態」を見せるため)。
+  QSize   m_currentWindowSize;
+  QPoint  m_currentWindowPosition;
 
   // Initial directory per pane
   QComboBox*   m_leftInitialPathModeCombo  = nullptr;
