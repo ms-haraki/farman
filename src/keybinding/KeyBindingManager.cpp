@@ -102,6 +102,7 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::Key_D), "file.delete"  },
     { QKeySequence(Qt::Key_R),               "file.rename"      },
     { QKeySequence(Qt::CTRL | Qt::Key_R),    "file.bulk_rename" },
+    { QKeySequence(Qt::CTRL | Qt::Key_C),    "file.copy_path"   },
     { QKeySequence(Qt::Key_N), "file.newfile"    },
     { QKeySequence(Qt::Key_A), "file.attributes" },
     { QKeySequence(Qt::Key_F), "file.search"     },

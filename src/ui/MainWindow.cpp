@@ -23,6 +23,7 @@
 #include <QCloseEvent>
 #include <QTableView>
 #include <QApplication>
+#include <QClipboard>
 #include <QMessageBox>
 #include <QMenuBar>
 #include <QMenu>
@@ -549,6 +550,23 @@ void MainWindow::registerCommands() {
     "file"
   ));
 
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "file.copy_path",
+    "Copy Path",
+    [this]() {
+      auto* pane  = m_fileManagerPanel->activePane();
+      auto* model = pane->model();
+      const QModelIndex idx = pane->view()->currentIndex();
+      if (!idx.isValid()) return;
+      const FileItem* item = model->itemAt(idx.row());
+      if (!item) return;
+      const QString path = item->absolutePath();
+      QGuiApplication::clipboard()->setText(path);
+      Logger::instance().info(QStringLiteral("Path copied: %1").arg(path));
+    },
+    "file"
+  ));
+
   // Application commands
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "app.quit",
@@ -739,6 +757,7 @@ void MainWindow::createMenus() {
   addCmd(fileMenu, "file.mkdir",      tr("New Directory"));
   addCmd(fileMenu, "file.rename",     tr("Rename"));
   addCmd(fileMenu, "file.bulk_rename", tr("Bulk Rename..."));
+  addCmd(fileMenu, "file.copy_path",  tr("Copy Path"));
   fileMenu->addSeparator();
   addCmd(fileMenu, "file.copy",       tr("Copy"));
   addCmd(fileMenu, "file.move",       tr("Move"));
