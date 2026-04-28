@@ -21,37 +21,129 @@ Settings& Settings::instance() {
 }
 
 Settings::Settings(QObject* parent) : QObject(parent) {
-  // Initialize with default font
-  m_font = QGuiApplication::font();
-  m_logDirectory = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
-  m_addressFont = QGuiApplication::font();
-  m_textViewerFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+  applyDefaults();
+}
+
+void Settings::resetToDefaults() {
+  applyDefaults();
+  emit settingsChanged();
+}
+
+void Settings::applyDefaults() {
+  // ── フォント (実行環境から取得する分は構築時にしか分からないので明示) ──
+  m_font             = QGuiApplication::font();
+  m_addressFont      = QGuiApplication::font();
+  m_textViewerFont   = QFontDatabase::systemFont(QFontDatabase::FixedFont);
   m_binaryViewerFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
 
-  // Initialize pane settings with defaults
+  // ── 表示設定 ─────────────────────
+  m_fileSizeFormat        = FileSizeFormat::Auto;
+  m_dateTimeFormat        = QStringLiteral("yyyy/MM/dd HH:mm:ss");
+  m_colorRules.clear();
+  m_useInactivePaneColors = false;
+
+  // Address bar
+  m_addressForeground = QColor(Qt::black);
+  m_addressBackground = QColor(0xE0, 0xE0, 0xE0);
+
+  // Cursor
+  m_cursorActiveColor   = QColor(Qt::black);
+  m_cursorInactiveColor = QColor(Qt::lightGray);
+  m_cursorShape         = CursorShape::Underline;
+  m_cursorThickness     = 2;
+
+  // ── 起動 ─────────────────────────
+  m_initialPathMode[static_cast<int>(PaneType::Left)]  = InitialPathMode::LastSession;
+  m_initialPathMode[static_cast<int>(PaneType::Right)] = InitialPathMode::LastSession;
+  m_customInitialPath[static_cast<int>(PaneType::Left)].clear();
+  m_customInitialPath[static_cast<int>(PaneType::Right)].clear();
+  m_confirmOnExit = false;
+  m_language      = LanguageMode::Auto;
+
+  // ── ログ ─────────────────────────
+  m_logVisible       = true;
+  m_logPaneHeight    = 120;
+  m_logToFile        = true;
+  m_logDirectory     = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+  m_logRetentionDays = 7;
+
+  // ── ナビゲーション ───────────────
+  m_cursorLoop                = false;
+  m_typeAheadIncludeDotfiles  = true;
+
+  // ── テキストビュアー ─────────────
+  m_textViewerExtensions = {
+    "txt", "log", "md*",
+    "c*", "!class", "!cab", "!chm", "!com",
+    "h", "hpp",
+    "py", "js", "ts", "java", "rs", "go", "rb", "php", "pl", "pm",
+    "htm*", "json", "xml",
+    "*sh", "fish",
+    "yml", "yaml", "toml", "ini"
+  };
+  m_textViewerMimePatterns    = { "text/*", "text/plain" };
+  m_textViewerEncoding        = QStringLiteral("UTF-8");
+  m_textViewerShowLineNumbers = true;
+  m_textViewerWordWrap        = false;
+  m_textViewerNormalFg        = QColor(Qt::black);
+  m_textViewerNormalBg        = QColor();
+  m_textViewerSelectedFg      = QColor(Qt::white);
+  m_textViewerSelectedBg      = QColor(0x31, 0x6A, 0xC5);
+  m_textViewerLineNumberFg    = QColor(Qt::darkGray);
+  m_textViewerLineNumberBg    = QColor(0xF0, 0xF0, 0xF0);
+
+  // ── 画像ビュアー ─────────────────
+  m_imageViewerExtensions       = { "png", "jp*g", "gif", "bmp", "svg", "webp", "ico", "tif*" };
+  m_imageViewerMimePatterns     = { "image/*" };
+  m_imageViewerZoomPercent      = 100;
+  m_imageViewerFitToWindow      = false;
+  m_imageViewerAnimation        = false;
+  m_imageViewerTransparencyMode = ImageTransparencyMode::Checker;
+  m_imageViewerSolidColor       = QColor(Qt::white);
+  m_imageViewerCheckerColor1    = QColor(0xC8, 0xC8, 0xC8);
+  m_imageViewerCheckerColor2    = QColor(0xF0, 0xF0, 0xF0);
+
+  // ── バイナリビュアー ─────────────
+  m_binaryViewerUnit       = BinaryViewerUnit::Byte1;
+  m_binaryViewerEndian     = BinaryViewerEndian::Little;
+  m_binaryViewerEncoding   = QStringLiteral("UTF-8");
+  m_binaryViewerNormalFg   = QColor(Qt::black);
+  m_binaryViewerNormalBg   = QColor();
+  m_binaryViewerSelectedFg = QColor(Qt::white);
+  m_binaryViewerSelectedBg = QColor(0x31, 0x6A, 0xC5);
+  m_binaryViewerAddressFg  = QColor(Qt::darkGray);
+  m_binaryViewerAddressBg  = QColor(0xF0, 0xF0, 0xF0);
+
+  // ── 履歴・ブックマーク・ファイル操作・検索 ──
+  m_persistHistory = false;
+  m_paneHistory[static_cast<int>(PaneType::Left)].clear();
+  m_paneHistory[static_cast<int>(PaneType::Right)].clear();
+  m_autoRenameTemplate        = QStringLiteral(" ({n})");
+  m_defaultDeleteToTrash      = true;
+  m_searchExcludeDirs         = { QStringLiteral(".*") };
+  m_bookmarks.clear();
+  m_defaultBookmarksInstalled = false;
+  m_pathOverrides.clear();
+
+  // ── ペイン (sort/filter) ───────────
   for (int i = 0; i < static_cast<int>(PaneType::Count); ++i) {
-    m_paneSettings[i].path = QDir::homePath();
-    m_paneSettings[i].sortKey = SortKey::Name;
-    m_paneSettings[i].sortOrder = Qt::AscendingOrder;
-    m_paneSettings[i].sortKey2nd = SortKey::None;
+    m_paneSettings[i] = PaneSettings{};
+    m_paneSettings[i].path         = QDir::homePath();
+    m_paneSettings[i].sortKey      = SortKey::Name;
+    m_paneSettings[i].sortOrder    = Qt::AscendingOrder;
+    m_paneSettings[i].sortKey2nd   = SortKey::None;
     m_paneSettings[i].sortDirsType = SortDirsType::First;
     m_paneSettings[i].sortDotFirst = true;
-    m_paneSettings[i].sortCS = Qt::CaseInsensitive;
-    m_paneSettings[i].attrFilter = AttrFilter::None;
+    m_paneSettings[i].sortCS       = Qt::CaseInsensitive;
+    m_paneSettings[i].attrFilter   = AttrFilter::None;
   }
 
-  // Default category colors (normal state)
-  m_categoryColors[static_cast<int>(FileCategory::Normal)].foreground    = QColor(Qt::black);
-  m_categoryColors[static_cast<int>(FileCategory::Normal)].background    = QColor();
-  m_categoryColors[static_cast<int>(FileCategory::Normal)].bold          = false;
-  m_categoryColors[static_cast<int>(FileCategory::Hidden)].foreground    = QColor(140, 140, 140);
-  m_categoryColors[static_cast<int>(FileCategory::Hidden)].background    = QColor();
-  m_categoryColors[static_cast<int>(FileCategory::Hidden)].bold          = false;
-  m_categoryColors[static_cast<int>(FileCategory::Directory)].foreground = QColor(30, 90, 200);
-  m_categoryColors[static_cast<int>(FileCategory::Directory)].background = QColor();
-  m_categoryColors[static_cast<int>(FileCategory::Directory)].bold       = true;
+  // ── カテゴリカラー (active normal) ──
+  m_categoryColors[static_cast<int>(FileCategory::Normal)]    = {QColor(Qt::black),       QColor(),                   false};
+  m_categoryColors[static_cast<int>(FileCategory::Hidden)]    = {QColor(140, 140, 140),   QColor(),                   false};
+  m_categoryColors[static_cast<int>(FileCategory::Directory)] = {QColor(30, 90, 200),     QColor(),                   true};
 
-  // Default category colors (selected state): preserve existing blue/white look
+  // active selected
   const QColor kSelBg(0, 120, 215);
   for (int i = 0; i < static_cast<int>(FileCategory::Count); ++i) {
     m_selectedCategoryColors[i].foreground = QColor(Qt::white);
@@ -59,12 +151,11 @@ Settings::Settings(QObject* parent) : QObject(parent) {
     m_selectedCategoryColors[i].bold       = m_categoryColors[i].bold;
   }
 
-  // 非アクティブペイン用のデフォルト。当初は使わないがユーザー ON 時の初期値として。
-  // 通常のカテゴリカラーを薄めたグレー系にする。
+  // 非アクティブペインの初期色 (薄いグレー寄り)
   auto dim = [](const QColor& c) {
     if (!c.isValid()) return QColor();
     const int avg = (c.red() + c.green() + c.blue()) / 3;
-    const int dimmed = (avg + 170) / 2;  // グレーに寄せる
+    const int dimmed = (avg + 170) / 2;
     return QColor(dimmed, dimmed, dimmed);
   };
   for (int i = 0; i < static_cast<int>(FileCategory::Count); ++i) {
@@ -76,6 +167,14 @@ Settings::Settings(QObject* parent) : QObject(parent) {
     m_inactiveSelectedCategoryColors[i].background = QColor(140, 140, 160);
     m_inactiveSelectedCategoryColors[i].bold       = m_selectedCategoryColors[i].bold;
   }
+
+  // ── ウィンドウ ─────────────────
+  m_windowSizeMode       = WindowSizeMode::Default;
+  m_customWindowSize     = QSize(1200, 600);
+  m_lastWindowSize       = QSize(1200, 600);
+  m_windowPositionMode   = WindowPositionMode::Default;
+  m_customWindowPosition = QPoint();
+  m_lastWindowPosition   = QPoint();
 }
 
 PaneSettings Settings::paneSettings(PaneType pane) const {

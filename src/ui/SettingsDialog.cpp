@@ -121,11 +121,20 @@ void SettingsDialog::setupUi() {
     m_tabWidget->setCurrentIndex(prevIndex);
   });
 
-  // OK/Cancel/Apply buttons
+  // OK/Cancel/Apply buttons + 全設定リセット (キーバインドを除く)
   m_buttonBox = new QDialogButtonBox(
-    QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Apply,
+    QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Apply
+      | QDialogButtonBox::RestoreDefaults,
     this
   );
+  // RestoreDefaults を「全設定リセット」用に流用。Keybindings タブ専用の
+  // Reset to Defaults は KeybindingTab 内のボタンで継続。
+  if (auto* resetBtn = m_buttonBox->button(QDialogButtonBox::RestoreDefaults)) {
+    resetBtn->setText(tr("Reset All Settings..."));
+    resetBtn->setToolTip(
+      tr("Reset every setting (except keybindings) to its default value."));
+    connect(resetBtn, &QPushButton::clicked, this, &SettingsDialog::onResetAllSettings);
+  }
   auto* okBtn     = m_buttonBox->button(QDialogButtonBox::Ok);
   auto* cancelBtn = m_buttonBox->button(QDialogButtonBox::Cancel);
   auto* applyBtn  = m_buttonBox->button(QDialogButtonBox::Apply);
@@ -208,6 +217,23 @@ void SettingsDialog::onClearBinding() {
   if (m_tabWidget->currentWidget() == m_keybindingTab) {
     m_keybindingTab->clearCurrentBinding();
   }
+}
+
+void SettingsDialog::onResetAllSettings() {
+  if (!confirm(this, tr("Reset All Settings"),
+               tr("Reset all settings to their default values?\n"
+                  "Keybindings are not affected."),
+               /*defaultYes=*/false)) {
+    return;
+  }
+  // メモリ上のフィールドをすべてデフォルトに戻し、ファイルへも保存。
+  // 各タブを丸ごと再構築するのは大変なので、ダイアログを閉じて呼び出し側に
+  // 「設定が変わった」を通知する。ユーザーが Settings をもう一度開けば
+  // フレッシュなデフォルト値が反映される。
+  Settings::instance().resetToDefaults();
+  Settings::instance().save();
+  emit settingsChanged();
+  accept();
 }
 
 void SettingsDialog::onResetToDefaults() {

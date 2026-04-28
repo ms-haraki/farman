@@ -64,9 +64,7 @@ private:
 
   // Category colors (Normal / Hidden / Directory)
   CategoryRow m_categoryRows[static_cast<int>(FileCategory::Count)];
-  // 非アクティブペインのカラーを使うかのチェック
-  QCheckBox*  m_useInactivePaneColorsCheck = nullptr;
-  // 非アクティブ側のグリッド全体（チェック OFF 時に disable）
+  // 非アクティブパネル設定 (グループ自体が checkable で ON/OFF を兼ねる)
   QGroupBox*  m_inactivePaneGroup = nullptr;
 
   // Address bar colors

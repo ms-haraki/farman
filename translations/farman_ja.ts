@@ -4,36 +4,16 @@
 <context>
     <name>Farman::AppearanceTab</name>
     <message>
-        <source>Path</source>
-        <translation type="vanished">パス</translation>
-    </message>
-    <message>
         <location filename="../src/ui/AppearanceTab.cpp" line="57"/>
         <location filename="../src/ui/AppearanceTab.cpp" line="116"/>
         <source>Select Font...</source>
         <translation>フォントを選択...</translation>
     </message>
     <message>
-        <source>Choose the font for the path label above each pane</source>
-        <translation type="vanished">各パネルの上にあるパスラベルのフォントを選択</translation>
-    </message>
-    <message>
-        <source>Path Font</source>
-        <translation type="vanished">パスフォント</translation>
-    </message>
-    <message>
         <location filename="../src/ui/AppearanceTab.cpp" line="69"/>
         <location filename="../src/ui/AppearanceTab.cpp" line="119"/>
         <source>Font:</source>
         <translation>フォント:</translation>
-    </message>
-    <message>
-        <source>Path Foreground Color</source>
-        <translation type="vanished">パス前景色</translation>
-    </message>
-    <message>
-        <source>Path Background Color</source>
-        <translation type="vanished">パス背景色</translation>
     </message>
     <message>
         <location filename="../src/ui/AppearanceTab.cpp" line="54"/>
@@ -235,37 +215,32 @@ Row Background: fill the entire row with the cursor color.</source>
         <translation>選択中</translation>
     </message>
     <message>
-        <location filename="../src/ui/AppearanceTab.cpp" line="166"/>
-        <source>Use custom colors for inactive pane</source>
-        <translation>非アクティブパネルに専用カラーを使う</translation>
-    </message>
-    <message>
-        <location filename="../src/ui/AppearanceTab.cpp" line="168"/>
+        <location filename="../src/ui/AppearanceTab.cpp" line="171"/>
         <source>Enable separate colors for the non-active pane. When off, the active colors are used for both panes.</source>
         <translation>非アクティブパネルに別カラーを使うかどうか。オフのときは両方のパネルでアクティブカラーが使われます。</translation>
     </message>
     <message>
-        <location filename="../src/ui/AppearanceTab.cpp" line="172"/>
+        <location filename="../src/ui/AppearanceTab.cpp" line="168"/>
         <source>Inactive Pane</source>
         <translation>非アクティブパネル</translation>
     </message>
     <message>
-        <location filename="../src/ui/AppearanceTab.cpp" line="250"/>
+        <location filename="../src/ui/AppearanceTab.cpp" line="247"/>
         <source>Select Font</source>
         <translation>フォントを選択</translation>
     </message>
     <message>
-        <location filename="../src/ui/AppearanceTab.cpp" line="280"/>
+        <location filename="../src/ui/AppearanceTab.cpp" line="277"/>
         <source>Select Foreground Color</source>
         <translation>前景色を選択</translation>
     </message>
     <message>
-        <location filename="../src/ui/AppearanceTab.cpp" line="298"/>
+        <location filename="../src/ui/AppearanceTab.cpp" line="295"/>
         <source>Select Background Color</source>
         <translation>背景色を選択</translation>
     </message>
     <message>
-        <location filename="../src/ui/AppearanceTab.cpp" line="321"/>
+        <location filename="../src/ui/AppearanceTab.cpp" line="318"/>
         <source>(none)</source>
         <translation>(なし)</translation>
     </message>
@@ -339,10 +314,6 @@ Row Background: fill the entire row with the cursor color.</source>
         <location filename="../src/ui/BehaviorTab.cpp" line="44"/>
         <source>Default Sort &amp;&amp; Filter Settings</source>
         <translation>デフォルトのソート・フィルタ設定</translation>
-    </message>
-    <message>
-        <source>These settings define the default sort and filter behavior for new panes. You can override them per-pane during use.</source>
-        <translation type="vanished">新しいパネルを開いたときのデフォルトのソート・フィルタ設定です。パネルごとに使用中の上書きも可能です。</translation>
     </message>
     <message>
         <location filename="../src/ui/BehaviorTab.cpp" line="48"/>
@@ -549,198 +520,6 @@ Used as the initial value in the Search dialog&apos;s Exclude dirs field.</sourc
         <location filename="../src/ui/BehaviorTab.cpp" line="189"/>
         <source>Search exclude dirs:</source>
         <translation>検索から除外するディレクトリ:</translation>
-    </message>
-    <message>
-        <source>Log</source>
-        <translation type="vanished">ログ</translation>
-    </message>
-    <message>
-        <source>Show log pane</source>
-        <translation type="vanished">ログパネルを表示</translation>
-    </message>
-    <message>
-        <source>Show the log pane between the file panes and status bar. Toggle from the View menu or with Ctrl+L.</source>
-        <translation type="vanished">ファイルパネルとステータスバーの間にログパネルを表示します。表示メニューまたは Ctrl+L で切替可能です。</translation>
-    </message>
-    <message>
-        <source> px</source>
-        <translation type="vanished"> px</translation>
-    </message>
-    <message>
-        <source>Fixed height of the log pane in pixels.</source>
-        <translation type="vanished">ログパネルの高さ (px)。</translation>
-    </message>
-    <message>
-        <source> days</source>
-        <translation type="vanished"> 日</translation>
-    </message>
-    <message>
-        <source>Daily log files older than this number of days are deleted on startup and on rotation.</source>
-        <translation type="vanished">この日数より古い日次ログファイルを起動時 / ローテーション時に削除します。</translation>
-    </message>
-    <message>
-        <source>Keep forever</source>
-        <translation type="vanished">永久に保持</translation>
-    </message>
-    <message>
-        <source>If checked, never delete old daily log files.</source>
-        <translation type="vanished">チェックすると古い日次ログファイルを削除しません。</translation>
-    </message>
-    <message>
-        <source>Height:</source>
-        <translation type="vanished">高さ:</translation>
-    </message>
-    <message>
-        <source>Retention:</source>
-        <translation type="vanished">保存日数:</translation>
-    </message>
-    <message>
-        <source>Write log to file</source>
-        <translation type="vanished">ログをファイルに保存</translation>
-    </message>
-    <message>
-        <source>Append log entries to a date-stamped file (rotated daily) in addition to the log pane.</source>
-        <translation type="vanished">ログパネルに加え、日付付きファイル (日次ローテーション) にも追記します。</translation>
-    </message>
-    <message>
-        <source>/path/to/log/dir</source>
-        <translation type="vanished">/path/to/log/dir</translation>
-    </message>
-    <message>
-        <source>Directory where daily log files (farman-YYYY-MM-DD.log) are stored.</source>
-        <translation type="vanished">日次ログファイル (farman-YYYY-MM-DD.log) を置くディレクトリ。</translation>
-    </message>
-    <message>
-        <source>Choose log directory...</source>
-        <translation type="vanished">ログディレクトリを選択...</translation>
-    </message>
-    <message>
-        <source>Directory:</source>
-        <translation type="vanished">ディレクトリ:</translation>
-    </message>
-    <message>
-        <source>Choose log directory</source>
-        <translation type="vanished">ログディレクトリを選択</translation>
-    </message>
-    <message>
-        <source>Startup Settings</source>
-        <translation type="vanished">起動時の設定</translation>
-    </message>
-    <message>
-        <source>Initial Directory</source>
-        <translation type="vanished">初期ディレクトリ</translation>
-    </message>
-    <message>
-        <source>Default (Home)</source>
-        <translation type="vanished">デフォルト (ホーム)</translation>
-    </message>
-    <message>
-        <source>Last Session</source>
-        <translation type="vanished">前回終了時</translation>
-    </message>
-    <message>
-        <source>Custom</source>
-        <translation type="vanished">カスタム</translation>
-    </message>
-    <message>
-        <source>Mode:</source>
-        <translation type="vanished">モード:</translation>
-    </message>
-    <message>
-        <source>/path/to/directory</source>
-        <translation type="vanished">/path/to/directory</translation>
-    </message>
-    <message>
-        <source>Browse for folder...</source>
-        <translation type="vanished">フォルダを参照...</translation>
-    </message>
-    <message>
-        <source>Custom Path:</source>
-        <translation type="vanished">カスタムパス:</translation>
-    </message>
-    <message>
-        <source>Left Pane</source>
-        <translation type="vanished">左パネル</translation>
-    </message>
-    <message>
-        <source>Right Pane</source>
-        <translation type="vanished">右パネル</translation>
-    </message>
-    <message>
-        <source>Confirm on exit</source>
-        <translation type="vanished">終了時に確認</translation>
-    </message>
-    <message>
-        <source>Show confirmation dialog when closing the application</source>
-        <translation type="vanished">アプリ終了時に確認ダイアログを表示</translation>
-    </message>
-    <message>
-        <source>Auto (System)</source>
-        <translation type="vanished">自動 (システム)</translation>
-    </message>
-    <message>
-        <source>English</source>
-        <translation type="vanished">English</translation>
-    </message>
-    <message>
-        <source>Takes effect on next launch.</source>
-        <translation type="vanished">次回起動時から反映されます。</translation>
-    </message>
-    <message>
-        <source>Language:</source>
-        <translation type="vanished">言語:</translation>
-    </message>
-    <message>
-        <source>Window Settings</source>
-        <translation type="vanished">ウィンドウ設定</translation>
-    </message>
-    <message>
-        <source>Default (1200x600)</source>
-        <translation type="vanished">デフォルト (1200x600)</translation>
-    </message>
-    <message>
-        <source>Window Size:</source>
-        <translation type="vanished">サイズ:</translation>
-    </message>
-    <message>
-        <source>Width:</source>
-        <translation type="vanished">幅:</translation>
-    </message>
-    <message>
-        <source>Custom Size:</source>
-        <translation type="vanished">カスタムサイズ:</translation>
-    </message>
-    <message>
-        <source>Position</source>
-        <translation type="vanished">位置</translation>
-    </message>
-    <message>
-        <source>Default (Center)</source>
-        <translation type="vanished">デフォルト (中央)</translation>
-    </message>
-    <message>
-        <source>Window Position:</source>
-        <translation type="vanished">位置:</translation>
-    </message>
-    <message>
-        <source>X:</source>
-        <translation type="vanished">X:</translation>
-    </message>
-    <message>
-        <source>Y:</source>
-        <translation type="vanished">Y:</translation>
-    </message>
-    <message>
-        <source>Custom Position:</source>
-        <translation type="vanished">カスタム位置:</translation>
-    </message>
-    <message>
-        <source>Select initial directory for left pane</source>
-        <translation type="vanished">左パネルの初期ディレクトリを選択</translation>
-    </message>
-    <message>
-        <source>Select initial directory for right pane</source>
-        <translation type="vanished">右パネルの初期ディレクトリを選択</translation>
     </message>
 </context>
 <context>
@@ -1027,22 +806,22 @@ Used as the initial value in the Search dialog&apos;s Exclude dirs field.</sourc
 <context>
     <name>Farman::FileListModel</name>
     <message>
-        <location filename="../src/model/FileListModel.cpp" line="375"/>
+        <location filename="../src/model/FileListModel.cpp" line="384"/>
         <source>Name</source>
         <translation>名前</translation>
     </message>
     <message>
-        <location filename="../src/model/FileListModel.cpp" line="376"/>
+        <location filename="../src/model/FileListModel.cpp" line="385"/>
         <source>Size</source>
         <translation>サイズ</translation>
     </message>
     <message>
-        <location filename="../src/model/FileListModel.cpp" line="377"/>
+        <location filename="../src/model/FileListModel.cpp" line="386"/>
         <source>Type</source>
         <translation>種別</translation>
     </message>
     <message>
-        <location filename="../src/model/FileListModel.cpp" line="378"/>
+        <location filename="../src/model/FileListModel.cpp" line="387"/>
         <source>Modified</source>
         <translation>更新日時</translation>
     </message>
@@ -1268,246 +1047,246 @@ Used as the initial value in the Search dialog&apos;s Exclude dirs field.</sourc
         <translation>初期ディレクトリ</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="48"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="51"/>
         <source>Default (Home)</source>
         <translation>デフォルト (ホーム)</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="49"/>
-        <location filename="../src/ui/GeneralTab.cpp" line="117"/>
-        <location filename="../src/ui/GeneralTab.cpp" line="144"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="52"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="99"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="126"/>
         <source>Last Session</source>
         <translation>前回終了時</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="50"/>
-        <location filename="../src/ui/GeneralTab.cpp" line="118"/>
-        <location filename="../src/ui/GeneralTab.cpp" line="145"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="53"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="100"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="127"/>
         <source>Custom</source>
         <translation>カスタム</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="51"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="54"/>
         <source>Mode:</source>
         <translation>モード:</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="57"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="60"/>
         <source>/path/to/directory</source>
         <translation>/path/to/directory</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="60"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="64"/>
         <source>Browse for folder...</source>
         <translation>フォルダを参照...</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="63"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="67"/>
         <source>Custom Path:</source>
         <translation>カスタムパス:</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="69"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="73"/>
         <source>Left Pane</source>
         <translation>左パネル</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="72"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="76"/>
         <source>Right Pane</source>
         <translation>右パネル</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="86"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="155"/>
         <source>Confirm on exit</source>
         <translation>終了時に確認</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="87"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="156"/>
         <source>Show confirmation dialog when closing the application</source>
         <translation>アプリ終了時に確認ダイアログを表示</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="90"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="159"/>
         <source>Auto (System)</source>
         <translation>自動 (システム)</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="91"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="160"/>
         <source>English</source>
         <translation>English</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="94"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="163"/>
         <source>Takes effect on next launch.</source>
         <translation>次回起動時から反映されます。</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="101"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="167"/>
         <source>Language:</source>
         <translation>言語:</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="109"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="91"/>
         <source>Window Settings</source>
         <translation>ウィンドウ設定</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="112"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="94"/>
         <source>Size</source>
         <translation>サイズ</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="116"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="98"/>
         <source>Default (1200x600)</source>
         <translation>デフォルト (1200x600)</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="121"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="103"/>
         <source>Window Size:</source>
         <translation>サイズ:</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="128"/>
-        <location filename="../src/ui/GeneralTab.cpp" line="133"/>
-        <location filename="../src/ui/GeneralTab.cpp" line="155"/>
-        <location filename="../src/ui/GeneralTab.cpp" line="160"/>
-        <location filename="../src/ui/GeneralTab.cpp" line="182"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="110"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="115"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="137"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="142"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="183"/>
         <source> px</source>
         <translation> px</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="129"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="111"/>
         <source>Width:</source>
         <translation>幅:</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="134"/>
-        <location filename="../src/ui/GeneralTab.cpp" line="199"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="116"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="200"/>
         <source>Height:</source>
         <translation>高さ:</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="137"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="119"/>
         <source>Custom Size:</source>
         <translation>カスタムサイズ:</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="139"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="121"/>
         <source>Position</source>
         <translation>位置</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="143"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="125"/>
         <source>Default (Center)</source>
         <translation>デフォルト (中央)</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="148"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="130"/>
         <source>Window Position:</source>
         <translation>位置:</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="156"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="138"/>
         <source>X:</source>
         <translation>X:</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="161"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="143"/>
         <source>Y:</source>
         <translation>Y:</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="164"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="146"/>
         <source>Custom Position:</source>
         <translation>カスタム位置:</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="171"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="172"/>
         <source>Log</source>
         <translation>ログ</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="174"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="175"/>
         <source>Show log pane</source>
         <translation>ログパネルを表示</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="176"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="177"/>
         <source>Show the log pane between the file panes and status bar. Toggle from the View menu or with Ctrl+L.</source>
         <translation>ファイルパネルとステータスバーの間にログパネルを表示します。表示メニューまたは Ctrl+L で切替可能です。</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="183"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="184"/>
         <source>Fixed height of the log pane in pixels.</source>
         <translation>ログパネルの高さ (px)。</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="187"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="188"/>
         <source> days</source>
         <translation> 日</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="189"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="190"/>
         <source>Daily log files older than this number of days are deleted on startup and on rotation.</source>
         <translation>この日数より古い日次ログファイルを起動時 / ローテーション時に削除します。</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="191"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="192"/>
         <source>Keep forever</source>
         <translation>永久に保持</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="193"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="194"/>
         <source>If checked, never delete old daily log files.</source>
         <translation>チェックすると古い日次ログファイルを削除しません。</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="202"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="203"/>
         <source>Retention:</source>
         <translation>保存日数:</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="209"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="210"/>
         <source>Write log to file</source>
         <translation>ログをファイルに保存</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="211"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="212"/>
         <source>Append log entries to a date-stamped file (rotated daily) in addition to the log pane.</source>
         <translation>ログパネルに加え、日付付きファイル (日次ローテーション) にも追記します。</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="214"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="215"/>
         <source>/path/to/log/dir</source>
         <translation>/path/to/log/dir</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="216"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="217"/>
         <source>Directory where daily log files (farman-YYYY-MM-DD.log) are stored.</source>
         <translation>日次ログファイル (farman-YYYY-MM-DD.log) を置くディレクトリ。</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="220"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="221"/>
         <source>Choose log directory...</source>
         <translation>ログディレクトリを選択...</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="225"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="226"/>
         <source>Directory:</source>
         <translation>ディレクトリ:</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="244"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="245"/>
         <source>Choose log directory</source>
         <translation>ログディレクトリを選択</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="406"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="411"/>
         <source>Select initial directory for left pane</source>
         <translation>左パネルの初期ディレクトリを選択</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="419"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="424"/>
         <source>Select initial directory for right pane</source>
         <translation>右パネルの初期ディレクトリを選択</translation>
     </message>
@@ -2122,67 +1901,69 @@ This will discard all custom keybindings.</source>
 <context>
     <name>Farman::SettingsDialog</name>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="40"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="45"/>
         <source>Settings</source>
         <translation>設定</translation>
     </message>
     <message>
-        <source>1. Behavior</source>
-        <translation type="vanished">1. 全般</translation>
-    </message>
-    <message>
-        <source>2. Startup</source>
-        <translation type="vanished">2. 起動時</translation>
-    </message>
-    <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="54"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="59"/>
         <source>1. General</source>
         <translation>1. 全般</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="55"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="60"/>
         <source>2. Behavior</source>
         <translation>2. 動作</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="56"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="61"/>
         <source>3. Appearance</source>
         <translation>3. 外観</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="57"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="62"/>
         <source>4. Viewers</source>
         <translation>4. ビュアー</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="58"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="63"/>
         <source>5. Keybindings</source>
         <translation>5. キーバインド</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="158"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="133"/>
+        <source>Reset All Settings...</source>
+        <translation>全設定をリセット...</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SettingsDialog.cpp" line="135"/>
+        <source>Reset every setting (except keybindings) to its default value.</source>
+        <translation>すべての設定 (キーバインドを除く) をデフォルト値に戻します。</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SettingsDialog.cpp" line="189"/>
         <source>Language Changed</source>
         <translation>言語が変更されました</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="159"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="190"/>
         <source>Restart farman now to apply the new language?</source>
         <translation>新しい言語を反映するために farman を再起動しますか?</translation>
     </message>
     <message>
-        <source>2. Appearance</source>
-        <translation type="vanished">2. 外観</translation>
+        <location filename="../src/ui/SettingsDialog.cpp" line="223"/>
+        <source>Reset All Settings</source>
+        <translation>全設定をリセット</translation>
     </message>
     <message>
-        <source>3. Viewers</source>
-        <translation type="vanished">3. ビュアー</translation>
+        <location filename="../src/ui/SettingsDialog.cpp" line="224"/>
+        <source>Reset all settings to their default values?
+Keybindings are not affected.</source>
+        <translation>すべての設定をデフォルトに戻しますか?
+キーバインドは変更されません。</translation>
     </message>
     <message>
-        <source>4. Keybindings</source>
-        <translation type="vanished">4. キーバインド</translation>
-    </message>
-    <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="62"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="84"/>
         <source>Use Alt+number to switch tabs, or Ctrl+Tab/Ctrl+Shift+Tab</source>
         <translation>Alt+数字でタブ切替、または Ctrl+Tab / Ctrl+Shift+Tab</translation>
     </message>
@@ -2331,138 +2112,6 @@ This will discard all custom keybindings.</source>
 </context>
 <context>
     <name>Farman::StartupTab</name>
-    <message>
-        <source>Startup Settings</source>
-        <translation type="vanished">起動時の設定</translation>
-    </message>
-    <message>
-        <source>Initial Directory</source>
-        <translation type="vanished">初期ディレクトリ</translation>
-    </message>
-    <message>
-        <source>Default (Home)</source>
-        <translation type="vanished">デフォルト (ホーム)</translation>
-    </message>
-    <message>
-        <source>Last Session</source>
-        <translation type="vanished">前回終了時</translation>
-    </message>
-    <message>
-        <source>Custom</source>
-        <translation type="vanished">カスタム</translation>
-    </message>
-    <message>
-        <source>Mode:</source>
-        <translation type="vanished">モード:</translation>
-    </message>
-    <message>
-        <source>/path/to/directory</source>
-        <translation type="vanished">/path/to/directory</translation>
-    </message>
-    <message>
-        <source>Browse for folder...</source>
-        <translation type="vanished">フォルダを参照...</translation>
-    </message>
-    <message>
-        <source>Custom Path:</source>
-        <translation type="vanished">カスタムパス:</translation>
-    </message>
-    <message>
-        <source>Left Pane</source>
-        <translation type="vanished">左パネル</translation>
-    </message>
-    <message>
-        <source>Right Pane</source>
-        <translation type="vanished">右パネル</translation>
-    </message>
-    <message>
-        <source>Confirm on exit</source>
-        <translation type="vanished">終了時に確認</translation>
-    </message>
-    <message>
-        <source>Show confirmation dialog when closing the application</source>
-        <translation type="vanished">アプリ終了時に確認ダイアログを表示</translation>
-    </message>
-    <message>
-        <source>Auto (System)</source>
-        <translation type="vanished">自動 (システム)</translation>
-    </message>
-    <message>
-        <source>English</source>
-        <translation type="vanished">English</translation>
-    </message>
-    <message>
-        <source>Takes effect on next launch.</source>
-        <translation type="vanished">次回起動時から反映されます。</translation>
-    </message>
-    <message>
-        <source>Language:</source>
-        <translation type="vanished">言語:</translation>
-    </message>
-    <message>
-        <source>Window Settings</source>
-        <translation type="vanished">ウィンドウ設定</translation>
-    </message>
-    <message>
-        <source>Size</source>
-        <translation type="vanished">サイズ</translation>
-    </message>
-    <message>
-        <source>Default (1200x600)</source>
-        <translation type="vanished">デフォルト (1200x600)</translation>
-    </message>
-    <message>
-        <source>Window Size:</source>
-        <translation type="vanished">サイズ:</translation>
-    </message>
-    <message>
-        <source> px</source>
-        <translation type="vanished"> px</translation>
-    </message>
-    <message>
-        <source>Width:</source>
-        <translation type="vanished">幅:</translation>
-    </message>
-    <message>
-        <source>Height:</source>
-        <translation type="vanished">高さ:</translation>
-    </message>
-    <message>
-        <source>Custom Size:</source>
-        <translation type="vanished">カスタムサイズ:</translation>
-    </message>
-    <message>
-        <source>Position</source>
-        <translation type="vanished">位置</translation>
-    </message>
-    <message>
-        <source>Default (Center)</source>
-        <translation type="vanished">デフォルト (中央)</translation>
-    </message>
-    <message>
-        <source>Window Position:</source>
-        <translation type="vanished">位置:</translation>
-    </message>
-    <message>
-        <source>X:</source>
-        <translation type="vanished">X:</translation>
-    </message>
-    <message>
-        <source>Y:</source>
-        <translation type="vanished">Y:</translation>
-    </message>
-    <message>
-        <source>Custom Position:</source>
-        <translation type="vanished">カスタム位置:</translation>
-    </message>
-    <message>
-        <source>Select initial directory for left pane</source>
-        <translation type="vanished">左パネルの初期ディレクトリを選択</translation>
-    </message>
-    <message>
-        <source>Select initial directory for right pane</source>
-        <translation type="vanished">右パネルの初期ディレクトリを選択</translation>
-    </message>
 </context>
 <context>
     <name>Farman::TextView</name>
@@ -2915,37 +2564,37 @@ This will discard all custom keybindings.</source>
         <translation>OK</translation>
     </message>
     <message>
-        <location filename="../src/settings/Settings.cpp" line="500"/>
+        <location filename="../src/settings/Settings.cpp" line="599"/>
         <source>Home</source>
         <translation>ホーム</translation>
     </message>
     <message>
-        <location filename="../src/settings/Settings.cpp" line="502"/>
+        <location filename="../src/settings/Settings.cpp" line="601"/>
         <source>Desktop</source>
         <translation>デスクトップ</translation>
     </message>
     <message>
-        <location filename="../src/settings/Settings.cpp" line="504"/>
+        <location filename="../src/settings/Settings.cpp" line="603"/>
         <source>Documents</source>
         <translation>ドキュメント</translation>
     </message>
     <message>
-        <location filename="../src/settings/Settings.cpp" line="506"/>
+        <location filename="../src/settings/Settings.cpp" line="605"/>
         <source>Downloads</source>
         <translation>ダウンロード</translation>
     </message>
     <message>
-        <location filename="../src/settings/Settings.cpp" line="508"/>
+        <location filename="../src/settings/Settings.cpp" line="607"/>
         <source>Pictures</source>
         <translation>ピクチャ</translation>
     </message>
     <message>
-        <location filename="../src/settings/Settings.cpp" line="510"/>
+        <location filename="../src/settings/Settings.cpp" line="609"/>
         <source>Music</source>
         <translation>ミュージック</translation>
     </message>
     <message>
-        <location filename="../src/settings/Settings.cpp" line="512"/>
+        <location filename="../src/settings/Settings.cpp" line="611"/>
         <source>Movies</source>
         <translation>ムービー</translation>
     </message>

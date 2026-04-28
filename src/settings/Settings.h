@@ -265,12 +265,19 @@ public:
   // ── 読み書き ───────────────────────────
   void load();
   void save() const;
+  // 全フィールドを構築時のデフォルトに戻す。キーバインドは Settings の
+  // 範囲外なので影響しない (KeyBindingManager 側に reset がある)。
+  // 完了後に settingsChanged() を発火する。
+  void resetToDefaults();
 
 signals:
   void settingsChanged() const;
 
 private:
   explicit Settings(QObject* parent = nullptr);
+  // 全フィールドをコンストラクタ時点と同じ値に揃える。
+  // resetToDefaults() の本体でもあり、コンストラクタからも呼ばれる。
+  void applyDefaults();
 
   PaneSettings     m_paneSettings[static_cast<int>(PaneType::Count)];
   QMap<QString, PaneSettings> m_pathOverrides;

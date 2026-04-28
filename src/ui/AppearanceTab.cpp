@@ -162,23 +162,21 @@ void AppearanceTab::setupUi() {
   activeRow->addWidget(buildStateGrid(tr("Selected State"), true,  false));
   categoryOuter->addWidget(activeGroup);
 
-  m_useInactivePaneColorsCheck = new QCheckBox(
-    tr("Use custom colors for inactive pane"), this);
-  m_useInactivePaneColorsCheck->setToolTip(
+  // QGroupBox 自体を checkable にして「非アクティブパネル」のタイトル左に
+  // チェックボックスを置く。チェック OFF で中身がグレーアウト + 値を使わなく
+  // なる。Settings 上は m_useInactivePaneColors と等価に扱う。
+  m_inactivePaneGroup = new QGroupBox(tr("Inactive Pane"), this);
+  m_inactivePaneGroup->setCheckable(true);
+  m_inactivePaneGroup->setToolTip(
     tr("Enable separate colors for the non-active pane. "
        "When off, the active colors are used for both panes."));
-  categoryOuter->addWidget(m_useInactivePaneColorsCheck);
-
-  m_inactivePaneGroup = new QGroupBox(tr("Inactive Pane"), this);
   QHBoxLayout* inactiveRow = new QHBoxLayout(m_inactivePaneGroup);
   inactiveRow->addWidget(buildStateGrid(tr("Normal State"),   false, true));
   inactiveRow->addWidget(buildStateGrid(tr("Selected State"), true,  true));
   categoryOuter->addWidget(m_inactivePaneGroup);
 
-  connect(m_useInactivePaneColorsCheck, &QCheckBox::toggled,
-          this, [this](bool checked) {
-    m_inactivePaneGroup->setEnabled(checked);
-  });
+  // 旧 m_useInactivePaneColorsCheck は廃止。グループのチェック状態を
+  // そのまま load/save で参照する。
 
   mainLayout->addWidget(fileListGroup, /*stretch*/ 1);
 }
@@ -221,8 +219,7 @@ void AppearanceTab::loadSettings() {
   }
 
   // 非アクティブペイン設定
-  m_useInactivePaneColorsCheck->setChecked(settings.useInactivePaneColors());
-  m_inactivePaneGroup->setEnabled(settings.useInactivePaneColors());
+  m_inactivePaneGroup->setChecked(settings.useInactivePaneColors());
 
   // Path & Cursor
   m_addressFgValue = settings.addressForeground();
@@ -355,7 +352,7 @@ void AppearanceTab::save() {
     settings.setCategoryColor(cat, false, true,  m_categoryRows[i].inactiveNormal.value);
     settings.setCategoryColor(cat, true,  true,  m_categoryRows[i].inactiveSelected.value);
   }
-  settings.setUseInactivePaneColors(m_useInactivePaneColorsCheck->isChecked());
+  settings.setUseInactivePaneColors(m_inactivePaneGroup->isChecked());
 
   // Save path & cursor colors
   settings.setAddressForeground(m_addressFgValue);

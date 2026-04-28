@@ -481,6 +481,11 @@ Settings ダイアログは 5 つのトップレベルタブ (`1. General` / `2.
 ビュアー固有の設定は Appearance ではなく専用の Viewers タブにまとめ、
 ファイルリスト関連の見た目は Appearance に残す。
 
+ボタンバーには通常の `OK` / `Cancel` / `Apply` に加え、`Reset All Settings...`
+ボタンを置く。これは確認ダイアログ経由で **キーバインドを除く全設定** を
+ヘッダ側のデフォルト値に戻す。Keybindings タブにある「Reset to Defaults」は
+キーバインドだけを対象にするので、両者は独立している。
+
 #### 1. General タブ
 
 アプリ全体・起動時の設定とログ出力をまとめる。**ほぼ「アプリの設定」に
@@ -533,9 +538,6 @@ Settings ダイアログは 5 つのトップレベルタブ (`1. General` / `2.
 - 自動リネームのサフィックステンプレート
   - 例: ` ({n})` で「foo.txt」衝突時に `foo (1).txt` を生成
 - 削除の既定: ゴミ箱 or 完全削除（`defaultDeleteToTrash`）
-
-##### 未実装
-- 全設定初期化
 
 #### 3. Appearance タブ
 

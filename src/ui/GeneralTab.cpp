@@ -43,6 +43,9 @@ void GeneralTab::setupUi() {
       QToolButton*& browseBtn) -> QGroupBox* {
     QGroupBox* box = new QGroupBox(title, this);
     QFormLayout* form = new QFormLayout(box);
+    // Field 列がウィジェットの sizeHint で頭打ちにならないよう、
+    // フォーム全体で「水平方向に広げる」ポリシーを使う。
+    form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
 
     modeCombo = new QComboBox(this);
     modeCombo->addItem(tr("Default (Home)"),   static_cast<int>(InitialPathMode::Default));
@@ -55,6 +58,7 @@ void GeneralTab::setupUi() {
     pathRowLayout->setContentsMargins(0, 0, 0, 0);
     pathEdit = new QLineEdit(this);
     pathEdit->setPlaceholderText(tr("/path/to/directory"));
+    pathEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     browseBtn = new QToolButton(this);
     browseBtn->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
     browseBtn->setToolTip(tr("Browse for folder..."));
@@ -83,29 +87,7 @@ void GeneralTab::setupUi() {
 
   startupLayout->addWidget(initialPathsGroup);
 
-  m_confirmOnExitCheck = new QCheckBox(tr("Confirm on exit"), this);
-  m_confirmOnExitCheck->setToolTip(tr("Show confirmation dialog when closing the application"));
-
-  m_languageCombo = new QComboBox(this);
-  m_languageCombo->addItem(tr("Auto (System)"), static_cast<int>(LanguageMode::Auto));
-  m_languageCombo->addItem(tr("English"),       static_cast<int>(LanguageMode::English));
-  m_languageCombo->addItem(QStringLiteral("日本語 (Japanese)"),
-                           static_cast<int>(LanguageMode::Japanese));
-  m_languageCombo->setToolTip(tr("Takes effect on next launch."));
-
-  // 「終了時に確認」と「言語」は別の意味の設定なので 1 行ずつ分ける
-  startupLayout->addWidget(m_confirmOnExitCheck);
-
-  QHBoxLayout* languageRow = new QHBoxLayout();
-  languageRow->setContentsMargins(0, 0, 0, 0);
-  languageRow->addWidget(new QLabel(tr("Language:"), this));
-  languageRow->addWidget(m_languageCombo);
-  languageRow->addStretch(1);
-  startupLayout->addLayout(languageRow);
-
-  mainLayout->addWidget(startupGroup);
-
-  // ── Window settings ────────────────────────────────
+  // ── Window settings (Startup の中、Initial Directory の下) ──
   QGroupBox* windowGroup = new QGroupBox(tr("Window Settings"), this);
   QHBoxLayout* windowLayout = new QHBoxLayout(windowGroup);
 
@@ -165,7 +147,26 @@ void GeneralTab::setupUi() {
 
   windowLayout->addWidget(sizeGroup);
   windowLayout->addWidget(posGroup);
-  mainLayout->addWidget(windowGroup);
+  startupLayout->addWidget(windowGroup);
+
+  mainLayout->addWidget(startupGroup);
+
+  // 「終了時確認」「言語」は構築だけ先に。実際の配置はログの下。
+  m_confirmOnExitCheck = new QCheckBox(tr("Confirm on exit"), this);
+  m_confirmOnExitCheck->setToolTip(tr("Show confirmation dialog when closing the application"));
+
+  m_languageCombo = new QComboBox(this);
+  m_languageCombo->addItem(tr("Auto (System)"), static_cast<int>(LanguageMode::Auto));
+  m_languageCombo->addItem(tr("English"),       static_cast<int>(LanguageMode::English));
+  m_languageCombo->addItem(QStringLiteral("日本語 (Japanese)"),
+                           static_cast<int>(LanguageMode::Japanese));
+  m_languageCombo->setToolTip(tr("Takes effect on next launch."));
+
+  QHBoxLayout* languageRow = new QHBoxLayout();
+  languageRow->setContentsMargins(0, 0, 0, 0);
+  languageRow->addWidget(new QLabel(tr("Language:"), this));
+  languageRow->addWidget(m_languageCombo);
+  languageRow->addStretch(1);
 
   // ── Log settings ────────────────────────────────
   QGroupBox* logGroup = new QGroupBox(tr("Log"), this);
@@ -250,6 +251,10 @@ void GeneralTab::setupUi() {
   });
 
   mainLayout->addWidget(logGroup);
+
+  // Log の下: Confirm on exit / Language
+  mainLayout->addWidget(m_confirmOnExitCheck);
+  mainLayout->addLayout(languageRow);
 
   mainLayout->addStretch();
 }

@@ -34,6 +34,9 @@ private slots:
   void onApply();
   void onClearBinding();
   void onResetToDefaults();
+  // 「Reset All Settings」ボタン: キーバインドを除く全 Settings を
+  // デフォルトに戻す (確認ダイアログ付き)。
+  void onResetAllSettings();
 
 private:
   void setupUi();
