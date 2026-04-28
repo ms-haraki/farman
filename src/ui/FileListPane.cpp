@@ -18,6 +18,8 @@
 #include <QLineEdit>
 #include <QDir>
 #include <QFileInfo>
+#include <QFileSystemWatcher>
+#include <QTimer>
 
 namespace Farman {
 
@@ -35,6 +37,18 @@ FileListPane::FileListPane(QWidget* parent)
 
   connect(&BookmarkManager::instance(), &BookmarkManager::bookmarksChanged,
           this, &FileListPane::refreshBookmarkIndicator);
+
+  // 外部 (Finder 等) からのカレントディレクトリ変更を検知して自動更新する。
+  // QFileSystemWatcher の directoryChanged は短時間に複数回飛ぶことがあるので
+  // 単発タイマーで debounce してから model を refresh する。
+  m_dirWatcher = new QFileSystemWatcher(this);
+  m_refreshDebounce = new QTimer(this);
+  m_refreshDebounce->setSingleShot(true);
+  m_refreshDebounce->setInterval(150);
+  connect(m_dirWatcher, &QFileSystemWatcher::directoryChanged, this,
+          [this](const QString&) { m_refreshDebounce->start(); });
+  connect(m_refreshDebounce, &QTimer::timeout, this,
+          &FileListPane::onExternalDirectoryChanged);
 }
 
 FileListPane::~FileListPane() = default;
@@ -159,11 +173,56 @@ QString FileListPane::currentPath() const {
   return m_model->currentPath();
 }
 
+void FileListPane::onExternalDirectoryChanged() {
+  if (!m_model) return;
+  // 外部からファイル/ディレクトリが追加・削除されたあと、model を再読み込み。
+  // model::refresh() は beginResetModel/endResetModel を呼ぶため currentIndex
+  // が無効化されるので、ファイル名ベースでカーソルを保存・復元する。
+  QString cursorName;
+  int     cursorRow = -1;
+  if (m_view) {
+    const QModelIndex idx = m_view->currentIndex();
+    if (idx.isValid()) {
+      cursorRow = idx.row();
+      const QVariant v = m_model->data(m_model->index(idx.row(), FileListModel::Name));
+      cursorName = v.toString();
+    }
+  }
+
+  m_model->refresh();
+  refreshSortFilterStatus();
+
+  if (m_view) {
+    const int rows = m_model->rowCount();
+    if (rows > 0) {
+      int target = -1;
+      if (!cursorName.isEmpty()) {
+        for (int r = 0; r < rows; ++r) {
+          if (m_model->data(m_model->index(r, FileListModel::Name)).toString()
+              == cursorName) {
+            target = r;
+            break;
+          }
+        }
+      }
+      if (target < 0) target = qBound(0, cursorRow, rows - 1);
+      m_view->setCurrentIndex(m_model->index(target, FileListModel::Name));
+    }
+  }
+}
+
 bool FileListPane::setPath(const QString& path) {
   bool result = m_model->setPath(path);
   if (result) {
     m_addressLabel->setText(m_model->currentPath());
     refreshBookmarkIndicator();
+    // 外部変更ウォッチャの監視対象を新しいパスに切り替える
+    if (m_dirWatcher) {
+      const QStringList prev = m_dirWatcher->directories();
+      if (!prev.isEmpty()) m_dirWatcher->removePaths(prev);
+      const QString cur = m_model->currentPath();
+      if (!cur.isEmpty()) m_dirWatcher->addPath(cur);
+    }
     // カーソルを先頭に移動
     if (m_model->rowCount() > 0) {
       m_view->setCurrentIndex(m_model->index(0, 0));

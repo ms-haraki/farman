@@ -5,6 +5,8 @@
 class QLabel;
 class QToolButton;
 class QTableView;
+class QFileSystemWatcher;
+class QTimer;
 
 namespace Farman {
 
@@ -54,6 +56,9 @@ private slots:
   void onHeaderClicked(int section);
   // 現在のパスがブックマーク済みかどうかを indicator に反映する
   void refreshBookmarkIndicator();
+  // 外部からカレントディレクトリが変更されたとき (Finder 等) の遅延更新。
+  // QFileSystemWatcher のイベントを debounce してから model を refresh する。
+  void onExternalDirectoryChanged();
 
 private:
   void setupUi();
@@ -67,6 +72,12 @@ private:
   FileListDelegate* m_delegate;
   // Settings の "Auto" を復元するために、構築時の Qt 既定行高を覚えておく
   int m_defaultRowHeight = 0;
+
+  // 外部 (Finder 等) からのファイル増減を検知するためのウォッチャ。
+  // setPath で監視対象を切り替える。短時間に複数イベントが発火することが
+  // あるので m_refreshDebounce で間引いてから model->refresh() を呼ぶ。
+  QFileSystemWatcher* m_dirWatcher     = nullptr;
+  QTimer*             m_refreshDebounce = nullptr;
 };
 
 } // namespace Farman
