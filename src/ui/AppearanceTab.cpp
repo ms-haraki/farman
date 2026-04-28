@@ -321,9 +321,14 @@ void AppearanceTab::updateColorButton(QPushButton* btn, const QColor& color) {
   }
   btn->setText(color.name());
   // ボタンにプレビュー色を反映。文字色は輝度から自動選択。
+  // setStyleSheet を当てるとネイティブのフォーカスリングが消えるので、
+  // :focus でハイライトカラーの枠を出してキー操作でも視認できるようにする。
   const int luminance = (color.red() * 299 + color.green() * 587 + color.blue() * 114) / 1000;
   const QString textColor = (luminance > 160) ? "black" : "white";
-  btn->setStyleSheet(QString("background-color: %1; color: %2;")
+  btn->setStyleSheet(QString(
+      "QPushButton { background-color: %1; color: %2; border: 1px solid #888; "
+                    "border-radius: 3px; padding: 2px 6px; }"
+      "QPushButton:focus { border: 2px solid palette(highlight); padding: 1px 5px; }")
                        .arg(color.name(), textColor));
 }
 
