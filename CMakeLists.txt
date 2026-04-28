@@ -85,6 +85,23 @@ target_compile_definitions(farman PRIVATE
   FARMAN_VERSION=${PROJECT_VERSION}
 )
 
+# GUI アプリとしてビルド:
+#   macOS  → .app バンドル (build/farman.app)
+#   Windows → ウィンドウ無しの GUI exe (黒い cmd ウィンドウが付かない)
+#   Linux   → 何もしない (通常の ELF 実行ファイル)
+# 開発時にデバッグログを Terminal で見たい場合は、バンドル内の素の実行
+# ファイルを直接叩けばよい:
+#   ./build/farman.app/Contents/MacOS/farman
+set_target_properties(farman PROPERTIES
+  MACOSX_BUNDLE                          TRUE
+  WIN32_EXECUTABLE                       TRUE
+  MACOSX_BUNDLE_BUNDLE_NAME              "farman"
+  MACOSX_BUNDLE_GUI_IDENTIFIER           "co.jp.mashsoft.farman"
+  MACOSX_BUNDLE_BUNDLE_VERSION           "${PROJECT_VERSION}"
+  MACOSX_BUNDLE_SHORT_VERSION_STRING     "${PROJECT_VERSION}"
+  MACOSX_BUNDLE_COPYRIGHT                "Copyright (c) Mashsoft Inc."
+)
+
 # 翻訳: .ts → .qm を生成し、Qt リソースとして実行ファイルに埋め込む。
 # `cmake --build build --target update_translations` で .ts を更新できる。
 qt_add_translations(farman

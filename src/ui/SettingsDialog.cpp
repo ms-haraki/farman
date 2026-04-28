@@ -8,15 +8,21 @@
 #include "keybinding/KeyBindingManager.h"
 #include "utils/Dialogs.h"
 #include <QApplication>
+#include <QCheckBox>
+#include <QComboBox>
 #include <QDebug>
 #include <QDialogButtonBox>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QLineEdit>
 #include <QProcess>
 #include <QPushButton>
 #include <QShortcut>
+#include <QSpinBox>
 #include <QTabWidget>
+#include <QToolButton>
 #include <QVBoxLayout>
+#include <cstdlib>
 
 namespace Farman {
 
@@ -55,6 +61,23 @@ void SettingsDialog::setupUi() {
   m_tabWidget->addTab(m_appearanceTab, tr("3. Appearance"));
   m_tabWidget->addTab(m_viewersTab,    tr("4. Viewers"));
   m_tabWidget->addTab(m_keybindingTab, tr("5. Keybindings"));
+
+  // macOS の System Settings → 「キーボード」→「キーボードナビゲーション」に
+  // 依存させたくないので、各タブ内の操作対象ウィジェットに対して明示的に
+  // StrongFocus を設定する。Tab キーで全項目を辿れるようにするのが目的。
+  const QList<QWidget*> tabRoots = {
+    m_generalTab, m_behaviorTab, m_appearanceTab, m_viewersTab, m_keybindingTab
+  };
+  for (QWidget* root : tabRoots) {
+    const auto widgets = root->findChildren<QWidget*>();
+    for (QWidget* w : widgets) {
+      if (qobject_cast<QCheckBox*>(w)   || qobject_cast<QComboBox*>(w) ||
+          qobject_cast<QSpinBox*>(w)    || qobject_cast<QLineEdit*>(w) ||
+          qobject_cast<QPushButton*>(w) || qobject_cast<QToolButton*>(w)) {
+        w->setFocusPolicy(Qt::StrongFocus);
+      }
+    }
+  }
 
   // Info label for keyboard shortcuts
   int tabCount = m_tabWidget->count();
@@ -150,15 +173,31 @@ void SettingsDialog::onApply() {
   emit settingsChanged();
 
   // 言語が変わっていたら、現プロセスでは適切に切り替えられないので
-  // 再起動を促す。Yes なら同じ実行ファイルを起動して終了。
+  // 再起動を促す。Yes なら新プロセスを起動してから旧プロセスを即終了。
   // Y/N の単押し対応のため独自の confirm() ヘルパを使う。
   if (m_generalTab->languageChangedOnSave()) {
     if (confirm(this,
                 tr("Language Changed"),
                 tr("Restart farman now to apply the new language?"),
                 /*defaultYes=*/true)) {
+#ifdef Q_OS_MACOS
+      // applicationFilePath() は <bundle>.app/Contents/MacOS/<exe> を返す。
+      // 裸の exe を直接起動すると LaunchServices が別アプリ扱いし、Dock に
+      // も別エントリで現れるので .app の根を open(1) -n で起動する。
+      QString bundlePath = QApplication::applicationFilePath();
+      const int idx = bundlePath.indexOf(QStringLiteral("/Contents/MacOS/"));
+      if (idx > 0) bundlePath.truncate(idx);
+      QProcess::startDetached(QStringLiteral("/usr/bin/open"),
+                              QStringList{QStringLiteral("-n"), bundlePath});
+#else
       QProcess::startDetached(QApplication::applicationFilePath(), QStringList());
-      QApplication::quit();
+#endif
+      // 新プロセスを起動した後、旧プロセスを「確実に」終了させる。
+      // QApplication::quit() はモーダルダイアログの内側から呼ぶと外側の
+      // event loop が終了せず、旧プロセスが残ったまま新プロセスが立ち上がる
+      // ことがある。Settings は既に save() 済みなので、Qt のクリーンアップを
+      // スキップして即終了する。
+      std::_Exit(0);
     }
   }
 }

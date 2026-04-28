@@ -23,8 +23,15 @@ cmake --build build
 
 アプリケーションの実行:
 ```bash
-./build/farman
+# GUI 起動 (Terminal から切り離される)
+open ./build/farman.app
+
+# Terminal にデバッグログを流したい開発時はバンドル内の実行ファイルを直接叩く
+./build/farman.app/Contents/MacOS/farman
 ```
+
+Windows では `build/farman.exe` (`WIN32_EXECUTABLE` により黒コンソール無しの GUI exe)、
+Linux では `build/farman` がそのまま生成される。
 
 クリーンビルド:
 ```bash
