@@ -7,6 +7,7 @@
 #include "TransferConfirmDialog.h"
 #include "OverwriteDialog.h"
 #include "AttributesDialog.h"
+#include "BulkRenameDialog.h"
 #include "DeleteConfirmDialog.h"
 #include "CreateArchiveDialog.h"
 #include "ExtractArchiveDialog.h"
@@ -1444,6 +1445,66 @@ void FileManagerPanel::openSortFilterDialog() {
 
   pane->refreshSortFilterStatus();
   pane->view()->setFocus();
+}
+
+void FileManagerPanel::bulkRenameItems() {
+  FileListPane* srcPane  = activePane();
+  FileListModel* srcModel = srcPane->model();
+
+  // 対象集め: 選択ファイルがあればそれら、無ければカーソル行 1 件
+  QStringList names;
+  for (int i = 0; i < srcModel->rowCount(); ++i) {
+    const FileItem* it = srcModel->itemAt(i);
+    if (!it || it->isDotDot()) continue;
+    if (it->isSelected()) names.append(it->name());
+  }
+  if (names.isEmpty()) {
+    QModelIndex cur = srcPane->view()->currentIndex();
+    if (cur.isValid()) {
+      const FileItem* it = srcModel->itemAt(cur);
+      if (it && !it->isDotDot()) names.append(it->name());
+    }
+  }
+  if (names.isEmpty()) return;
+
+  const QString dirPath = srcPane->currentPath();
+
+  BulkRenameDialog dialog(dirPath, names, this);
+  if (dialog.exec() != QDialog::Accepted) return;
+
+  const auto pairs = dialog.renames();
+  int ok = 0;
+  int ng = 0;
+  for (const auto& p : pairs) {
+    const QString oldPath = dirPath + QLatin1Char('/') + p.first;
+    const QString newPath = dirPath + QLatin1Char('/') + p.second;
+    QFileInfo fi(oldPath);
+    bool success = false;
+    if (fi.isDir()) {
+      QDir d;
+      success = d.rename(oldPath, newPath);
+    } else {
+      QFile f;
+      success = f.rename(oldPath, newPath);
+    }
+    if (success) {
+      Logger::instance().info(QStringLiteral("Bulk rename: %1 → %2")
+                                .arg(p.first, p.second));
+      ++ok;
+    } else {
+      Logger::instance().error(QStringLiteral("Bulk rename failed: %1 → %2")
+                                 .arg(p.first, p.second));
+      ++ng;
+    }
+  }
+  if (ng > 0) {
+    QMessageBox::warning(this, tr("Bulk Rename"),
+      tr("%1 file(s) renamed, %2 failed.").arg(ok).arg(ng));
+  }
+
+  // ペインを再読み込みしてカーソルを保持
+  const QString currentPath = srcPane->currentPath();
+  srcPane->setPath(currentPath);
 }
 
 void FileManagerPanel::renameItem() {

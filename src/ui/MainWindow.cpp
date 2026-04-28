@@ -540,6 +540,15 @@ void MainWindow::registerCommands() {
     "file"
   ));
 
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "file.bulk_rename",
+    "Bulk Rename...",
+    [this]() {
+      m_fileManagerPanel->bulkRenameItems();
+    },
+    "file"
+  ));
+
   // Application commands
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "app.quit",
@@ -729,6 +738,7 @@ void MainWindow::createMenus() {
   addCmd(fileMenu, "file.newfile",    tr("New File"));
   addCmd(fileMenu, "file.mkdir",      tr("New Directory"));
   addCmd(fileMenu, "file.rename",     tr("Rename"));
+  addCmd(fileMenu, "file.bulk_rename", tr("Bulk Rename..."));
   fileMenu->addSeparator();
   addCmd(fileMenu, "file.copy",       tr("Copy"));
   addCmd(fileMenu, "file.move",       tr("Move"));

@@ -48,6 +48,8 @@ public:
   void createDirectory();
   void createFile();
   void renameItem();
+  // 選択した複数 (or カーソル行) を BulkRenameDialog で一括リネーム
+  void bulkRenameItems();
   void changeAttributes();
   void createArchive();
   void extractArchive();
