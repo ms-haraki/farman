@@ -1,6 +1,8 @@
 #include "FileListPane.h"
 #include "FileListDelegate.h"
+#include "FileListView.h"
 #include "ClickableLabel.h"
+#include "core/FileItem.h"
 #include "BookmarkEditDialog.h"
 #include "model/FileListModel.h"
 #include "settings/Settings.h"
@@ -90,8 +92,40 @@ void FileListPane::setupUi() {
 
   mainLayout->addWidget(pathWidget);
 
-  // テーブルビュー
-  m_view = new QTableView(this);
+  // テーブルビュー (D&D 対応の FileListView を使う)
+  m_view = new FileListView(this);
+  // Drag-out 用の URL プロバイダ。farman の選択状態 (FileItem::isSelected) を
+  // 優先し、選択が無ければカーソル行 1 件を返す。'..' は除外。
+  m_view->setUrlsProvider([this]() -> QList<QUrl> {
+    QList<QUrl> urls;
+    if (!m_model) return urls;
+    bool anySelected = false;
+    const int rows = m_model->rowCount();
+    for (int i = 0; i < rows; ++i) {
+      const FileItem* it = m_model->itemAt(i);
+      if (it && it->isSelected()) { anySelected = true; break; }
+    }
+    if (anySelected) {
+      for (int i = 0; i < rows; ++i) {
+        const FileItem* it = m_model->itemAt(i);
+        if (it && it->isSelected() && !it->isDotDot()) {
+          urls.append(QUrl::fromLocalFile(it->absolutePath()));
+        }
+      }
+    } else {
+      const QModelIndex cur = m_view->currentIndex();
+      if (cur.isValid()) {
+        const FileItem* it = m_model->itemAt(cur.row());
+        if (it && !it->isDotDot()) {
+          urls.append(QUrl::fromLocalFile(it->absolutePath()));
+        }
+      }
+    }
+    return urls;
+  });
+  // Drop 受信時は FileManagerPanel まで bubble させる
+  connect(m_view, &FileListView::externalUrlsDropped, this,
+          &FileListPane::externalUrlsDropped);
   m_view->setSelectionBehavior(QAbstractItemView::SelectRows);
   m_view->setSelectionMode(QAbstractItemView::NoSelection);
   m_view->setAlternatingRowColors(false);
@@ -171,6 +205,10 @@ void FileListPane::refreshAppearance() {
 
 QString FileListPane::currentPath() const {
   return m_model->currentPath();
+}
+
+QTableView* FileListPane::view() const {
+  return m_view;
 }
 
 void FileListPane::onExternalDirectoryChanged() {

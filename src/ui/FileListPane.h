@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QUrl>
 #include <QWidget>
 
 class QLabel;
@@ -12,6 +13,7 @@ namespace Farman {
 
 class FileListModel;
 class FileListDelegate;
+class FileListView;
 class ClickableLabel;
 
 class FileListPane : public QWidget {
@@ -21,8 +23,9 @@ public:
   explicit FileListPane(QWidget* parent = nullptr);
   ~FileListPane() override;
 
-  // アクセサ
-  QTableView* view() const { return m_view; }
+  // アクセサ。view() は QTableView* で公開し、D&D 等の派生機能は
+  // 内部で FileListView を使って実現している。
+  QTableView* view() const;
   FileListModel* model() const { return m_model; }
   FileListDelegate* delegate() const { return m_delegate; }
 
@@ -42,6 +45,9 @@ public:
 signals:
   void folderButtonClicked();
   void currentChanged(const QModelIndex& current, const QModelIndex& previous);
+  // 外部 / 反対側ペインからのファイルドロップ。FileManagerPanel が拾って
+  // Copy / Move のいずれかをユーザーに尋ねる。
+  void externalUrlsDropped(const QList<QUrl>& urls);
 
 public:
   // 現在のパスのブックマーク登録状態を切り替える。
@@ -66,7 +72,7 @@ private:
   QLabel* m_addressLabel;
   ClickableLabel* m_bookmarkLabel;
   QToolButton* m_folderButton;
-  QTableView* m_view;
+  FileListView* m_view;
   QLabel* m_sortFilterStatusLabel;
   FileListModel* m_model;
   FileListDelegate* m_delegate;

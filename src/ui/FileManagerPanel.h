@@ -65,6 +65,10 @@ public:
   // 反対側のペインのディレクトリをアクティブへ取り込む（アクティブを反対側と同じに）
   void syncActiveToOther();
 
+  // 外部 / 反対側ペインからのドロップを受け、Copy / Move / Cancel を尋ねて
+  // 該当 worker を起動する。destPane が drop を受け取ったペイン。
+  void handleExternalDrop(FileListPane* destPane, const QList<QUrl>& urls);
+
   // ── ディレクトリ履歴 ─────────────────────
   DirectoryHistory&       history(PaneType pane);
   const DirectoryHistory& history(PaneType pane) const;

@@ -85,6 +85,14 @@ void FileManagerPanel::setupUi() {
   connect(m_rightPane->model(), &QAbstractItemModel::modelReset, this, [this] {
     emitActivePaneStatus();
   });
+
+  // 外部 (Finder 等) や反対側ペインからのドロップを受信して
+  // Copy / Move / Cancel をユーザーに尋ねるハンドラへ繋ぐ。
+  connect(m_leftPane, &FileListPane::externalUrlsDropped, this,
+          [this](const QList<QUrl>& urls) { handleExternalDrop(m_leftPane, urls); });
+  connect(m_rightPane, &FileListPane::externalUrlsDropped, this,
+          [this](const QList<QUrl>& urls) { handleExternalDrop(m_rightPane, urls); });
+
   m_splitter->addWidget(m_rightPane);
 
   // Splitterのサイズを均等に
@@ -289,6 +297,92 @@ bool FileManagerPanel::navigateActivePaneTo(const QString& path) {
   }
   updatePathSignal();
   return true;
+}
+
+void FileManagerPanel::handleExternalDrop(FileListPane* destPane,
+                                          const QList<QUrl>& urls) {
+  if (!destPane || urls.isEmpty()) return;
+
+  // URL → ローカルパス。リモート URL はサポート外なので落とす。
+  QStringList srcPaths;
+  for (const QUrl& u : urls) {
+    if (u.isLocalFile()) srcPaths.append(u.toLocalFile());
+  }
+  if (srcPaths.isEmpty()) return;
+
+  const QString destDir = destPane->currentPath();
+
+  // 自分自身のディレクトリへの drop は無視する (同名衝突を防ぐ)
+  // (反対ペインから別ディレクトリへの drop は OK)
+  for (const QString& src : srcPaths) {
+    if (QFileInfo(src).absolutePath() == destDir) {
+      return;
+    }
+  }
+
+  // ドロップを受けたペインをアクティブ化しておく
+  setActivePane(destPane == m_leftPane ? PaneType::Left : PaneType::Right);
+
+  // Copy / Move / Cancel をユーザーに尋ねる
+  QMessageBox box(this);
+  box.setWindowTitle(tr("Drop Files"));
+  box.setText(tr("Drop %1 item(s) into\n%2\n\nWhat would you like to do?")
+                .arg(srcPaths.size()).arg(destDir));
+  QPushButton* copyBtn   = box.addButton(tr("Copy"),   QMessageBox::AcceptRole);
+  QPushButton* moveBtn   = box.addButton(tr("Move"),   QMessageBox::AcceptRole);
+  QPushButton* cancelBtn = box.addButton(tr("Cancel"), QMessageBox::RejectRole);
+  box.setDefaultButton(copyBtn);
+  box.exec();
+  QAbstractButton* clicked = box.clickedButton();
+  if (!clicked || clicked == cancelBtn) return;
+
+  const bool isMove = (clicked == moveBtn);
+
+  // Worker + ProgressDialog を起動。OverwriteMode は Ask。
+  const QString tmpl = Settings::instance().autoRenameTemplate();
+  WorkerBase* worker = nullptr;
+  if (isMove) {
+    auto* mv = new MoveWorker(srcPaths, destDir, this);
+    mv->setOverwriteMode(OverwriteMode::Ask);
+    mv->setAutoRenameTemplate(tmpl);
+    worker = mv;
+  } else {
+    auto* cp = new CopyWorker(srcPaths, destDir, this);
+    cp->setOverwriteMode(OverwriteMode::Ask);
+    cp->setAutoRenameTemplate(tmpl);
+    worker = cp;
+  }
+  connect(worker, &WorkerBase::overwriteRequired, this,
+    [this](const QString& src, const QString& dst, OverwriteDecision* decision) {
+      OverwriteDialog dlg(src, dst, this);
+      dlg.exec();
+      *decision = dlg.decision();
+    },
+    Qt::BlockingQueuedConnection);
+
+  ProgressDialog* dialog = new ProgressDialog(
+    isMove ? tr("Moving files...") : tr("Copying files..."), this);
+  dialog->setWorker(worker);
+
+  const int srcCount = srcPaths.size();
+  connect(worker, &WorkerBase::finished, this,
+    [this, isMove, srcCount, destDir](bool success) {
+      Logger::instance().log(success ? Logger::Info : Logger::Error,
+        QStringLiteral("%1 %2: %3 item(s) → %4")
+          .arg(isMove ? QStringLiteral("Move") : QStringLiteral("Copy"))
+          .arg(success ? QStringLiteral("done (drop)") : QStringLiteral("failed (drop)"))
+          .arg(srcCount).arg(destDir));
+      // 両ペインを再読込 (移動元・移動先のどちらが反対側ペインかは不明なので両方)
+      m_leftPane->setPath(m_leftPane->currentPath());
+      m_rightPane->setPath(m_rightPane->currentPath());
+      activePane()->view()->setFocus();
+    });
+
+  worker->start();
+  dialog->exec();
+  worker->wait();
+  worker->deleteLater();
+  dialog->deleteLater();
 }
 
 void FileManagerPanel::syncOtherToActive() {
