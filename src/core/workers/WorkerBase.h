@@ -73,6 +73,12 @@ protected:
   // ファイル名を生成して返す（m_autoRenameTemplate を使用）。
   QString generateUniqueName(const QString& path) const;
 
+  // 与えたエントリ群の中の通常ファイル数を再帰的に数える。
+  // 進捗ダイアログで「N / M files」を正しく表示するために、
+  // 実際の copy/move/remove を始める前に呼んでおく。
+  // ディレクトリ自体はカウントせず、その中の通常ファイルだけを数える。
+  static int countAllFiles(const QStringList& paths);
+
   std::atomic<bool> m_cancelRequested{false};
   OverwriteMode     m_overwriteMode = OverwriteMode::Ask;
   QString           m_autoRenameTemplate = QStringLiteral(" ({n})");

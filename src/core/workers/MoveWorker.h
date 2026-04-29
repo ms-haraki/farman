@@ -23,8 +23,10 @@ private:
   bool copyDirectory(const QString& src, const QString& dst);
   bool removeDirectory(const QString& path);
 
-  QStringList m_srcPaths;
-  QString     m_dstDir;
+  QStringList    m_srcPaths;
+  QString        m_dstDir;
+  // 再帰呼び出しで共有する全体進捗 (run() で countAllFiles 後の値を入れる)
+  WorkerProgress m_progress;
 };
 
 } // namespace Farman

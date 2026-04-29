@@ -17,11 +17,14 @@ MoveWorker::MoveWorker(
 
 void MoveWorker::run() {
   bool success = true;
-  WorkerProgress progress;
-  progress.processed = 0;
-  progress.total = -1;
-  progress.filesDone = 0;
-  progress.filesTotal = m_srcPaths.size();
+
+  // 事前スキャンで全ファイル数を把握 (rename で一気に動く分も含む)
+  m_progress = WorkerProgress{};
+  m_progress.processed  = 0;
+  m_progress.total      = -1;
+  m_progress.filesDone  = 0;
+  m_progress.filesTotal = countAllFiles(m_srcPaths);
+  emit progressUpdated(m_progress);
 
   // Ensure destination directory exists
   QDir dstDir(m_dstDir);
@@ -75,16 +78,24 @@ void MoveWorker::run() {
       }
     }
 
-    progress.currentFile = srcPath;
-    emit progressUpdated(progress);
+    m_progress.currentFile = srcPath;
+    emit progressUpdated(m_progress);
+
+    // 事前にこの src 配下のファイル数を覚えておく。
+    // rename で一気に移動できた場合 copyFile() が走らないので、
+    // moveEntry 後にここまでの累積期待値まで filesDone を引き上げる。
+    const int beforeDone   = m_progress.filesDone;
+    const int expectedDone = beforeDone + countAllFiles({srcPath});
 
     if (!moveEntry(srcPath, dstPath)) {
       success = false;
       continue;
     }
 
-    progress.filesDone++;
-    emit progressUpdated(progress);
+    if (m_progress.filesDone < expectedDone) {
+      m_progress.filesDone = expectedDone;
+      emit progressUpdated(m_progress);
+    }
   }
 
   emit finished(success);
@@ -174,14 +185,11 @@ bool MoveWorker::copyFile(const QString& src, const QString& dst) {
 
     bytesCopied += bytesWritten;
 
-    // Report byte-level progress
-    WorkerProgress progress;
-    progress.currentFile = src;
-    progress.processed = bytesCopied;
-    progress.total = totalSize;
-    progress.filesDone = 0;
-    progress.filesTotal = 0;
-    emit progressUpdated(progress);
+    // バイト単位は補助情報として共有 m_progress に乗せる
+    m_progress.currentFile = src;
+    m_progress.processed   = bytesCopied;
+    m_progress.total       = totalSize;
+    emit progressUpdated(m_progress);
   }
 
   srcFile.close();
@@ -189,6 +197,12 @@ bool MoveWorker::copyFile(const QString& src, const QString& dst) {
 
   // Preserve file permissions
   QFile::setPermissions(dst, QFile::permissions(src));
+
+  // 1 ファイル完了
+  ++m_progress.filesDone;
+  m_progress.processed = 0;
+  m_progress.total     = -1;
+  emit progressUpdated(m_progress);
 
   return true;
 }
@@ -223,13 +237,8 @@ bool MoveWorker::copyDirectory(const QString& src, const QString& dst) {
     QString relativePath = srcDir.relativeFilePath(srcPath);
     QString dstPath = dst + "/" + relativePath;
 
-    WorkerProgress progress;
-    progress.currentFile = srcPath;
-    progress.processed = 0;
-    progress.total = -1;
-    progress.filesDone = 0;
-    progress.filesTotal = 0;
-    emit progressUpdated(progress);
+    m_progress.currentFile = srcPath;
+    emit progressUpdated(m_progress);
 
     if (srcInfo.isDir()) {
       if (!copyDirectory(srcPath, dstPath)) {

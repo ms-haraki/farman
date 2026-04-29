@@ -40,6 +40,7 @@ private:
   // File operation settings
   QLineEdit*  m_autoRenameTemplateEdit;
   QCheckBox*  m_defaultDeleteToTrashCheck;
+  QCheckBox*  m_progressAutoCloseCheck = nullptr;
   QLineEdit*  m_searchExcludeDirsEdit;
 
 };

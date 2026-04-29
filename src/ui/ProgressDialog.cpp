@@ -1,4 +1,5 @@
 #include "ProgressDialog.h"
+#include "settings/Settings.h"
 #include "utils/Dialogs.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -38,8 +39,20 @@ void ProgressDialog::setupUI(const QString& operationName) {
   m_progressBar->setValue(0);
   mainLayout->addWidget(m_progressBar);
 
-  // Button layout
+  // 件数ラベル: macOS の QProgressBar はバー上の文字を表示しないので、
+  // "10 / 235 files" を別の QLabel に出して常に見える状態にする。
+  m_countLabel = new QLabel(QStringLiteral("0 / 0 files"), this);
+  m_countLabel->setAlignment(Qt::AlignRight);
+  mainLayout->addWidget(m_countLabel);
+
+  // Button layout: 左側に「自動で閉じる」チェック、右側に Cancel
   QHBoxLayout* buttonLayout = new QHBoxLayout();
+
+  m_autoCloseCheck = new QCheckBox(tr("Close automatically when done"), this);
+  // 既定値は Settings から取るが、ここでの変更は **その場限り** で永続化しない。
+  // 永続的な既定は Settings → 全般 → File Operations から変更する。
+  m_autoCloseCheck->setChecked(Settings::instance().progressAutoClose());
+  buttonLayout->addWidget(m_autoCloseCheck);
   buttonLayout->addStretch();
 
   m_cancelButton = new QPushButton(tr("Cancel"), this);
@@ -50,6 +63,11 @@ void ProgressDialog::setupUI(const QString& operationName) {
   mainLayout->addLayout(buttonLayout);
 
   setLayout(mainLayout);
+
+  // macOS の System Settings → 「キーボードナビゲーション」設定に依存させずに
+  // Tab で全コントロールを辿れるようにする。
+  m_autoCloseCheck->setFocusPolicy(Qt::StrongFocus);
+  m_cancelButton->setFocusPolicy(Qt::StrongFocus);
 }
 
 void ProgressDialog::setWorker(WorkerBase* worker) {
@@ -67,33 +85,53 @@ void ProgressDialog::onProgressUpdated(const WorkerProgress& progress) {
   // Update current file label
   if (!progress.currentFile.isEmpty()) {
     QFileInfo info(progress.currentFile);
-    m_currentFileLabel->setText(QString("Processing: %1").arg(info.fileName()));
+    m_currentFileLabel->setText(tr("Processing: %1").arg(info.fileName()));
   }
 
-  // Update progress bar
+  // Update progress bar + count label
   if (progress.filesTotal > 0) {
     int percentage = (progress.filesDone * 100) / progress.filesTotal;
-    m_progressBar->setValue(percentage);
-    m_progressBar->setFormat(QString("%1 / %2 files (%p%)")
-                             .arg(progress.filesDone)
-                             .arg(progress.filesTotal));
-  } else if (progress.total > 0) {
-    int percentage = (progress.processed * 100) / progress.total;
+    m_progressBar->setRange(0, 100);
     m_progressBar->setValue(percentage);
     m_progressBar->setFormat(QString("%p%"));
+    m_countLabel->setText(tr("%1 / %2 files (%3%)")
+                            .arg(progress.filesDone)
+                            .arg(progress.filesTotal)
+                            .arg(percentage));
+  } else if (progress.total > 0) {
+    int percentage = (progress.processed * 100) / progress.total;
+    m_progressBar->setRange(0, 100);
+    m_progressBar->setValue(percentage);
+    m_progressBar->setFormat(QString("%p%"));
+    m_countLabel->setText(QStringLiteral("%1%").arg(percentage));
   } else {
     // Indeterminate progress
     m_progressBar->setRange(0, 0);
-    m_progressBar->setFormat(QString("%1 files processed").arg(progress.filesDone));
+    m_progressBar->setFormat(QString());
+    m_countLabel->setText(tr("%1 files processed").arg(progress.filesDone));
   }
 }
 
 void ProgressDialog::onFinished(bool success) {
-  if (success) {
-    accept();
-  } else {
-    reject();
+  // 自動で閉じる設定が ON なら従来通りすぐ閉じる
+  if (m_autoCloseCheck && m_autoCloseCheck->isChecked()) {
+    if (success) accept();
+    else         reject();
+    return;
   }
+
+  // OFF: 完了状態を残してユーザーが Close で閉じるまで開いたままにする。
+  // 「Cancel」ボタンを「Close」に切り替えて成功/失敗で accept/reject する。
+  m_cancelButton->setEnabled(true);
+  m_cancelButton->setText(tr("Close"));
+  applyAltShortcut(m_cancelButton, Qt::Key_X);
+  // 既存の onCancel 接続を切り、Close は単に accept/reject させる
+  m_cancelButton->disconnect(this);
+  connect(m_cancelButton, &QPushButton::clicked, this,
+          [this, success]() {
+            if (success) accept();
+            else         reject();
+          });
 }
 
 void ProgressDialog::onCancel() {

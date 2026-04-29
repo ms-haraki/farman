@@ -22,8 +22,11 @@ private:
   bool copyFile(const QString& src, const QString& dstIn);
   bool copyDirectory(const QString& src, const QString& dst);
 
-  QStringList m_srcPaths;
-  QString     m_dstDir;
+  QStringList    m_srcPaths;
+  QString        m_dstDir;
+  // 再帰呼び出しで共有する全体進捗。filesTotal は run() で
+  // 事前スキャン (countAllFiles) して埋める。
+  WorkerProgress m_progress;
 };
 
 } // namespace Farman

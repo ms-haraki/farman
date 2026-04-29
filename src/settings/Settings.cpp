@@ -121,6 +121,7 @@ void Settings::applyDefaults() {
   m_paneHistory[static_cast<int>(PaneType::Right)].clear();
   m_autoRenameTemplate        = QStringLiteral(" ({n})");
   m_defaultDeleteToTrash      = true;
+  m_progressAutoClose         = false;
   m_searchExcludeDirs         = { QStringLiteral(".*") };
   m_bookmarks.clear();
   m_defaultBookmarksInstalled = false;
@@ -525,6 +526,9 @@ void Settings::setAutoRenameTemplate(const QString& tmpl) {
 bool Settings::defaultDeleteToTrash() const {
   return m_defaultDeleteToTrash;
 }
+
+bool Settings::progressAutoClose() const { return m_progressAutoClose; }
+void Settings::setProgressAutoClose(bool v) { m_progressAutoClose = v; }
 
 void Settings::setDefaultDeleteToTrash(bool toTrash) {
   m_defaultDeleteToTrash = toTrash;
@@ -1030,6 +1034,7 @@ void Settings::load() {
   m_persistHistory = behavior.value("persistHistory").toBool(false);
   m_autoRenameTemplate = behavior.value("autoRenameTemplate").toString(" ({n})");
   m_defaultDeleteToTrash = behavior.value("defaultDeleteToTrash").toBool(true);
+  m_progressAutoClose    = behavior.value("progressAutoClose").toBool(false);
   if (behavior.contains("searchExcludeDirs")) {
     m_searchExcludeDirs.clear();
     const QJsonArray arr = behavior.value("searchExcludeDirs").toArray();
@@ -1386,6 +1391,7 @@ void Settings::save() const {
   behavior["persistHistory"] = m_persistHistory;
   behavior["autoRenameTemplate"] = m_autoRenameTemplate;
   behavior["defaultDeleteToTrash"] = m_defaultDeleteToTrash;
+  behavior["progressAutoClose"]    = m_progressAutoClose;
   {
     QJsonArray arr;
     for (const QString& p : m_searchExcludeDirs) arr.append(p);

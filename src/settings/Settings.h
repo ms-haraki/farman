@@ -246,6 +246,11 @@ public:
   bool    defaultDeleteToTrash()        const;
   void    setDefaultDeleteToTrash(bool toTrash);
 
+  // 進捗ダイアログ (コピー/移動/削除) を完了時に自動で閉じるか。
+  // ダイアログ内のチェックボックスから直接書き換えられる。デフォルト false。
+  bool    progressAutoClose()           const;
+  void    setProgressAutoClose(bool autoClose);
+
   // ファイル検索の除外ディレクトリ（ディレクトリ名の glob パターンのリスト）。
   // 検索ダイアログの初期値に使われ、ダイアログ上で一時的に編集できる。
   QStringList searchExcludeDirs()       const;
@@ -378,6 +383,7 @@ private:
   QStringList      m_paneHistory[static_cast<int>(PaneType::Count)];
   QString          m_autoRenameTemplate = QStringLiteral(" ({n})");
   bool             m_defaultDeleteToTrash = true;
+  bool             m_progressAutoClose    = false;
   QStringList      m_searchExcludeDirs    = { QStringLiteral(".*") };
   QList<Bookmark>  m_bookmarks;
   // 初回起動時のデフォルトブックマーク注入を一度きりに制限するためのフラグ。

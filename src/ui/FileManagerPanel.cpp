@@ -799,7 +799,7 @@ void FileManagerPanel::copySelectedFiles() {
 
   connect(worker, &WorkerBase::finished, this,
       [this, dialog, srcPane, destPane, copiedCount, copiedDest](bool success) {
-    dialog->accept();
+    // 完了時のダイアログ開閉は ProgressDialog 側 (auto-close チェックの状態で判断) に任せる
     Logger::instance().log(success ? Logger::Info : Logger::Error,
       QStringLiteral("Copy %1: %2 item(s) → %3")
         .arg(success ? QStringLiteral("done") : QStringLiteral("failed"))
@@ -921,7 +921,7 @@ void FileManagerPanel::moveSelectedFiles() {
 
   connect(worker, &WorkerBase::finished, this,
       [this, dialog, srcPane, destPane, movedCount, movedDest](bool success) {
-    dialog->accept();
+    // 完了時のダイアログ開閉は ProgressDialog 側 (auto-close チェックの状態で判断) に任せる
     Logger::instance().log(success ? Logger::Info : Logger::Error,
       QStringLiteral("Move %1: %2 item(s) → %3")
         .arg(success ? QStringLiteral("done") : QStringLiteral("failed"))
@@ -1033,7 +1033,7 @@ void FileManagerPanel::deleteSelectedFiles() {
 
   connect(worker, &WorkerBase::finished, this,
       [this, dialog, srcPane, delCount, delToTrash](bool success) {
-    dialog->accept();
+    // 完了時のダイアログ開閉は ProgressDialog 側 (auto-close チェックの状態で判断) に任せる
     Logger::instance().log(success ? Logger::Info : Logger::Error,
       QStringLiteral("%1 %2: %3 item(s)")
         .arg(delToTrash ? QStringLiteral("Trash") : QStringLiteral("Delete"))
@@ -1275,7 +1275,7 @@ void FileManagerPanel::createArchive() {
 
   connect(worker, &WorkerBase::finished, this,
     [this, dialog, srcPane, destPane, outputPath](bool ok) {
-    dialog->accept();
+    // 完了時のダイアログ開閉は ProgressDialog 側 (auto-close チェックの状態で判断) に任せる
     Logger::instance().log(ok ? Logger::Info : Logger::Error,
       QStringLiteral("Archive %1: %2")
         .arg(ok ? QStringLiteral("created") : QStringLiteral("create failed"))
@@ -1368,7 +1368,7 @@ void FileManagerPanel::extractArchive() {
       QStringLiteral("Archive %1: %2")
         .arg(ok ? QStringLiteral("extracted") : QStringLiteral("extract failed"))
         .arg(archivePath));
-    dialog->accept();
+    // 完了時のダイアログ開閉は ProgressDialog 側 (auto-close チェックの状態で判断) に任せる
     // 展開したサブディレクトリを含む親ディレクトリと一致するペインを refresh し、
     // サブディレクトリ名にカーソルを合わせる
     auto refreshIfMatches = [&](FileListPane* pane) {

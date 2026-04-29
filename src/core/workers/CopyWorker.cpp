@@ -17,11 +17,15 @@ CopyWorker::CopyWorker(
 
 void CopyWorker::run() {
   bool success = true;
-  WorkerProgress progress;
-  progress.processed = 0;
-  progress.total = -1;
-  progress.filesDone = 0;
-  progress.filesTotal = m_srcPaths.size();
+
+  // 事前スキャンで「全ファイル数」を把握する。トップレベルだけだと
+  // ディレクトリを 1 件選んだとき "0/1 files" のまま終盤まで進まない。
+  m_progress = WorkerProgress{};
+  m_progress.processed  = 0;
+  m_progress.total      = -1;
+  m_progress.filesDone  = 0;
+  m_progress.filesTotal = countAllFiles(m_srcPaths);
+  emit progressUpdated(m_progress);
 
   // Ensure destination directory exists
   QDir dstDir(m_dstDir);
@@ -68,16 +72,15 @@ void CopyWorker::run() {
       }
     }
 
-    progress.currentFile = srcPath;
-    emit progressUpdated(progress);
+    m_progress.currentFile = srcPath;
+    emit progressUpdated(m_progress);
 
     if (!copyEntry(srcPath, dstPath)) {
       success = false;
       continue;
     }
-
-    progress.filesDone++;
-    emit progressUpdated(progress);
+    // ファイル単位の filesDone++ は copyFile() の中で行う。
+    // ディレクトリのトップレベルではここで増やす必要なし。
   }
 
   emit finished(success);
@@ -159,14 +162,13 @@ bool CopyWorker::copyFile(const QString& src, const QString& dstIn) {
 
     bytesCopied += bytesWritten;
 
-    // Report byte-level progress
-    WorkerProgress progress;
-    progress.currentFile = src;
-    progress.processed = bytesCopied;
-    progress.total = totalSize;
-    progress.filesDone = 0;
-    progress.filesTotal = 0;
-    emit progressUpdated(progress);
+    // バイト単位の途中進捗も流すが、filesDone/filesTotal は共有値を保つ。
+    // (進捗ダイアログは filesTotal>0 で「N/M files」表示にしているので
+    //  バイト進捗は currentFile ラベルの参考情報として扱われる。)
+    m_progress.currentFile = src;
+    m_progress.processed   = bytesCopied;
+    m_progress.total       = totalSize;
+    emit progressUpdated(m_progress);
   }
 
   srcFile.close();
@@ -174,6 +176,12 @@ bool CopyWorker::copyFile(const QString& src, const QString& dstIn) {
 
   // Preserve file permissions
   QFile::setPermissions(dst, QFile::permissions(src));
+
+  // 1 ファイル完了したので filesDone を進める
+  ++m_progress.filesDone;
+  m_progress.processed = 0;
+  m_progress.total     = -1;
+  emit progressUpdated(m_progress);
 
   return true;
 }
@@ -208,13 +216,9 @@ bool CopyWorker::copyDirectory(const QString& src, const QString& dst) {
     QString relativePath = srcDir.relativeFilePath(srcPath);
     QString dstPath = dst + "/" + relativePath;
 
-    WorkerProgress progress;
-    progress.currentFile = srcPath;
-    progress.processed = 0;
-    progress.total = -1;
-    progress.filesDone = 0;
-    progress.filesTotal = 0;
-    emit progressUpdated(progress);
+    // 全体の filesDone/filesTotal はそのまま、currentFile だけ更新する
+    m_progress.currentFile = srcPath;
+    emit progressUpdated(m_progress);
 
     if (srcInfo.isDir()) {
       if (!copyDirectory(srcPath, dstPath)) {

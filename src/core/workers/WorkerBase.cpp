@@ -1,6 +1,7 @@
 #include "WorkerBase.h"
-#include <QFileInfo>
 #include <QDir>
+#include <QDirIterator>
+#include <QFileInfo>
 
 namespace Farman {
 
@@ -96,6 +97,26 @@ QString WorkerBase::generateUniqueName(const QString& path) const {
   }
   // フォールバック（まずあり得ないが念のため）
   return path + " (copy)";
+}
+
+int WorkerBase::countAllFiles(const QStringList& paths) {
+  int count = 0;
+  for (const QString& path : paths) {
+    QFileInfo info(path);
+    if (!info.exists()) continue;
+    if (info.isDir()) {
+      QDirIterator it(path,
+                      QDir::Files | QDir::Hidden | QDir::System | QDir::NoDotAndDotDot,
+                      QDirIterator::Subdirectories);
+      while (it.hasNext()) {
+        it.next();
+        ++count;
+      }
+    } else if (info.isFile()) {
+      ++count;
+    }
+  }
+  return count;
 }
 
 } // namespace Farman

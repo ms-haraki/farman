@@ -21,8 +21,9 @@ private:
   bool removeEntry(const QString& path);
   bool removeDirectory(const QString& path);
 
-  QStringList m_paths;
-  bool        m_toTrash;
+  QStringList    m_paths;
+  bool           m_toTrash;
+  WorkerProgress m_progress;
 };
 
 } // namespace Farman

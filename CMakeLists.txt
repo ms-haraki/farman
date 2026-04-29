@@ -156,6 +156,9 @@ qt_add_executable(test_worker
   src/core/workers/MoveWorker.cpp
   src/ui/ProgressDialog.cpp
   src/utils/Dialogs.cpp
+  # ProgressDialog が Settings に依存するので test_worker でも Settings を含める
+  src/settings/Settings.cpp
+  src/core/BookmarkManager.cpp
 )
 
 target_include_directories(test_worker PRIVATE

@@ -159,12 +159,6 @@ void BehaviorTab::setupUi() {
   m_autoRenameTemplateEdit->setPlaceholderText(QStringLiteral(" ({n})"));
   m_autoRenameTemplateEdit->setMaximumWidth(160);
 
-  m_defaultDeleteToTrashCheck = new QCheckBox(tr("Move to Trash by default when deleting"), this);
-  m_defaultDeleteToTrashCheck->setToolTip(
-    tr("Pre-selects the Trash option in the delete confirmation dialog. "
-       "Uncheck to default to permanent delete. The choice can still be "
-       "overridden in the dialog per operation."));
-
   // 左カラム: ラベル + 入力欄をまとめて 1 セルに
   QWidget* renameCell = new QWidget(this);
   QHBoxLayout* renameCellLayout = new QHBoxLayout(renameCell);
@@ -173,8 +167,23 @@ void BehaviorTab::setupUi() {
   renameCellLayout->addWidget(m_autoRenameTemplateEdit);
   renameCellLayout->addStretch(1);
 
-  fileOpsLayout->addWidget(renameCell,                  0, 0, Qt::AlignLeft);
-  fileOpsLayout->addWidget(m_defaultDeleteToTrashCheck, 0, 1, Qt::AlignLeft);
+  // 「進捗ダイアログを自動で閉じる」を先に作る (Tab 順で先に来てほしいので)
+  m_progressAutoCloseCheck = new QCheckBox(
+    tr("Close progress dialog automatically when done"), this);
+  m_progressAutoCloseCheck->setToolTip(
+    tr("If on, the copy/move/delete progress dialog closes itself once the "
+       "operation finishes. Off: keep the dialog open and let the user dismiss "
+       "it. Can also be toggled directly from the progress dialog."));
+
+  m_defaultDeleteToTrashCheck = new QCheckBox(tr("Move to Trash by default when deleting"), this);
+  m_defaultDeleteToTrashCheck->setToolTip(
+    tr("Pre-selects the Trash option in the delete confirmation dialog. "
+       "Uncheck to default to permanent delete. The choice can still be "
+       "overridden in the dialog per operation."));
+
+  fileOpsLayout->addWidget(renameCell,                  0, 0, 1, 2, Qt::AlignLeft);
+  fileOpsLayout->addWidget(m_progressAutoCloseCheck,    1, 0, Qt::AlignLeft);
+  fileOpsLayout->addWidget(m_defaultDeleteToTrashCheck, 1, 1, Qt::AlignLeft);
 
   // Search 除外ディレクトリ（2 列をまたいで横長に）
   m_searchExcludeDirsEdit = new QLineEdit(this);
@@ -189,7 +198,7 @@ void BehaviorTab::setupUi() {
   excludeCellLayout->addWidget(new QLabel(tr("Search exclude dirs:"), this));
   excludeCellLayout->addWidget(m_searchExcludeDirsEdit, 1);
 
-  fileOpsLayout->addWidget(excludeCell, 1, 0, 1, 2);
+  fileOpsLayout->addWidget(excludeCell, 2, 0, 1, 2);
 
   mainLayout->addWidget(fileOpsGroup);
 
@@ -250,6 +259,7 @@ void BehaviorTab::loadSettings() {
   // File operations
   m_autoRenameTemplateEdit->setText(settings.autoRenameTemplate());
   m_defaultDeleteToTrashCheck->setChecked(settings.defaultDeleteToTrash());
+  m_progressAutoCloseCheck->setChecked(settings.progressAutoClose());
   m_searchExcludeDirsEdit->setText(settings.searchExcludeDirs().join(QLatin1Char(' ')));
 
 }
@@ -305,6 +315,7 @@ void BehaviorTab::save() {
   // Save file operation settings
   settings.setAutoRenameTemplate(m_autoRenameTemplateEdit->text());
   settings.setDefaultDeleteToTrash(m_defaultDeleteToTrashCheck->isChecked());
+  settings.setProgressAutoClose(m_progressAutoCloseCheck->isChecked());
   {
     const QStringList excludeList = m_searchExcludeDirsEdit->text().trimmed()
       .split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);

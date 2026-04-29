@@ -17,11 +17,16 @@ RemoveWorker::RemoveWorker(
 
 void RemoveWorker::run() {
   bool success = true;
-  WorkerProgress progress;
-  progress.processed = 0;
-  progress.total = -1;
-  progress.filesDone = 0;
-  progress.filesTotal = m_paths.size();
+
+  m_progress = WorkerProgress{};
+  m_progress.processed  = 0;
+  m_progress.total      = -1;
+  m_progress.filesDone  = 0;
+  // Trash 移動時はディレクトリ全体を 1 操作で動かすので、トップレベル数で十分。
+  // 完全削除時は再帰でファイル単位に削除するので、再帰スキャンで全件数える。
+  m_progress.filesTotal = m_toTrash ? m_paths.size()
+                                    : countAllFiles(m_paths);
+  emit progressUpdated(m_progress);
 
   // Remove each path
   for (const QString& path : m_paths) {
@@ -37,14 +42,11 @@ void RemoveWorker::run() {
       continue;
     }
 
-    progress.currentFile = path;
-    emit progressUpdated(progress);
+    m_progress.currentFile = path;
+    emit progressUpdated(m_progress);
 
     bool removeSuccess = false;
     if (m_toTrash) {
-      // Qt 5.15+ の QFile::moveToTrash は OS のゴミ箱 API を呼ぶ
-      // （macOS は ~/.Trash/、Windows は Recycle Bin）。
-      // ディレクトリもそのまま移動できる。
       if (!QFile::moveToTrash(path)) {
         emit errorOccurred(path, "Failed to move to trash");
         removeSuccess = false;
@@ -60,8 +62,13 @@ void RemoveWorker::run() {
       continue;
     }
 
-    progress.filesDone++;
-    emit progressUpdated(progress);
+    if (m_toTrash) {
+      // ゴミ箱移動はトップレベル単位で 1 件ずつ進める
+      ++m_progress.filesDone;
+      emit progressUpdated(m_progress);
+    }
+    // 完全削除時は removeDirectory / 単一 QFile::remove 内で
+    // filesDone をインクリメント済み。
   }
 
   emit finished(success);
@@ -81,6 +88,9 @@ bool RemoveWorker::removeEntry(const QString& path) {
       emit errorOccurred(path, "Failed to remove file");
       return false;
     }
+    ++m_progress.filesDone;
+    m_progress.currentFile = path;
+    emit progressUpdated(m_progress);
     return true;
   }
 }
@@ -107,13 +117,8 @@ bool RemoveWorker::removeDirectory(const QString& path) {
     QString entryPath = it.next();
     QFileInfo info(entryPath);
 
-    WorkerProgress progress;
-    progress.currentFile = entryPath;
-    progress.processed = 0;
-    progress.total = -1;
-    progress.filesDone = 0;
-    progress.filesTotal = 0;
-    emit progressUpdated(progress);
+    m_progress.currentFile = entryPath;
+    emit progressUpdated(m_progress);
 
     if (info.isDir()) {
       if (!removeDirectory(entryPath)) {
@@ -123,6 +128,9 @@ bool RemoveWorker::removeDirectory(const QString& path) {
       if (!QFile::remove(entryPath)) {
         emit errorOccurred(entryPath, "Failed to remove file");
         success = false;
+      } else {
+        ++m_progress.filesDone;
+        emit progressUpdated(m_progress);
       }
     }
   }
