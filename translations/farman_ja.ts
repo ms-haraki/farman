@@ -2051,109 +2051,180 @@ This will discard all custom keybindings.</source>
 <context>
     <name>Farman::SearchDialog</name>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="55"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="62"/>
         <source>Search Files</source>
         <translation>ファイル検索</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="77"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="81"/>
         <source>Browse folder...</source>
         <translation>フォルダを参照...</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="81"/>
-        <source>Start path (%1):</source>
-        <translation>検索開始パス (%1):</translation>
-    </message>
-    <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="85"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="89"/>
         <source>e.g. *.txt *.cpp (space-separated, empty for all)</source>
         <translation>例: *.txt *.cpp (空白区切り、空ですべて)</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="87"/>
-        <source>Name pattern (%1):</source>
-        <translation>名前パターン (%1):</translation>
-    </message>
-    <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="92"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="96"/>
         <source>e.g. .* node_modules (space-separated)</source>
         <translation>例: .* node_modules (空白区切り)</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="94"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="98"/>
         <source>Directory names (glob) to skip when recursing. Default comes from Settings → Behavior. Changes here apply to this search only.</source>
         <translation>再帰時にスキップするディレクトリ名 (glob)。デフォルトは Settings → Behavior の値で、ここでの変更は今回の検索のみに適用されます。</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="97"/>
-        <source>Exclude dirs (%1):</source>
-        <translation>除外ディレクトリ (%1):</translation>
+        <location filename="../src/ui/SearchDialog.cpp" line="85"/>
+        <source>Start path:</source>
+        <translation>検索開始パス:</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="100"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="91"/>
+        <source>Name pattern:</source>
+        <translation>名前パターン:</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SearchDialog.cpp" line="101"/>
+        <source>Exclude dirs:</source>
+        <translation>除外ディレクトリ:</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SearchDialog.cpp" line="105"/>
+        <source>e.g. *.log .DS_Store (space-separated)</source>
+        <translation>例: *.log .DS_Store (空白区切り)</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SearchDialog.cpp" line="107"/>
+        <source>File name patterns (glob) to skip from results. Applied after the name pattern filter.</source>
+        <translation>結果から除外するファイル名パターン (glob)。名前パターンフィルタの後に適用されます。</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SearchDialog.cpp" line="110"/>
+        <source>Exclude files:</source>
+        <translation>除外ファイル:</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SearchDialog.cpp" line="113"/>
         <source>Include subdirectories (%1)</source>
         <translation>サブディレクトリを含める (%1)</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="109"/>
-        <location filename="../src/ui/SearchDialog.cpp" line="260"/>
-        <location filename="../src/ui/SearchDialog.cpp" line="270"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="121"/>
+        <source>Filters</source>
+        <translation>フィルタ</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SearchDialog.cpp" line="126"/>
+        <source>Size:</source>
+        <translation>サイズ:</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SearchDialog.cpp" line="129"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="138"/>
+        <source>Any</source>
+        <translation>なし</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SearchDialog.cpp" line="146"/>
+        <source>Min:</source>
+        <translation>最小:</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SearchDialog.cpp" line="149"/>
+        <source>Max:</source>
+        <translation>最大:</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SearchDialog.cpp" line="158"/>
+        <source>Modified:</source>
+        <translation>更新日時:</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SearchDialog.cpp" line="166"/>
+        <source>From:</source>
+        <translation>から:</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SearchDialog.cpp" line="168"/>
+        <source>To:</source>
+        <translation>まで:</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SearchDialog.cpp" line="172"/>
+        <source>Content:</source>
+        <translation>内容:</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SearchDialog.cpp" line="174"/>
+        <source>Text to find inside files</source>
+        <translation>ファイル内を検索する文字列</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SearchDialog.cpp" line="175"/>
+        <source>Case sensitive</source>
+        <translation>大文字小文字を区別</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/SearchDialog.cpp" line="213"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="395"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="405"/>
         <source>Search</source>
         <translation>検索</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="120"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="224"/>
         <source>Name</source>
         <translation>名前</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="120"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="224"/>
         <source>Path</source>
         <translation>パス</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="120"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="224"/>
         <source>Size</source>
         <translation>サイズ</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="120"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="224"/>
         <source>Modified</source>
         <translation>更新日時</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="132"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="240"/>
         <source>Ready.</source>
         <translation>準備完了</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="138"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="246"/>
         <source>Close</source>
         <translation>閉じる</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="212"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="322"/>
         <source>Select Start Directory</source>
         <translation>開始ディレクトリを選択</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="241"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="352"/>
         <source>Searching...</source>
         <translation>検索中...</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="248"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="383"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="265"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="400"/>
         <source>Searching... %1 found</source>
         <translation>検索中... %1 件</translation>
     </message>
     <message>
-        <location filename="../src/ui/SearchDialog.cpp" line="271"/>
+        <location filename="../src/ui/SearchDialog.cpp" line="406"/>
         <source>Done. %1 found.</source>
         <translation>完了。%1 件見つかりました。</translation>
     </message>

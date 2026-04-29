@@ -8,6 +8,9 @@ class QCheckBox;
 class QPushButton;
 class QTableWidget;
 class QLabel;
+class QSpinBox;
+class QComboBox;
+class QDateTimeEdit;
 
 namespace Farman {
 
@@ -49,11 +52,25 @@ private:
   QPushButton*  m_browseButton;
   QLineEdit*    m_patternEdit;
   QLineEdit*    m_excludeEdit;
+  QLineEdit*    m_excludeFileEdit = nullptr;
   QCheckBox*    m_subdirsCheck;
   QPushButton*  m_searchButton;
   QTableWidget* m_resultsTable;
   QLabel*       m_statusLabel;
   QPushButton*  m_closeButton;
+
+  // 拡張フィルタ (size / modified / content)
+  QCheckBox*     m_sizeFilterCheck    = nullptr;
+  QSpinBox*      m_minSizeSpin        = nullptr;
+  QComboBox*     m_minSizeUnit        = nullptr;
+  QSpinBox*      m_maxSizeSpin        = nullptr;
+  QComboBox*     m_maxSizeUnit        = nullptr;
+  QCheckBox*     m_dateFilterCheck    = nullptr;
+  QDateTimeEdit* m_dateFromEdit       = nullptr;
+  QDateTimeEdit* m_dateToEdit         = nullptr;
+  QCheckBox*     m_contentFilterCheck = nullptr;
+  QLineEdit*     m_contentEdit        = nullptr;
+  QCheckBox*     m_contentCsCheck     = nullptr;
 
   SearchWorker* m_worker;
   QString       m_selectedPath;
