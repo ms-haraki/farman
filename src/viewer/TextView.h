@@ -6,6 +6,8 @@
 
 class QComboBox;
 class QCheckBox;
+class QLineEdit;
+class QLabel;
 
 namespace Farman {
 
@@ -36,17 +38,36 @@ public:
   QColor lineNumberForeground() const;
   QColor lineNumberBackground() const;
 
+protected:
+  // 検索入力欄の Shift+Enter / Esc を拾うため。
+  bool eventFilter(QObject* watched, QEvent* event) override;
+
+private slots:
+  // 検索入力欄にフォーカスを移し、テキストを全選択する (Cmd/Ctrl+F)。
+  void focusFindInput();
+  void findNext();
+  void findPrevious();
+
 private:
   void setupUi();
   void syncFromSettings();
   void applyEditAreaSettings();
   void reloadFromBuffer();
+  // m_findEdit のテキストを使って双方向検索する。
+  void findInDirection(bool backward);
+  // ヒット箇所すべてを ExtraSelection で強調表示する。空文字列ならクリア。
+  void refreshMatchHighlights();
   static QString decodeBytes(const QByteArray& data, const QString& encoding);
 
   TextEditArea* m_editArea  = nullptr;
   QComboBox*    m_encodingCombo     = nullptr;
   QCheckBox*    m_lineNumbersCheck  = nullptr;
   QCheckBox*    m_wordWrapCheck     = nullptr;
+
+  // 検索コントロール群 (ヘッダ常設)
+  QLineEdit*  m_findEdit    = nullptr;
+  QCheckBox*  m_findCsCheck = nullptr;
+  QLabel*     m_findStatus  = nullptr;
 
   QString    m_filePath;
   QByteArray m_data;

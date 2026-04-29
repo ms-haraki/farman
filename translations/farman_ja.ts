@@ -2444,19 +2444,49 @@ Keybindings are not affected.</source>
 <context>
     <name>Farman::TextView</name>
     <message>
-        <location filename="../src/viewer/TextView.cpp" line="168"/>
+        <location filename="../src/viewer/TextView.cpp" line="173"/>
         <source>Encoding:</source>
         <translation>エンコーディング:</translation>
     </message>
     <message>
-        <location filename="../src/viewer/TextView.cpp" line="181"/>
+        <location filename="../src/viewer/TextView.cpp" line="186"/>
         <source>Line Numbers</source>
         <translation>行番号</translation>
     </message>
     <message>
-        <location filename="../src/viewer/TextView.cpp" line="185"/>
+        <location filename="../src/viewer/TextView.cpp" line="190"/>
         <source>Word Wrap</source>
         <translation>ワードラップ</translation>
+    </message>
+    <message>
+        <location filename="../src/viewer/TextView.cpp" line="203"/>
+        <source>Search text  (%1)</source>
+        <translation>検索する文字列  (%1)</translation>
+    </message>
+    <message>
+        <location filename="../src/viewer/TextView.cpp" line="204"/>
+        <source>Search text in this file (%1)</source>
+        <translation>このファイル内を検索 (%1)</translation>
+    </message>
+    <message>
+        <location filename="../src/viewer/TextView.cpp" line="448"/>
+        <source>%1 matches</source>
+        <translation>%1 件</translation>
+    </message>
+    <message>
+        <location filename="../src/viewer/TextView.cpp" line="196"/>
+        <source>Find:</source>
+        <translation>検索:</translation>
+    </message>
+    <message>
+        <location filename="../src/viewer/TextView.cpp" line="211"/>
+        <source>Case sensitive</source>
+        <translation>大文字小文字を区別</translation>
+    </message>
+    <message>
+        <location filename="../src/viewer/TextView.cpp" line="446"/>
+        <source>Not found</source>
+        <translation>見つかりません</translation>
     </message>
 </context>
 <context>

@@ -6,15 +6,19 @@
 #include <QFile>
 #include <QFontMetrics>
 #include <QHBoxLayout>
+#include <QKeyEvent>
 #include <QLabel>
+#include <QLineEdit>
 #include <QPainter>
 #include <QPaintEvent>
 #include <QPalette>
 #include <QPlainTextEdit>
 #include <QResizeEvent>
+#include <QApplication>
 #include <QSignalBlocker>
 #include <QLocale>
 #include <QStringDecoder>
+#include <QTextEdit>
 // uchardet のインストール先によって <uchardet.h> 直下にあるか
 // <uchardet/uchardet.h> にあるかが分かれる。CMake 側で両方の include パスを
 // 通しているため、ここではシンプルな名前で参照する。
@@ -186,7 +190,31 @@ void TextView::setupUi() {
   m_wordWrapCheck->setFocusPolicy(Qt::StrongFocus);
   tb->addWidget(m_wordWrapCheck);
 
-  tb->addStretch();
+  // 検索コントロール群 (常設)。Tab で順に辿れる位置に置く。
+  tb->addSpacing(12);
+  tb->addWidget(new QLabel(tr("Find:"), toolbar));
+
+  // ショートカット表記 (macOS: ⌘F / Win/Linux: Ctrl+F)
+  const QString findShortcutText =
+    QKeySequence(QKeySequence::Find).toString(QKeySequence::NativeText);
+
+  m_findEdit = new QLineEdit(toolbar);
+  m_findEdit->setPlaceholderText(tr("Search text  (%1)").arg(findShortcutText));
+  m_findEdit->setToolTip(tr("Search text in this file (%1)").arg(findShortcutText));
+  m_findEdit->setClearButtonEnabled(true);
+  m_findEdit->setFocusPolicy(Qt::StrongFocus);
+  m_findEdit->setMinimumWidth(180);
+  m_findEdit->installEventFilter(this);
+  tb->addWidget(m_findEdit, /*stretch*/ 1);
+
+  m_findCsCheck = new QCheckBox(tr("Case sensitive"), toolbar);
+  m_findCsCheck->setFocusPolicy(Qt::StrongFocus);
+  tb->addWidget(m_findCsCheck);
+
+  m_findStatus = new QLabel(toolbar);
+  m_findStatus->setMinimumWidth(80);
+  tb->addWidget(m_findStatus);
+
   root->addWidget(toolbar);
 
   // 本体
@@ -194,6 +222,26 @@ void TextView::setupUi() {
   root->addWidget(m_editArea, /*stretch*/ 1);
   // ViewerPanel など外側から setFocus されたとき、フォーカスを本体に流す
   setFocusProxy(m_editArea);
+
+  // 検索イベント結線
+  // - Enter: 次のヒットへ移動 + 全件ハイライト更新 (eventFilter で処理)
+  // - Shift+Enter: 前のヒットへ (eventFilter で処理)
+  // - Esc: フォーカスを本体に戻す (eventFilter で処理)
+  // - 入力テキストが変わったらハイライトはクリア (Enter で再走査される)
+  connect(m_findEdit, &QLineEdit::textChanged, this, [this](const QString&) {
+    if (m_editArea) m_editArea->setExtraSelections({});
+    if (m_findStatus) m_findStatus->clear();
+  });
+  connect(m_findCsCheck, &QCheckBox::toggled, this, [this](bool) {
+    if (!m_findEdit || m_findEdit->text().isEmpty()) return;
+    refreshMatchHighlights();
+  });
+
+  // Cmd/Ctrl + F: QApplication レベルの eventFilter で確実に拾う。
+  // QShortcut / QAction では上位で潰されるケースがあるため、最終的に
+  // ここで保険をかける。TextView が表示されている (isVisible) ときだけ
+  // 検索入力欄にフォーカスを移す。
+  qApp->installEventFilter(this);
 
   // ローカル変更: Settings には保存しない
   connect(m_encodingCombo, &QComboBox::currentTextChanged, this, [this](const QString& text) {
@@ -299,6 +347,144 @@ QColor TextView::lineNumberForeground() const {
 QColor TextView::lineNumberBackground() const {
   return Settings::instance().textViewerLineNumberBackground();
 }
+
+// ---------- 検索 ----------
+
+void TextView::focusFindInput() {
+  if (!m_findEdit) return;
+  // 現在の選択テキストがあれば検索ボックスに入れる
+  if (m_editArea) {
+    const QString sel = m_editArea->textCursor().selectedText();
+    // QPlainTextEdit::selectedText は段落区切りに U+2029 を含むので、
+    // 単一行の選択のときだけ採用する。
+    if (!sel.isEmpty() && !sel.contains(QChar(0x2029))) {
+      m_findEdit->setText(sel);
+    }
+  }
+  m_findEdit->setFocus(Qt::ShortcutFocusReason);
+  m_findEdit->selectAll();
+}
+
+void TextView::findNext() {
+  findInDirection(false);
+}
+
+void TextView::findPrevious() {
+  findInDirection(true);
+}
+
+void TextView::findInDirection(bool backward) {
+  if (!m_editArea || !m_findEdit) return;
+  const QString needle = m_findEdit->text();
+  if (needle.isEmpty()) {
+    m_editArea->setExtraSelections({});
+    if (m_findStatus) m_findStatus->clear();
+    return;
+  }
+
+  // 全件ハイライトを更新 (件数 / Not found の表示もここで行う)
+  refreshMatchHighlights();
+
+  QTextDocument::FindFlags flags;
+  if (backward) flags |= QTextDocument::FindBackward;
+  if (m_findCsCheck && m_findCsCheck->isChecked()) {
+    flags |= QTextDocument::FindCaseSensitively;
+  }
+
+  bool found = m_editArea->find(needle, flags);
+  if (!found) {
+    // 末尾 (or 先頭) まで来たので、反対端から検索しなおす
+    QTextCursor cur = m_editArea->textCursor();
+    cur.movePosition(backward ? QTextCursor::End : QTextCursor::Start);
+    m_editArea->setTextCursor(cur);
+    found = m_editArea->find(needle, flags);
+    // ステータスは件数表示を優先する。Not found は refreshMatchHighlights が
+    // すでに埋めているのでそのまま。
+  }
+}
+
+void TextView::refreshMatchHighlights() {
+  if (!m_editArea || !m_findEdit) return;
+  const QString needle = m_findEdit->text();
+  QList<QTextEdit::ExtraSelection> selections;
+  if (needle.isEmpty()) {
+    m_editArea->setExtraSelections(selections);
+    if (m_findStatus) m_findStatus->clear();
+    return;
+  }
+
+  QTextDocument::FindFlags flags;
+  if (m_findCsCheck && m_findCsCheck->isChecked()) {
+    flags |= QTextDocument::FindCaseSensitively;
+  }
+
+  QTextCharFormat fmt;
+  fmt.setBackground(QColor(255, 235, 100));   // 黄色系のハイライト
+  fmt.setForeground(QColor(0, 0, 0));
+
+  QTextDocument* doc = m_editArea->document();
+  QTextCursor cur(doc);
+  while (true) {
+    cur = doc->find(needle, cur, flags);
+    if (cur.isNull()) break;
+    QTextEdit::ExtraSelection sel;
+    sel.cursor = cur;
+    sel.format = fmt;
+    selections.append(sel);
+  }
+  m_editArea->setExtraSelections(selections);
+  if (m_findStatus) {
+    if (selections.isEmpty()) {
+      m_findStatus->setText(tr("Not found"));
+    } else {
+      m_findStatus->setText(tr("%1 matches").arg(selections.size()));
+    }
+  }
+}
+
+bool TextView::eventFilter(QObject* watched, QEvent* event) {
+  // 検索入力欄の Esc / Enter / Shift+Enter
+  if (watched == m_findEdit && event->type() == QEvent::KeyPress) {
+    auto* ke = static_cast<QKeyEvent*>(event);
+    if (ke->key() == Qt::Key_Escape) {
+      if (m_editArea) m_editArea->setFocus(Qt::OtherFocusReason);
+      return true;
+    }
+    if (ke->key() == Qt::Key_Return || ke->key() == Qt::Key_Enter) {
+      if (ke->modifiers() & Qt::ShiftModifier) {
+        findPrevious();
+      } else {
+        findNext();
+      }
+      return true;
+    }
+  }
+
+  // QApplication レベルで Cmd/Ctrl+F を捕捉する。
+  // QShortcut / QAction では上位レイヤ (macOS のメニュー、QPlainTextEdit、
+  // 他のショートカット) と衝突して発火しないケースがあるため、最終手段
+  // としてアプリ全体のイベントフィルタで受ける。TextView が画面に
+  // 出ている (= ビュアーが表示されている) ときだけ反応する。
+  // ShortcutOverride も accept しないと QPlainTextEdit 等の標準ショート
+  // カット処理が先に走る可能性があるので、両方とも食う。
+  if (event->type() == QEvent::ShortcutOverride
+      || event->type() == QEvent::KeyPress) {
+    auto* ke = static_cast<QKeyEvent*>(event);
+    const bool isFindKey =
+      ke->key() == Qt::Key_F &&
+      (ke->modifiers() & Qt::ControlModifier);  // macOS では Cmd
+    if (isFindKey && isVisible() && window() && window()->isActiveWindow()) {
+      if (event->type() == QEvent::KeyPress) {
+        focusFindInput();
+      }
+      event->accept();
+      return true;
+    }
+  }
+  return QWidget::eventFilter(watched, event);
+}
+
+// ---------- ステータス ----------
 
 QString TextView::statusInfo() const {
   if (m_filePath.isEmpty()) return QString();
