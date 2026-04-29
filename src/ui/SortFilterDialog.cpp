@@ -143,6 +143,17 @@ void SortFilterDialog::setupUi(const QString& directoryPath,
   connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
   mainLayout->addWidget(m_buttonBox);
 
+  // macOS の System Settings → 「キーボードナビゲーション」設定に依存させずに
+  // Tab キーで全ての操作対象を辿れるよう、対話ウィジェットに StrongFocus を
+  // 明示する。
+  const auto interactives = findChildren<QWidget*>();
+  for (QWidget* w : interactives) {
+    if (qobject_cast<QCheckBox*>(w)   || qobject_cast<QComboBox*>(w) ||
+        qobject_cast<QLineEdit*>(w)   || qobject_cast<QPushButton*>(w)) {
+      w->setFocusPolicy(Qt::StrongFocus);
+    }
+  }
+
   // Initialize from values
   auto selectByData = [](QComboBox* combo, int value) {
     for (int i = 0; i < combo->count(); ++i) {
