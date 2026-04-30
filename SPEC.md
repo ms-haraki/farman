@@ -557,6 +557,27 @@ BinaryView では `setPlainText` 前後で `AddressHighlighter` を一時的に
   - 文字列のエンコード種別
     - 初期設定はUTF-8
 
+### 表示モードの切替 *（未実装）*
+
+ビュアーを **アプリ内パネルとして表示** するか、**独立した外部ウィンドウで
+表示** するかをユーザーが切り替えられるようにする。
+
+- **インライン (現状)**: `MainWindow::m_stack` 内の `ViewerPanel` に切り替えて
+  表示。Enter / Esc でファイルマネージャパネルに戻る。複数ファイルを同時に
+  開けない代わりにキーボードで完結する。
+- **外部ウィンドウ**: 独立した `QMainWindow` (例: `TextViewerWindow` 等)
+  をファイル毎に開く。複数ファイルを並べて見られる、別ディスプレイへ飛ばせる
+  といった利点がある。
+- 切替は Settings (例: `viewerMode`: `Inline` / `External`) で全体に効くものと、
+  起動時にキーバインドや View メニューから一時的に切り替えられるものの両方を
+  提供する。
+- 現状 `TextViewerWindow` / `ImageViewerWindow` / `BinaryViewerWindow` は
+  外部ウィンドウとして既に存在するが、メイン経路 (`v` / `Enter`) からは
+  使われていない。これらを表示モード設定経由で利用するよう繋ぎ込む。
+- ViewerPanel と ViewerWindow で重複している UI ロジックは共通化して
+  どちらのホストにも `TextView` / `ImageView` / `BinaryView` を配置できる
+  ようにする (現状そうなっているはず)。
+
 ### 追加ビュアー *（未実装）*
 
 将来追加したい組み込み (またはプラグイン) ビュアー。実装方針は外部
@@ -710,6 +731,48 @@ BinaryView では `setPlainText` 前後で `AddressHighlighter` を一時的に
 
 - 大量ファイル時はバックグラウンドワーカーで比較を行い、進捗を表示する。
 - サブディレクトリの再帰比較は明示的なオプションとして提供（既定は浅い比較）。
+
+---
+
+## ツールバー *（未実装）*
+
+メニューバーの下に、頻出操作をアイコンで並べた **ツールバー** を置く。
+キーボード操作派には不要だが、初見ユーザーが視覚的にコマンドへ到達できる
+ようにするのが目的。
+
+- 配置候補: Copy / Move / Delete / New File / New Directory / Rename /
+  Search / Bookmark / Settings / Toggle Single Pane / Toggle Log Pane など。
+- 各ボタンは `CommandRegistry` の既存コマンドを呼び出すだけ
+  (`addCmd` ヘルパと同様)。実体ロジックの重複は無し。
+- ボタンに割り当てたキーバインドはツールチップに表記する
+  (Settings → Keybindings の値を参照)。
+- **表示 ON/OFF** トグル (View メニュー / 設定) を提供。デフォルトは
+  ON か OFF か要検討 (キーボード派が多そうなら OFF にして「明示的に
+  出す」運用が良いかも)。
+- カスタマイズ: 表示するボタンの集合・並び順をユーザーが変更できると
+  便利。ただし最小実装では固定セットで開始してよい。
+- macOS のネイティブツールバー (`QMainWindow` + `QToolBar` で
+  `setUnifiedTitleAndToolBarOnMac(true)`) を使うかどうかも検討する
+  (一体感が出るが他プラットフォームと挙動が変わる)。
+
+---
+
+## ショートカット一覧表示 *（未実装）*
+
+現在のキーバインドの一覧を別ウィンドウで表示する機能。
+
+- 起動方法: Help メニュー →「Keyboard Shortcuts...」、もしくは
+  キーバインド (例: `?` / `F1` / `Ctrl+/` 等) でポップアップ。
+- 表示内容: KeyBindingManager のすべての登録コマンドを **カテゴリ別**
+  (Navigation / File / Pane / View / Bookmark / History / Application)
+  にグループ化し、各行に「キー / コマンド名 / 説明」を出す。
+- Settings → Keybindings タブで設定中の値をリアルタイムに反映
+  (Settings 適用時に開いていれば再読込)。
+- インクリメンタル検索ボックスで絞り込めるようにする
+  (例: "copy" と打つと file.copy / file.copy_path が残る)。
+- **印刷可能** にしたい (Ctrl+P で QPrinter 経由でプリント or PDF 保存)。
+- 単純な読み取り専用ウィンドウ。Settings の Keybindings タブで実際の
+  変更を行う住み分け。
 
 ---
 
