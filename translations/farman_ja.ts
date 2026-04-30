@@ -1663,12 +1663,17 @@ What would you like to do?</source>
         <translation>ログディレクトリを選択</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="426"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="270"/>
+        <source>(takes effect on next launch)</source>
+        <translation>(再起動後に有効)</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/GeneralTab.cpp" line="431"/>
         <source>Select initial directory for left pane</source>
         <translation>左パネルの初期ディレクトリを選択</translation>
     </message>
     <message>
-        <location filename="../src/ui/GeneralTab.cpp" line="439"/>
+        <location filename="../src/ui/GeneralTab.cpp" line="444"/>
         <source>Select initial directory for right pane</source>
         <translation>右パネルの初期ディレクトリを選択</translation>
     </message>

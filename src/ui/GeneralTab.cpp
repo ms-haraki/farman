@@ -265,6 +265,9 @@ void GeneralTab::setupUi() {
   languageRow->setContentsMargins(0, 0, 0, 0);
   languageRow->addWidget(new QLabel(tr("Language:"), this));
   languageRow->addWidget(m_languageCombo);
+  // 「再起動後に有効」の補足を可視化 (combo のツールチップだけだと
+  //  気付きにくいので、設定行に直接書いておく)
+  languageRow->addWidget(new QLabel(tr("(takes effect on next launch)"), this));
   languageRow->addStretch(1);
   mainLayout->addLayout(languageRow);
 
