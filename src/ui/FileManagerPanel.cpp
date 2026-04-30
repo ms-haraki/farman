@@ -804,6 +804,17 @@ void FileManagerPanel::setActivePane(PaneType pane) {
   // アクティブペインにフォーカスを設定
   activePane()->view()->setFocus();
 
+  // カーソル (currentIndex) が表示範囲外なら、見える位置までスクロール
+  // する。ユーザーがマウスでスクロールしてカーソルを画面外に追いやった
+  // まま反対ペインへ抜け、戻ってきたときに「カーソルが消えている」状態
+  // にしないため。EnsureVisible で最小限の移動に留める。
+  if (auto* view = activePane()->view()) {
+    const QModelIndex idx = view->currentIndex();
+    if (idx.isValid()) {
+      view->scrollTo(idx, QAbstractItemView::EnsureVisible);
+    }
+  }
+
   // ステータスバーをアクティブペインの状態に追従
   emitActivePaneStatus();
 }
