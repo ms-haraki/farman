@@ -1,18 +1,24 @@
 #include "TransferConfirmDialog.h"
 #include "settings/Settings.h"
 #include "utils/Dialogs.h"
-#include <QVBoxLayout>
-#include <QFormLayout>
-#include <QLabel>
-#include <QListWidget>
+#include <QApplication>
 #include <QComboBox>
-#include <QLineEdit>
 #include <QDialogButtonBox>
-#include <QPushButton>
-#include <QGroupBox>
+#include <QDir>
+#include <QFileDialog>
 #include <QFileInfo>
+#include <QFormLayout>
+#include <QGroupBox>
+#include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QKeySequence>
+#include <QLabel>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QPushButton>
+#include <QStyle>
+#include <QToolButton>
+#include <QVBoxLayout>
 
 namespace Farman {
 
@@ -34,13 +40,52 @@ void TransferConfirmDialog::setupUi(Operation op,
                                     const QString&     destDir) {
   setWindowTitle(op == Copy ? tr("Confirm Copy") : tr("Confirm Move"));
   resize(560, 420);
+  m_sourceDir       = sourceDir;
+  m_originalDestDir = destDir;
 
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
-  // Source / destination paths
+  // ── Source / destination paths ───────────────────
+  // Source は読取専用 QLabel、Destination は編集可能 QLineEdit + 参照ボタン。
+  // QFormLayout は既定では右側のウィジェットが伸びないので、
+  // ExpandingFieldsGrow を指定して横幅一杯まで広げる。
   QFormLayout* pathForm = new QFormLayout();
+  pathForm->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
   pathForm->addRow(tr("Source:"), new QLabel(sourceDir, this));
-  pathForm->addRow(tr("Destination:"), new QLabel(destDir, this));
+
+  m_destEdit = new QLineEdit(destDir, this);
+  m_destEdit->setToolTip(
+    tr("Destination directory. Press ↑/↓ to toggle between the source "
+       "and the opposite-pane directory. Click the folder button to browse."));
+  m_destEdit->setFocusPolicy(Qt::StrongFocus);
+  m_destEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  // 自由入力で誤ったパスにならないよう読取専用。値の変更は ↓/↑ または
+  // フォルダ参照ダイアログ経由のみ。テキストの選択・コピーは可能。
+  m_destEdit->setReadOnly(true);
+  m_destEdit->installEventFilter(this);
+
+  m_destBrowseButton = new QToolButton(this);
+  m_destBrowseButton->setIcon(style()->standardIcon(QStyle::SP_DirOpenIcon));
+  m_destBrowseButton->setToolTip(tr("Browse for destination directory..."));
+  m_destBrowseButton->setFocusPolicy(Qt::StrongFocus);
+  // 既定の focus rect は macOS スタイルだと弱いので、フォーカス時に
+  // ハイライト色の枠を出してわかりやすくする。
+  m_destBrowseButton->setStyleSheet(
+    "QToolButton { padding: 2px; border: 1px solid transparent; }"
+    "QToolButton:focus { border: 2px solid palette(highlight); }");
+  // フォーカス中に Enter / Return を押されたら参照ダイアログを開く
+  // (デフォルトでは Enter はダイアログの default button = OK へ流れる)。
+  m_destBrowseButton->installEventFilter(this);
+  connect(m_destBrowseButton, &QToolButton::clicked,
+          this, &TransferConfirmDialog::onBrowseDestination);
+
+  QWidget* destRow = new QWidget(this);
+  QHBoxLayout* destRowLayout = new QHBoxLayout(destRow);
+  destRowLayout->setContentsMargins(0, 0, 0, 0);
+  destRowLayout->setSpacing(4);
+  destRowLayout->addWidget(m_destEdit, /*stretch*/ 1);
+  destRowLayout->addWidget(m_destBrowseButton);
+  pathForm->addRow(tr("Destination:"), destRow);
   mainLayout->addLayout(pathForm);
 
   // Items list
@@ -104,15 +149,79 @@ void TransferConfirmDialog::setupUi(Operation op,
   connect(m_buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
   mainLayout->addWidget(m_buttonBox);
 
-  // Tab ナビゲーション: items → combobox → rename suffix → Cancel → Copy/Move。
+  // Tab ナビゲーション:
+  //   destEdit → folder button → items → combobox → rename suffix → Cancel → Copy/Move
   // 実行系ボタンを最後に置くことで Tab 連打による誤操作を防ぐ。
   list->setFocusPolicy(Qt::StrongFocus);
   m_overwriteModeCombo->setFocusPolicy(Qt::StrongFocus);
   m_autoRenameEdit->setFocusPolicy(Qt::StrongFocus);
-  setTabOrder(list, m_overwriteModeCombo);
+  setTabOrder(m_destEdit,           m_destBrowseButton);
+  setTabOrder(m_destBrowseButton,   list);
+  setTabOrder(list,                 m_overwriteModeCombo);
   setTabOrder(m_overwriteModeCombo, m_autoRenameEdit);
-  setTabOrder(m_autoRenameEdit, cancelBtn);
-  setTabOrder(cancelBtn, okBtn);
+  setTabOrder(m_autoRenameEdit,     cancelBtn);
+  setTabOrder(cancelBtn,            okBtn);
+
+  // 開いた直後はコピー先入力欄にフォーカス。テキストを全選択して
+  // 入力しやすくするのと、↓ キーでコピー元を流し込む操作にすぐ移れる。
+  m_destEdit->setFocus();
+  m_destEdit->selectAll();
+}
+
+void TransferConfirmDialog::onBrowseDestination() {
+  if (!m_destEdit) return;
+  const QString start = m_destEdit->text().trimmed();
+  const QString picked = QFileDialog::getExistingDirectory(
+    this,
+    tr("Choose destination directory"),
+    start.isEmpty() ? QDir::homePath() : start);
+  if (!picked.isEmpty()) {
+    m_destEdit->setText(picked);
+    m_destEdit->setFocus();
+  }
+}
+
+bool TransferConfirmDialog::eventFilter(QObject* watched, QEvent* event) {
+  // フォルダ参照ボタンにフォーカスがあるときの Enter / Return を奪い、
+  // ダイアログの default button (OK) ではなく参照ダイアログを開かせる。
+  if (watched == m_destBrowseButton
+      && (event->type() == QEvent::KeyPress
+          || event->type() == QEvent::ShortcutOverride)) {
+    auto* ke = static_cast<QKeyEvent*>(event);
+    if (ke->key() == Qt::Key_Return || ke->key() == Qt::Key_Enter) {
+      if (event->type() == QEvent::KeyPress) {
+        m_destBrowseButton->click();
+      }
+      event->accept();
+      return true;
+    }
+  }
+  if (watched == m_destEdit
+      && (event->type() == QEvent::KeyPress
+          || event->type() == QEvent::ShortcutOverride)) {
+    auto* ke = static_cast<QKeyEvent*>(event);
+    // 修飾キーは Shift / Ctrl / Alt / Meta だけを見る (KeypadModifier は
+    // OS から自動付加されることがあるので無視する)。
+    const auto mods = ke->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier
+                                          | Qt::AltModifier | Qt::MetaModifier);
+    if (mods == Qt::NoModifier
+        && (ke->key() == Qt::Key_Up || ke->key() == Qt::Key_Down)) {
+      // ↑/↓ どちらでも「コピー元」⇔「反対側ペインのディレクトリ」を
+      // トグルする。
+      // 注意: ShortcutOverride と KeyPress は同じ押下に対して 2 回飛んで
+      // くるため、トグル本体は KeyPress のときだけ実行する。
+      // ShortcutOverride では accept のみ返してショートカット処理を抑止。
+      if (event->type() == QEvent::KeyPress) {
+        const QString cur = m_destEdit->text();
+        m_destEdit->setText(cur == m_sourceDir ? m_originalDestDir
+                                                : m_sourceDir);
+        m_destEdit->selectAll();
+      }
+      event->accept();
+      return true;
+    }
+  }
+  return QDialog::eventFilter(watched, event);
 }
 
 void TransferConfirmDialog::keyPressEvent(QKeyEvent* event) {
@@ -148,6 +257,10 @@ OverwriteMode TransferConfirmDialog::overwriteMode() const {
 
 QString TransferConfirmDialog::autoRenameTemplate() const {
   return m_autoRenameEdit->text();
+}
+
+QString TransferConfirmDialog::destinationDir() const {
+  return m_destEdit ? m_destEdit->text().trimmed() : QString();
 }
 
 } // namespace Farman

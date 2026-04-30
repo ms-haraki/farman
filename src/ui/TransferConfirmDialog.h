@@ -7,6 +7,7 @@
 class QComboBox;
 class QLineEdit;
 class QDialogButtonBox;
+class QToolButton;
 
 namespace Farman {
 
@@ -31,16 +32,25 @@ public:
 
   OverwriteMode overwriteMode() const;
   QString       autoRenameTemplate() const;
+  // ユーザーが編集した最終的なコピー先ディレクトリ (trim 済み)。
+  QString       destinationDir() const;
 
 protected:
   void keyPressEvent(QKeyEvent* event) override;
+  // 宛先 LineEdit で ↓ キーを押されたときにコピー元と同じパスを流し込む。
+  bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
   void setupUi(Operation op,
                const QString&     sourceDir,
                const QStringList& itemPaths,
                const QString&     destDir);
+  void onBrowseDestination();
 
+  QString           m_sourceDir;       // ↓ で流し込む値
+  QString           m_originalDestDir; // ↑ で戻す値 (反対側ペインの初期値)
+  QLineEdit*        m_destEdit         = nullptr;
+  QToolButton*      m_destBrowseButton = nullptr;
   QComboBox*        m_overwriteModeCombo;
   QLineEdit*        m_autoRenameEdit;
   QDialogButtonBox* m_buttonBox;

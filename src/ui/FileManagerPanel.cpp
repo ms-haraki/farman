@@ -887,9 +887,13 @@ void FileManagerPanel::copySelectedFiles() {
     return;
   }
   const OverwriteMode overwriteMode = confirm.overwriteMode();
+  // ユーザーがダイアログ上で編集した宛先を使う。空なら反対側ペインに戻す。
+  const QString actualDest = confirm.destinationDir().isEmpty()
+                               ? destDir
+                               : confirm.destinationDir();
 
   // Create worker and dialog
-  CopyWorker* worker = new CopyWorker(selectedFiles, destDir, this);
+  CopyWorker* worker = new CopyWorker(selectedFiles, actualDest, this);
   worker->setOverwriteMode(overwriteMode);
   worker->setAutoRenameTemplate(confirm.autoRenameTemplate());
   connect(worker, &WorkerBase::overwriteRequired, this,
@@ -904,7 +908,7 @@ void FileManagerPanel::copySelectedFiles() {
   dialog->setWorker(worker);
 
   const int copiedCount = selectedFiles.size();
-  const QString copiedDest = destDir;
+  const QString copiedDest = actualDest;
 
   connect(worker, &WorkerBase::finished, this,
       [this, dialog, srcPane, destPane, copiedCount, copiedDest](bool success) {
@@ -1009,9 +1013,13 @@ void FileManagerPanel::moveSelectedFiles() {
     return;
   }
   const OverwriteMode overwriteMode = confirm.overwriteMode();
+  // ユーザーがダイアログ上で編集した宛先を使う。空なら反対側ペインに戻す。
+  const QString actualDest = confirm.destinationDir().isEmpty()
+                               ? destDir
+                               : confirm.destinationDir();
 
   // Create worker and dialog
-  MoveWorker* worker = new MoveWorker(selectedFiles, destDir, this);
+  MoveWorker* worker = new MoveWorker(selectedFiles, actualDest, this);
   worker->setOverwriteMode(overwriteMode);
   worker->setAutoRenameTemplate(confirm.autoRenameTemplate());
   connect(worker, &WorkerBase::overwriteRequired, this,
@@ -1026,7 +1034,7 @@ void FileManagerPanel::moveSelectedFiles() {
   dialog->setWorker(worker);
 
   const int movedCount = selectedFiles.size();
-  const QString movedDest = destDir;
+  const QString movedDest = actualDest;
 
   connect(worker, &WorkerBase::finished, this,
       [this, dialog, srcPane, destPane, movedCount, movedDest](bool success) {
