@@ -1641,14 +1641,17 @@ void FileManagerPanel::renameItem() {
   QString oldName = item->name();
   QString oldPath = item->absolutePath();
 
-  // Ask for new name
+  // Ask for new name. リネームではカーソルを末尾ではなく拡張子の手前に
+  // 置く (例: "foo.txt" を選んだ状態で `r` を押すと、カーソルは "foo" の
+  // 直後)。コピー衝突時の OverwriteDialog のリネーム入力欄と同じ挙動。
   bool ok = false;
   QString newName = inputText(
     this,
     tr("Rename"),
     tr("Enter new name:"),
     oldName,
-    &ok
+    &ok,
+    TextInputCursor::BeforeExtension
   );
 
   if (!ok || newName.isEmpty() || newName == oldName) {

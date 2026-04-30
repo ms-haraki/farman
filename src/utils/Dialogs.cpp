@@ -1,13 +1,14 @@
 #include "Dialogs.h"
 #include <QDialog>
-#include <QVBoxLayout>
+#include <QDialogButtonBox>
 #include <QHBoxLayout>
+#include <QKeyEvent>
+#include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
-#include <QDialogButtonBox>
-#include <QKeyEvent>
-#include <QKeySequence>
+#include <QTimer>
+#include <QVBoxLayout>
 
 namespace Farman {
 
@@ -108,7 +109,8 @@ QString inputText(QWidget* parent,
                   const QString& title,
                   const QString& label,
                   const QString& defaultValue,
-                  bool* ok) {
+                  bool* ok,
+                  TextInputCursor cursor) {
   QDialog dlg(parent);
   dlg.setWindowTitle(title);
   dlg.setModal(true);
@@ -122,7 +124,23 @@ QString inputText(QWidget* parent,
 
   auto* edit = new QLineEdit(defaultValue, &dlg);
   edit->setFocusPolicy(Qt::StrongFocus);
-  edit->selectAll();
+  if (cursor == TextInputCursor::BeforeExtension) {
+    // 拡張子の手前にカーソル。先頭 '.' (ドットファイル) はスキップ。
+    // ダイアログ show() 直後に Qt が selectAll を再適用してくることが
+    // あるので、QTimer で次のイベントループまで遅延してから上書きする。
+    int extPos = -1;
+    for (int i = 1; i < defaultValue.length(); ++i) {
+      if (defaultValue.at(i) == QLatin1Char('.')) { extPos = i; break; }
+    }
+    const int pos = (extPos > 0) ? extPos : defaultValue.length();
+    QTimer::singleShot(0, edit, [edit, pos]() {
+      edit->setFocus();
+      edit->deselect();
+      edit->setCursorPosition(pos);
+    });
+  } else {
+    edit->selectAll();
+  }
   layout->addWidget(edit);
 
   // 他のダイアログ（ConfirmDialog など）と同じ見た目にするため、
