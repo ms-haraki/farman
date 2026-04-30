@@ -287,15 +287,52 @@ void TextView::applyEditAreaSettings() {
 }
 
 bool TextView::loadFile(const QString& filePath) {
+  // 同期ロード経路: prepareLoad + applyPreparedLoad を続けて呼ぶだけ。
+  // 非同期化したい呼び出し元 (ViewerPanel) は両者を別スレッドに振り分ける。
+  PreparedLoad p = prepareLoad(filePath, m_encoding);
+  if (!p.ok) return false;
+  applyPreparedLoad(p);
+  return true;
+}
+
+TextView::PreparedLoad TextView::prepareLoad(const QString& filePath,
+                                             const QString& userEncoding) {
+  PreparedLoad r;
+  r.filePath = filePath;
+
   QFile file(filePath);
   if (!file.open(QIODevice::ReadOnly)) {
-    return false;
+    return r;
   }
-  m_filePath = filePath;
-  m_data     = file.readAll();
+  r.data = file.readAll();
   file.close();
-  reloadFromBuffer();
-  return true;
+
+  if (userEncoding.compare(QStringLiteral("Auto"), Qt::CaseInsensitive) == 0) {
+    uchardet_t det = uchardet_new();
+    QString detected;
+    if (det) {
+      if (uchardet_handle_data(det, r.data.constData(),
+                               static_cast<size_t>(r.data.size())) == 0) {
+        uchardet_data_end(det);
+        detected = QString::fromLatin1(uchardet_get_charset(det));
+      }
+      uchardet_delete(det);
+    }
+    r.actualEncoding = detected.isEmpty() ? QStringLiteral("UTF-8") : detected;
+  } else {
+    r.actualEncoding = userEncoding;
+  }
+  r.text = decodeBytes(r.data, r.actualEncoding);
+  r.ok = true;
+  return r;
+}
+
+void TextView::applyPreparedLoad(const PreparedLoad& r) {
+  m_filePath       = r.filePath;
+  m_data           = r.data;
+  m_actualEncoding = r.actualEncoding;
+  m_editArea->setPlainText(r.text);
+  m_editArea->moveCursor(QTextCursor::Start);
 }
 
 void TextView::clearContent() {

@@ -325,16 +325,44 @@ void ImageView::applyDisplayState() {
 }
 
 bool ImageView::loadFile(const QString& filePath) {
+  // 同期ロード経路: prepareLoad + applyPreparedLoad を続けて呼ぶだけ。
+  // 非同期化したい呼び出し元 (ViewerPanel) は両者を別スレッドに振り分ける。
+  PreparedLoad p = prepareLoad(filePath);
+  if (!p.ok) return false;
+  applyPreparedLoad(p);
+  return true;
+}
+
+ImageView::PreparedLoad ImageView::prepareLoad(const QString& filePath) {
+  PreparedLoad r;
+  r.filePath   = filePath;
+  r.isAnimated = detectAnimated(filePath);
+
+  if (!r.isAnimated) {
+    // 静止画は QImage で読み込む (QPixmap はメインスレッド限定なので bg では避ける)。
+    QImage img;
+    if (!img.load(filePath)) {
+      r.ok = false;
+      return r;
+    }
+    r.image = img;
+  }
+  // アニメ画像の場合、QMovie 構築は applyPreparedLoad (main thread) で行う。
+  r.ok = true;
+  return r;
+}
+
+void ImageView::applyPreparedLoad(const PreparedLoad& r) {
   // 既存の Movie を破棄
   if (m_movie) {
     m_movie->deleteLater();
     m_movie = nullptr;
   }
-  m_fileIsAnimated = detectAnimated(filePath);
-  m_filePath = filePath;
+  m_fileIsAnimated = r.isAnimated;
+  m_filePath       = r.filePath;
 
   if (m_fileIsAnimated) {
-    auto* movie = new QMovie(filePath, QByteArray(), this);
+    auto* movie = new QMovie(r.filePath, QByteArray(), this);
     if (!movie->isValid()) {
       movie->deleteLater();
       m_fileIsAnimated = false;
@@ -347,13 +375,14 @@ bool ImageView::loadFile(const QString& filePath) {
   }
 
   if (!m_fileIsAnimated) {
-    QPixmap pm(filePath);
-    if (pm.isNull()) return false;
-    m_display->setStaticPixmap(pm);
+    // bg で QImage に読み込んだものを main で QPixmap に変換して反映。
+    const QPixmap pm = QPixmap::fromImage(r.image);
+    if (!pm.isNull()) {
+      m_display->setStaticPixmap(pm);
+    }
   }
 
   applyDisplayState();
-  return true;
 }
 
 void ImageView::clearContent() {

@@ -22,10 +22,31 @@ class TextView : public QWidget {
   Q_OBJECT
 
 public:
+  // 非同期ロード用の中間表現。prepareLoad の戻り値で、UI を触らないため
+  // ワーカースレッドで生成して main へ渡せる。
+  struct PreparedLoad {
+    bool       ok = false;
+    QString    filePath;
+    QByteArray data;
+    QString    actualEncoding;
+    QString    text;
+  };
+
   explicit TextView(QWidget* parent = nullptr);
 
   // 失敗時 (open エラー) は false。
   bool loadFile(const QString& filePath);
+
+  // ワーカースレッドで実行可能なロード処理 (UI 非依存)。
+  // QtConcurrent::run などから呼び、戻り値を applyPreparedLoad に渡す。
+  static PreparedLoad prepareLoad(const QString& filePath,
+                                  const QString& userEncoding);
+  // ワーカーの結果を UI に反映する。必ずメインスレッドから呼ぶこと。
+  void applyPreparedLoad(const PreparedLoad& result);
+
+  // 現在ユーザーが選んでいるエンコード (m_encoding)。
+  // ViewerPanel から prepareLoad に渡す引数を取得するために使う。
+  QString currentUserEncoding() const { return m_encoding; }
 
   // 表示中ファイルをクリア。
   void clearContent();

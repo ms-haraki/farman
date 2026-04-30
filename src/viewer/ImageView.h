@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.h"
+#include <QImage>
 #include <QPixmap>
 #include <QPointer>
 #include <QString>
@@ -27,10 +28,24 @@ class ImageView : public QWidget {
   Q_OBJECT
 
 public:
+  // 非同期ロード用の中間表現。アニメ画像はメインスレッドで QMovie を作る
+  // 必要があるため bg では QImage を使わず「アニメかどうか」だけ確定させる。
+  struct PreparedLoad {
+    bool    ok          = false;
+    QString filePath;
+    bool    isAnimated  = false;
+    QImage  image;       // 静止画のときのみ有効
+  };
+
   explicit ImageView(QWidget* parent = nullptr);
 
   // 失敗時 (open エラー or 画像でない) は false。
   bool loadFile(const QString& filePath);
+
+  // ワーカースレッドで実行可能なロード処理 (UI 非依存)。
+  static PreparedLoad prepareLoad(const QString& filePath);
+  // ワーカーの結果を UI に反映する。必ずメインスレッドから呼ぶこと。
+  void applyPreparedLoad(const PreparedLoad& result);
 
   // 表示中ファイルをクリア。
   void clearContent();

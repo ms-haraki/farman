@@ -3,12 +3,20 @@
 #include "viewer/BinaryView.h"
 #include "viewer/ImageView.h"
 #include "viewer/TextView.h"
-#include <QVBoxLayout>
-#include <QStackedWidget>
+#include <QApplication>
+#include <QEventLoop>
 #include <QFileInfo>
+#include <QFutureWatcher>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QLocale>
 #include <QMimeDatabase>
 #include <QMimeType>
+#include <QProgressBar>
 #include <QRegularExpression>
+#include <QStackedWidget>
+#include <QVBoxLayout>
+#include <QtConcurrent/QtConcurrentRun>
 
 namespace Farman {
 
@@ -38,6 +46,45 @@ void ViewerPanel::setupUi() {
   // ===== Binary Viewer (fallback) =====
   m_binaryView = new BinaryView(this);
   m_stack->addWidget(m_binaryView);
+
+  // ===== Loading placeholder =====
+  // 大きいファイルや行数の多いテキストの読み込み中、ユーザーに「何も
+  // 起きていない」と思わせないためのプレースホルダ。indeterminate な
+  // QProgressBar を出して動いている感を出す (実際のロードは同期的なので
+  // 動きは限定的だが、画面が真っ白で固まったように見えるのは防げる)。
+  m_loadingPage = new QWidget(this);
+  QVBoxLayout* loadingLayout = new QVBoxLayout(m_loadingPage);
+  loadingLayout->setContentsMargins(24, 24, 24, 24);
+  loadingLayout->setSpacing(12);
+  loadingLayout->addStretch();
+
+  m_loadingTitle = new QLabel(tr("Loading..."), m_loadingPage);
+  QFont f = m_loadingTitle->font();
+  f.setPointSizeF(f.pointSizeF() + 2.0);
+  f.setBold(true);
+  m_loadingTitle->setFont(f);
+  m_loadingTitle->setAlignment(Qt::AlignCenter);
+  loadingLayout->addWidget(m_loadingTitle);
+
+  m_loadingDetail = new QLabel(QString(), m_loadingPage);
+  m_loadingDetail->setAlignment(Qt::AlignCenter);
+  m_loadingDetail->setWordWrap(true);
+  m_loadingDetail->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  loadingLayout->addWidget(m_loadingDetail);
+
+  m_loadingBar = new QProgressBar(m_loadingPage);
+  m_loadingBar->setRange(0, 0);   // indeterminate
+  m_loadingBar->setTextVisible(false);
+  m_loadingBar->setMaximumWidth(320);
+  // 中央寄せ用に水平レイアウトにラップ
+  QHBoxLayout* barRow = new QHBoxLayout();
+  barRow->addStretch();
+  barRow->addWidget(m_loadingBar);
+  barRow->addStretch();
+  loadingLayout->addLayout(barRow);
+
+  loadingLayout->addStretch();
+  m_stack->addWidget(m_loadingPage);
 }
 
 namespace {
@@ -106,40 +153,101 @@ bool ViewerPanel::openFile(const QString& filePath, ViewerKind kind) {
     return false;
   }
 
+  // ロード前にプレースホルダを出して 1 回再描画させる。
+  // (実際のロードは同期的なので、ロード中の動的更新はないが、空白で
+  // フリーズしているように見えるのを防ぐ)
+  showLoadingState(filePath);
+  QApplication::setOverrideCursor(Qt::WaitCursor);
+
+  bool ok = false;
+
   // 呼び出し側がビュアーを強制している場合はルーティングをスキップ
   switch (kind) {
-    case ViewerKind::Text:   return openTextFile(filePath);
-    case ViewerKind::Image:  return openImageFile(filePath);
-    case ViewerKind::Binary: return openBinaryFile(filePath);
-    case ViewerKind::Auto:   break;
+    case ViewerKind::Text:   ok = openTextFile(filePath);   break;
+    case ViewerKind::Image:  ok = openImageFile(filePath);  break;
+    case ViewerKind::Binary: ok = openBinaryFile(filePath); break;
+    case ViewerKind::Auto: {
+      const QString extension = fileInfo.suffix().toLower();
+      QMimeDatabase mimeDb;
+      const QMimeType mime = mimeDb.mimeTypeForFile(filePath);
+      const Settings& s = Settings::instance();
+
+      // 画像ビュアー: 拡張子 (グロブ可) または MIME パターンマッチ
+      if (extensionMatches(s.imageViewerExtensions(), extension)
+          || mimeMatches(s.imageViewerMimePatterns(), mime)) {
+        ok = openImageFile(filePath);
+      }
+      // テキストビュアー: 拡張子 (グロブ可) または MIME パターンマッチ
+      else if (extensionMatches(s.textViewerExtensions(), extension)
+               || mimeMatches(s.textViewerMimePatterns(), mime)) {
+        ok = openTextFile(filePath);
+      }
+      // それ以外はバイナリビュアーへフォールバック
+      else {
+        ok = openBinaryFile(filePath);
+      }
+      break;
+    }
   }
 
-  const QString extension = fileInfo.suffix().toLower();
-  QMimeDatabase mimeDb;
-  const QMimeType mime = mimeDb.mimeTypeForFile(filePath);
-
-  const Settings& s = Settings::instance();
-
-  // 画像ビュアー: 拡張子 (グロブ可) または MIME パターンマッチ
-  if (extensionMatches(s.imageViewerExtensions(), extension)
-      || mimeMatches(s.imageViewerMimePatterns(), mime)) {
-    return openImageFile(filePath);
-  }
-
-  // テキストビュアー: 拡張子 (グロブ可) または MIME パターンマッチ
-  if (extensionMatches(s.textViewerExtensions(), extension)
-      || mimeMatches(s.textViewerMimePatterns(), mime)) {
-    return openTextFile(filePath);
-  }
-
-  // それ以外はバイナリビュアーへフォールバック
-  return openBinaryFile(filePath);
+  QApplication::restoreOverrideCursor();
+  return ok;
 }
 
-bool ViewerPanel::openTextFile(const QString& filePath) {
-  if (!m_textView->loadFile(filePath)) {
-    return false;
+void ViewerPanel::showLoadingState(const QString& filePath) {
+  const QFileInfo fi(filePath);
+  m_loadingTitle->setText(tr("Loading..."));
+  const QString sizeStr = QLocale(QLocale::English)
+                            .formattedDataSize(fi.size());
+  // ファイル名 (太字相当) と サイズ・パスを 2 行で。
+  m_loadingDetail->setText(QStringLiteral("%1\n%2 — %3")
+                             .arg(fi.fileName(), sizeStr, fi.absolutePath()));
+  m_stack->setCurrentWidget(m_loadingPage);
+
+  // 確実に画面に出すための強制再描画。
+  // - processEvents(ExcludeUserInputEvents) だけでは初回表示時 (レイアウト
+  //   が未確定) に paint が間に合わないことがあるため、AllEvents で時間を
+  //   与えつつ、子ウィジェットも含めて同期 repaint する。
+  // - ProgressBar を含めて 2 回 processEvents を回し、1 回目の paint で
+  //   生成されたフォローアップ描画イベント (子ウィジェット) も拾わせる。
+  QApplication::sendPostedEvents();
+  m_loadingPage->repaint();
+  m_loadingTitle->repaint();
+  m_loadingDetail->repaint();
+  m_loadingBar->repaint();
+  QApplication::processEvents(QEventLoop::AllEvents, 50);
+  QApplication::processEvents(QEventLoop::AllEvents, 50);
+}
+
+// 各ビュアーの prepareLoad をワーカースレッドで実行し、戻り値を待つ間
+// メインスレッドのイベントループは回り続ける (= プログレスバーが動く /
+// 「読み込み中…」が見える)。ExcludeUserInputEvents で待機中のクリックや
+// キー入力は無視する (再入を防ぐ)。
+namespace {
+
+template <typename T>
+T waitForFutureWithEventLoop(QFuture<T> future) {
+  QFutureWatcher<T> watcher;
+  QEventLoop        loop;
+  QObject::connect(&watcher, &QFutureWatcher<T>::finished,
+                   &loop,    &QEventLoop::quit);
+  watcher.setFuture(future);
+  if (!future.isFinished()) {
+    loop.exec(QEventLoop::ExcludeUserInputEvents);
   }
+  return watcher.result();
+}
+
+} // namespace
+
+bool ViewerPanel::openTextFile(const QString& filePath) {
+  auto future = QtConcurrent::run(&TextView::prepareLoad,
+                                   filePath,
+                                   m_textView->currentUserEncoding());
+  TextView::PreparedLoad p = waitForFutureWithEventLoop(future);
+  if (!p.ok) return false;
+
+  m_textView->applyPreparedLoad(p);
   m_stack->setCurrentWidget(m_textView);
   setFocusProxy(m_textView);
   m_currentFilePath = filePath;
@@ -149,9 +257,11 @@ bool ViewerPanel::openTextFile(const QString& filePath) {
 }
 
 bool ViewerPanel::openImageFile(const QString& filePath) {
-  if (!m_imageView->loadFile(filePath)) {
-    return false;
-  }
+  auto future = QtConcurrent::run(&ImageView::prepareLoad, filePath);
+  ImageView::PreparedLoad p = waitForFutureWithEventLoop(future);
+  if (!p.ok) return false;
+
+  m_imageView->applyPreparedLoad(p);
   m_stack->setCurrentWidget(m_imageView);
   setFocusProxy(m_imageView);
   m_currentFilePath = filePath;
@@ -161,9 +271,15 @@ bool ViewerPanel::openImageFile(const QString& filePath) {
 }
 
 bool ViewerPanel::openBinaryFile(const QString& filePath) {
-  if (!m_binaryView->loadFile(filePath)) {
-    return false;
-  }
+  auto future = QtConcurrent::run(&BinaryView::prepareLoad,
+                                   filePath,
+                                   m_binaryView->currentUnit(),
+                                   m_binaryView->currentEndian(),
+                                   m_binaryView->currentEncoding());
+  BinaryView::PreparedLoad p = waitForFutureWithEventLoop(future);
+  if (!p.ok) return false;
+
+  m_binaryView->applyPreparedLoad(p);
   m_stack->setCurrentWidget(m_binaryView);
   setFocusProxy(m_binaryView);
   m_currentFilePath = filePath;

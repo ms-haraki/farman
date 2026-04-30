@@ -4,6 +4,8 @@
 #include <QWidget>
 
 class QStackedWidget;
+class QLabel;
+class QProgressBar;
 
 namespace Farman {
 
@@ -43,11 +45,20 @@ private:
   bool openTextFile(const QString& filePath);
   bool openImageFile(const QString& filePath);
   bool openBinaryFile(const QString& filePath);
+  // ロード中表示に切り替え、ファイル名・サイズを書き込んで再描画する。
+  // 同期的なロードに入る前に呼ぶと、ユーザーには「読み込み中…」が見える。
+  void showLoadingState(const QString& filePath);
 
-  QStackedWidget* m_stack      = nullptr;
-  TextView*       m_textView   = nullptr;
-  ImageView*      m_imageView  = nullptr;
-  BinaryView*     m_binaryView = nullptr;
+  QStackedWidget* m_stack       = nullptr;
+  TextView*       m_textView    = nullptr;
+  ImageView*      m_imageView   = nullptr;
+  BinaryView*     m_binaryView  = nullptr;
+
+  // ロード中に出すプレースホルダ。indeterminate な QProgressBar を持つ。
+  QWidget*        m_loadingPage = nullptr;
+  QLabel*         m_loadingTitle = nullptr;
+  QLabel*         m_loadingDetail = nullptr;
+  QProgressBar*   m_loadingBar  = nullptr;
 
   QString m_currentFilePath;
 };

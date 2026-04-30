@@ -20,10 +20,36 @@ class BinaryView : public QWidget {
   Q_OBJECT
 
 public:
+  // 非同期ロード用の中間表現。prepareLoad の戻り値で、UI を触らないため
+  // ワーカースレッドで生成して main へ渡せる。
+  // hex 文字列の組み立て (重い) はここで行うので、main 側は
+  // setPlainText するだけになる。
+  struct PreparedLoad {
+    bool       ok          = false;
+    QString    filePath;
+    qint64     totalSize   = 0;
+    qint64     loadedSize  = 0;
+    QByteArray data;
+    QString    text;       // 完成済みの hex ダンプ + truncated 注記
+  };
+
   explicit BinaryView(QWidget* parent = nullptr);
 
   // 失敗時 (open エラー) は false。
   bool loadFile(const QString& filePath);
+
+  // ワーカースレッドで実行可能なロード処理 (UI 非依存)。
+  static PreparedLoad prepareLoad(const QString&     filePath,
+                                  BinaryViewerUnit   unit,
+                                  BinaryViewerEndian endian,
+                                  const QString&     encoding);
+  // ワーカーの結果を UI に反映する。必ずメインスレッドから呼ぶこと。
+  void applyPreparedLoad(const PreparedLoad& result);
+
+  // 現在の実効ローカル設定 (ViewerPanel が prepareLoad に渡す)。
+  BinaryViewerUnit   currentUnit()     const { return m_unit; }
+  BinaryViewerEndian currentEndian()   const { return m_endian; }
+  QString            currentEncoding() const { return m_encoding; }
 
   // 表示中ファイルをクリア。
   void clearContent();

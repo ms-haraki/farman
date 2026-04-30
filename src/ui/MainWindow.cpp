@@ -191,10 +191,18 @@ void MainWindow::showViewer(const QString& filePath) {
 }
 
 void MainWindow::showViewerWith(const QString& filePath, ViewerPanel::ViewerKind kind) {
-  if (m_viewerPanel->openFile(filePath, kind)) {
-    m_stack->setCurrentWidget(m_viewerPanel);
-    m_viewerPanel->setFocus();
-    updateStatusBar();
+  // 先にビュアーパネルへ切り替えてからロードする。これで ViewerPanel
+  // 内部で表示する「読み込み中…」プレースホルダがユーザーから見える
+  // 状態になる (順序を逆にすると、ロード中は依然としてファイルリストが
+  // 見えており、ロードが終わってからスタックが切り替わるため、
+  // 「ロード中の表示」が無いように見えてしまう)。
+  m_stack->setCurrentWidget(m_viewerPanel);
+  m_viewerPanel->setFocus();
+  updateStatusBar();
+
+  if (!m_viewerPanel->openFile(filePath, kind)) {
+    // 失敗時はファイルマネージャパネルへ戻す
+    showFileManager();
   }
 }
 

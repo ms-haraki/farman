@@ -283,19 +283,60 @@ void BinaryView::syncFromSettings() {
 }
 
 bool BinaryView::loadFile(const QString& filePath) {
+  // 同期ロード経路: prepareLoad + applyPreparedLoad を続けて呼ぶだけ。
+  // 非同期化したい呼び出し元 (ViewerPanel) は両者を別スレッドに振り分ける。
+  PreparedLoad p = prepareLoad(filePath, m_unit, m_endian, m_encoding);
+  if (!p.ok) return false;
+  applyPreparedLoad(p);
+  return true;
+}
+
+BinaryView::PreparedLoad BinaryView::prepareLoad(const QString&     filePath,
+                                                 BinaryViewerUnit   unit,
+                                                 BinaryViewerEndian endian,
+                                                 const QString&     encoding) {
+  PreparedLoad r;
+  r.filePath = filePath;
+
   QFile file(filePath);
   if (!file.open(QIODevice::ReadOnly)) {
-    return false;
+    return r;
   }
-
-  m_filePath   = filePath;
-  m_totalSize  = file.size();
-  m_loadedSize = qMin<qint64>(m_totalSize, kMaxBytes);
-  m_data       = file.read(m_loadedSize);
+  r.totalSize  = file.size();
+  r.loadedSize = qMin<qint64>(r.totalSize, kMaxBytes);
+  r.data       = file.read(r.loadedSize);
   file.close();
 
-  render();
-  return true;
+  // 重い hex 整形をワーカースレッドで先に済ませる。
+  r.text = formatHexDump(r.data, unit, endian, encoding);
+  if (r.totalSize > r.loadedSize) {
+    r.text.append(QStringLiteral("...\n[truncated: showing first %1 of %2 bytes]\n")
+                    .arg(r.loadedSize)
+                    .arg(r.totalSize));
+  }
+  r.ok = true;
+  return r;
+}
+
+void BinaryView::applyPreparedLoad(const PreparedLoad& r) {
+  m_filePath   = r.filePath;
+  m_data       = r.data;
+  m_totalSize  = r.totalSize;
+  m_loadedSize = r.loadedSize;
+
+  // ハイライタを一旦切り離す。さもないと setPlainText の contentsChange を
+  // 起点に全行 (8MB なら ~500K 行) で highlightBlock が同期実行され、
+  // メインスレッドが長時間ブロックされて (プログレスバーが止まって) しまう。
+  // 流し込みが終わったあと再アタッチすれば、可視ブロックだけが再ハイライト
+  // されるので大幅に短縮できる。
+  if (m_addressHighlighter) {
+    m_addressHighlighter->setDocument(nullptr);
+  }
+  m_textArea->setPlainText(r.text);
+  if (m_addressHighlighter) {
+    m_addressHighlighter->setDocument(m_textArea->document());
+  }
+  m_textArea->moveCursor(QTextCursor::Start);
 }
 
 void BinaryView::clearContent() {
