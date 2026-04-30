@@ -406,10 +406,17 @@ void FileManagerPanel::syncActiveToOther() {
 }
 
 bool FileManagerPanel::handleKeyEvent(QKeyEvent* event) {
-  // Tabキーでペイン切り替え（2ペイン表示時のみ）
-  if (event->key() == Qt::Key_Tab && !m_singlePaneMode) {
-    handleTabKey();
-    return true;
+  // Tab: ファイルリストから ★ ブックマークへフォーカスを移す
+  // (Tab 連鎖の起点)。以降は FileListPane の eventFilter が
+  //   ★ → アドレスバー → フォルダボタン → ファイルリスト
+  // と循環させる。
+  // (旧仕様の「Tab で左右ペイン切替」は廃止。ペイン切替は ← / → や
+  // マウスクリックで行う。)
+  if (event->key() == Qt::Key_Tab) {
+    if (FileListPane* pane = activePane()) {
+      pane->focusBookmarkLabel();
+      return true;
+    }
   }
 
   // 左キーの処理

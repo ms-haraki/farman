@@ -4,6 +4,7 @@
 #include <QWidget>
 
 class QLabel;
+class QLineEdit;
 class QToolButton;
 class QTableView;
 class QFileSystemWatcher;
@@ -46,6 +47,12 @@ public:
   // setSinglePaneMode と applySettings の両方から呼ばれる。
   void applyColumnVisibility(bool singlePane);
 
+  // アドレスバーを編集モードにしてフォーカスを移す。Tab キーで FileList から
+  // アドレスバーへ飛ばすために FileManagerPanel から呼ばれる。
+  void focusAddressBar();
+  // ★ ブックマークラベルへフォーカス。Tab 連鎖の起点として使う。
+  void focusBookmarkLabel();
+
 signals:
   void folderButtonClicked();
   void currentChanged(const QModelIndex& current, const QModelIndex& previous);
@@ -59,6 +66,9 @@ public:
   // - 未登録なら名前入力ダイアログを出し、OK で追加、キャンセルで何もしない。
   void toggleBookmarkForCurrentPath();
 
+protected:
+  bool eventFilter(QObject* watched, QEvent* event) override;
+
 private slots:
   void onFolderButtonClicked();
   void onBookmarkButtonClicked();
@@ -69,13 +79,19 @@ private slots:
   // 外部からカレントディレクトリが変更されたとき (Finder 等) の遅延更新。
   // QFileSystemWatcher のイベントを debounce してから model を refresh する。
   void onExternalDirectoryChanged();
+  // アドレスバー編集
+  void enterAddressEdit();    // 表示モード → 編集モード
+  void cancelAddressEdit();   // 編集を破棄して表示モードへ戻す
+  void commitAddressEdit();   // Enter: 入力されたパスへ移動
 
 private:
   void setupUi();
+  void leaveAddressEdit(bool restoreText);
 
-  QLabel* m_addressLabel;
-  ClickableLabel* m_bookmarkLabel;
-  QToolButton* m_folderButton;
+  QLineEdit*       m_addressEdit = nullptr;
+  bool             m_addressEditing = false;  // 現在編集モードか
+  ClickableLabel*  m_bookmarkLabel;
+  QToolButton*     m_folderButton;
   FileListView* m_view;
   QLabel* m_sortFilterStatusLabel;
   FileListModel* m_model;

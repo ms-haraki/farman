@@ -9,25 +9,28 @@
 #include "core/BookmarkManager.h"
 #include "utils/Dialogs.h"
 #include "types.h"
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QLabel>
-#include <QToolButton>
-#include <QTableView>
-#include <QHeaderView>
-#include <QStyle>
-#include <QInputDialog>
-#include <QLineEdit>
+#include <QApplication>
 #include <QDir>
 #include <QFileInfo>
 #include <QFileSystemWatcher>
+#include <QHBoxLayout>
+#include <QHeaderView>
+#include <QInputDialog>
+#include <QKeyEvent>
+#include <QLabel>
+#include <QLineEdit>
+#include <QStyle>
+#include <QTableView>
 #include <QTimer>
+#include <QToolButton>
+#include <QUrl>
+#include <QVBoxLayout>
 
 namespace Farman {
 
 FileListPane::FileListPane(QWidget* parent)
   : QWidget(parent)
-  , m_addressLabel(nullptr)
+  , m_addressEdit(nullptr)
   , m_bookmarkLabel(nullptr)
   , m_folderButton(nullptr)
   , m_view(nullptr)
@@ -72,23 +75,45 @@ void FileListPane::setupUi() {
   m_bookmarkLabel = new ClickableLabel(this);
   m_bookmarkLabel->setText(QStringLiteral("★"));
   m_bookmarkLabel->setCursor(Qt::PointingHandCursor);
+  // Tab で到達できるようにし、Enter / Return でブックマーク登録/解除を
+  // トグル (eventFilter で実装)。
+  m_bookmarkLabel->setFocusPolicy(Qt::StrongFocus);
+  m_bookmarkLabel->installEventFilter(this);
   connect(m_bookmarkLabel, &ClickableLabel::clicked,
           this, &FileListPane::onBookmarkButtonClicked);
   pathLayout->addWidget(m_bookmarkLabel, 0);
 
-  m_addressLabel = new QLabel(this);
-  // パスが長くてもペイン幅を押し広げないよう、水平方向の推奨幅は無視させる。
-  // テキストは end を elide で表示して親幅に収まるようにする。
-  m_addressLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-  m_addressLabel->setMinimumWidth(0);
-  m_addressLabel->setTextFormat(Qt::PlainText);
-  pathLayout->addWidget(m_addressLabel, 1);
+  // アドレスバー: QLineEdit を読取専用 + フレーム無しで配置し、
+  // 表示中はラベルのように見せる。クリックすると編集モードに入り
+  // フレームを出して直接パスを入力できるようにする (Finder / Explorer
+  // からのコピペ用)。
+  m_addressEdit = new QLineEdit(this);
+  m_addressEdit->setReadOnly(true);
+  m_addressEdit->setFrame(false);
+  m_addressEdit->setCursor(Qt::IBeamCursor);
+  m_addressEdit->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+  m_addressEdit->setMinimumWidth(0);
+  m_addressEdit->setToolTip(
+    tr("Click to edit the path. Press Enter to navigate, Esc to cancel."));
+  m_addressEdit->installEventFilter(this);
+  connect(m_addressEdit, &QLineEdit::returnPressed,
+          this, &FileListPane::commitAddressEdit);
+  pathLayout->addWidget(m_addressEdit, 1);
 
   m_folderButton = new QToolButton(this);
   m_folderButton->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
   m_folderButton->setToolTip(tr("Browse folder..."));
+  // Tab で到達できる + フォーカス時に視覚的に強調する。Enter は eventFilter
+  // 側でクリックに変換 (macOS では QToolButton の標準 Enter ハンドリングが
+  // 弱いことがあるため明示)。
+  m_folderButton->setFocusPolicy(Qt::StrongFocus);
+  m_folderButton->installEventFilter(this);
   connect(m_folderButton, &QToolButton::clicked, this, &FileListPane::onFolderButtonClicked);
   pathLayout->addWidget(m_folderButton);
+
+  // ★ → アドレスバー → フォルダボタン → ファイルリスト の Tab 連鎖は
+  // eventFilter で明示的に組み立てる (macOS の Tab ナビゲーション設定に
+  // 依存せず動かすため)。setTabOrder は補助。
 
   mainLayout->addWidget(pathWidget);
 
@@ -167,6 +192,13 @@ void FileListPane::setupUi() {
   // 選んだときにこの値に戻す。
   m_defaultRowHeight = m_view->verticalHeader()->defaultSectionSize();
 
+  // Tab 順 (補助): アドレスバー → フォルダボタン → ★ → ファイルリスト本体
+  // (本体はアクティブペインに切替えるロジックも絡むので、最終的な遷移は
+  // eventFilter / FileManagerPanel::handleKeyEvent 側で制御する)。
+  setTabOrder(m_addressEdit, m_folderButton);
+  setTabOrder(m_folderButton, m_bookmarkLabel);
+  setTabOrder(m_bookmarkLabel, m_view);
+
   mainLayout->addWidget(m_view);
 
   // ソート・フィルタ条件の現在値をリスト下部に表示
@@ -187,13 +219,20 @@ void FileListPane::setupUi() {
 void FileListPane::refreshAppearance() {
   const QColor fg = Settings::instance().addressForeground();
   const QColor bg = Settings::instance().addressBackground();
-  const QString addressStyle = QString("QLabel { color: %1; background-color: %2; padding: 2px 5px; }")
+  // QLineEdit はフレーム無し + 同じ padding で QLabel 風の見た目にする。
+  // 編集モードに入ると QLineEdit の通常 frame が出るので視覚的にも分かる。
+  const QString addressStyle = QString(
+    "QLineEdit { color: %1; background-color: %2; padding: 2px 5px; }"
+    "QLabel    { color: %1; background-color: %2; padding: 2px 5px; }")
                                  .arg(fg.name(), bg.name());
-  const QString buttonStyle = QString("QToolButton { background-color: %1; border: none; padding: 2px; }")
+  // フォーカス時 (Tab で到達したとき) にハイライト枠を出して視認性を上げる。
+  const QString buttonStyle = QString(
+    "QToolButton { background-color: %1; border: 1px solid transparent; padding: 2px; }"
+    "QToolButton:focus { border: 2px solid palette(highlight); }")
                                 .arg(bg.name());
-  if (m_addressLabel) {
-    m_addressLabel->setStyleSheet(addressStyle);
-    m_addressLabel->setFont(Settings::instance().addressFont());
+  if (m_addressEdit) {
+    m_addressEdit->setStyleSheet(addressStyle);
+    m_addressEdit->setFont(Settings::instance().addressFont());
   }
   if (m_folderButton) m_folderButton->setStyleSheet(buttonStyle);
   if (m_view) {
@@ -246,6 +285,192 @@ QString FileListPane::currentPath() const {
   return m_model->currentPath();
 }
 
+// ── アドレスバー編集 ───────────────────────────────
+//
+// QLineEdit を「読取専用 + フレーム無し」で常設し、クリックや Tab 経由で
+// フォーカスを得たタイミングで編集モードに切り替える。
+// - 編集モード中: フレーム可視 + 編集可、テキストを全選択
+// - Enter: commitAddressEdit でパスを解決して移動
+// - Esc / focus-out: cancelAddressEdit で元のパスに戻して読取専用へ
+
+void FileListPane::enterAddressEdit() {
+  if (!m_addressEdit || m_addressEditing) return;
+  m_addressEditing = true;
+  m_addressEdit->setReadOnly(false);
+  m_addressEdit->setFrame(true);
+  m_addressEdit->setCursor(Qt::IBeamCursor);
+  m_addressEdit->setFocus(Qt::OtherFocusReason);
+  m_addressEdit->selectAll();
+}
+
+void FileListPane::leaveAddressEdit(bool restoreText) {
+  if (!m_addressEdit) return;
+  m_addressEditing = false;
+  m_addressEdit->setReadOnly(true);
+  m_addressEdit->setFrame(false);
+  if (restoreText && m_model) {
+    m_addressEdit->setText(m_model->currentPath());
+  }
+  m_addressEdit->deselect();
+}
+
+void FileListPane::cancelAddressEdit() {
+  leaveAddressEdit(/*restoreText=*/true);
+  if (m_view) m_view->setFocus();
+}
+
+void FileListPane::focusAddressBar() {
+  // 公開 API。enterAddressEdit が編集モード化とフォーカス移動・全選択を
+  // まとめて行う。
+  enterAddressEdit();
+}
+
+void FileListPane::focusBookmarkLabel() {
+  // 公開 API (Tab 連鎖の起点)。
+  if (m_bookmarkLabel) {
+    m_bookmarkLabel->setFocus(Qt::TabFocusReason);
+  }
+}
+
+void FileListPane::commitAddressEdit() {
+  if (!m_addressEdit) return;
+  QString text = m_addressEdit->text().trimmed();
+
+  // ~ / ~/ を $HOME に展開 (タイル単独もサポート)。
+  if (text == QStringLiteral("~")) {
+    text = QDir::homePath();
+  } else if (text.startsWith(QStringLiteral("~/"))) {
+    text.replace(0, 1, QDir::homePath());
+  }
+
+  // file:// URI ペーストへの簡易対応 (Finder からのコピーで来るケースあり)。
+  if (text.startsWith(QStringLiteral("file://"))) {
+    const QUrl url(text);
+    if (url.isLocalFile()) text = url.toLocalFile();
+  }
+
+  if (text.isEmpty()) {
+    cancelAddressEdit();
+    return;
+  }
+
+  QFileInfo info(text);
+  // ファイルが指定されたら親ディレクトリを採用 (Finder で .app をコピーした
+  // ようなケース)。それ以外で存在しないパスはエラー扱い。
+  if (info.exists() && info.isFile()) {
+    text = info.absolutePath();
+    info.setFile(text);
+  }
+  if (!info.exists() || !info.isDir()) {
+    QApplication::beep();
+    if (m_addressEdit) m_addressEdit->selectAll();
+    return;
+  }
+
+  // 現在パスと一致しても setPath で no-op 扱いされるので問題無い。
+  setPath(info.absoluteFilePath());
+  leaveAddressEdit(/*restoreText=*/false);  // setPath で更新済み
+  if (m_view) m_view->setFocus();
+}
+
+bool FileListPane::eventFilter(QObject* watched, QEvent* event) {
+  // ★ ブックマーク / アドレスバー / フォルダボタン の Tab 連鎖と
+  // 各ウィジェットの Enter / Return ハンドリングを明示的に処理する。
+  // 連鎖の順序: ★ → addressEdit → folderButton → view → ★ (循環)。
+  // macOS の Tab ナビゲーション設定に依存せず動かすため Qt 既定では
+  // なく eventFilter で実装する。
+  const bool isKeyPress = (event->type() == QEvent::KeyPress);
+  const bool isShortcutOverride = (event->type() == QEvent::ShortcutOverride);
+  if (isKeyPress || isShortcutOverride) {
+    auto* ke = static_cast<QKeyEvent*>(event);
+    const int key = ke->key();
+    const auto mods = ke->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier
+                                          | Qt::AltModifier  | Qt::MetaModifier);
+
+    // Tab / Backtab の連鎖
+    if (key == Qt::Key_Tab || key == Qt::Key_Backtab) {
+      const bool back = (key == Qt::Key_Backtab) || (mods & Qt::ShiftModifier);
+      QWidget* next = nullptr;
+      if (watched == m_bookmarkLabel) {
+        next = back ? static_cast<QWidget*>(m_view) : static_cast<QWidget*>(m_addressEdit);
+      } else if (watched == m_addressEdit) {
+        next = back ? static_cast<QWidget*>(m_bookmarkLabel) : static_cast<QWidget*>(m_folderButton);
+      } else if (watched == m_folderButton) {
+        next = back ? static_cast<QWidget*>(m_addressEdit) : static_cast<QWidget*>(m_view);
+      }
+      if (next) {
+        if (isKeyPress) {
+          if (next == m_addressEdit) {
+            // アドレスバーは編集モードに入って全選択
+            enterAddressEdit();
+          } else {
+            next->setFocus(Qt::TabFocusReason);
+          }
+        }
+        event->accept();
+        return true;
+      }
+    }
+
+    // Enter / Return
+    if (key == Qt::Key_Return || key == Qt::Key_Enter) {
+      if (watched == m_bookmarkLabel) {
+        if (isKeyPress) toggleBookmarkForCurrentPath();
+        event->accept();
+        return true;
+      }
+      if (watched == m_folderButton) {
+        if (isKeyPress && m_folderButton) m_folderButton->click();
+        event->accept();
+        return true;
+      }
+    }
+  }
+
+  if (watched != m_addressEdit) {
+    return QWidget::eventFilter(watched, event);
+  }
+
+  switch (event->type()) {
+    case QEvent::MouseButtonPress: {
+      // 読取専用状態でクリックされたら編集モードに入る。
+      if (!m_addressEditing) {
+        enterAddressEdit();
+        // クリックそのものはそのまま QLineEdit に流して、
+        // クリック位置にカーソルを置けるようにする。
+      }
+      break;
+    }
+    case QEvent::FocusIn: {
+      // Tab 経由などでフォーカスが入ったときも編集モードに入る。
+      if (!m_addressEditing) {
+        enterAddressEdit();
+      }
+      break;
+    }
+    case QEvent::FocusOut: {
+      // 編集途中でフォーカスを失ったら破棄して元の表示に戻す。
+      // (commitAddressEdit が成功したときは leaveAddressEdit 後に
+      //  setFocus を view に移すので、その時点で既に編集モード OFF)
+      if (m_addressEditing) {
+        leaveAddressEdit(/*restoreText=*/true);
+      }
+      break;
+    }
+    case QEvent::KeyPress: {
+      auto* ke = static_cast<QKeyEvent*>(event);
+      if (m_addressEditing && ke->key() == Qt::Key_Escape) {
+        cancelAddressEdit();
+        return true;
+      }
+      break;
+    }
+    default:
+      break;
+  }
+  return QWidget::eventFilter(watched, event);
+}
+
 QTableView* FileListPane::view() const {
   return m_view;
 }
@@ -291,7 +516,7 @@ void FileListPane::onExternalDirectoryChanged() {
 bool FileListPane::setPath(const QString& path) {
   bool result = m_model->setPath(path);
   if (result) {
-    m_addressLabel->setText(m_model->currentPath());
+    m_addressEdit->setText(m_model->currentPath());
     refreshBookmarkIndicator();
     // 外部変更ウォッチャの監視対象を新しいパスに切り替える
     if (m_dirWatcher) {
@@ -417,10 +642,13 @@ void FileListPane::refreshBookmarkIndicator() {
   const QColor bg = Settings::instance().addressBackground();
   // 登録済み: ゴールド / 未登録: 背景に溶け込むグレーで無効化表示。
   // padding はアドレスラベルと揃え、left だけ広めにしてアイコン然と見せる。
+  // フォーカス時 (Tab で到達したとき) はハイライト枠を出す。
   const QString color = marked ? QStringLiteral("#d4a017")
                                : QStringLiteral("#bdbdbd");
   const QString style = QString(
-    "QLabel { color: %1; background-color: %2; padding: 2px 2px 2px 5px; }")
+    "QLabel { color: %1; background-color: %2; padding: 2px 2px 2px 5px; "
+    "         border: 1px solid transparent; }"
+    "QLabel:focus { border: 2px solid palette(highlight); }")
     .arg(color, bg.name());
   m_bookmarkLabel->setStyleSheet(style);
 

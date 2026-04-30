@@ -974,12 +974,12 @@ Used as the initial value in the Search dialog&apos;s Exclude dirs field.</sourc
 <context>
     <name>Farman::ConfirmDialog</name>
     <message>
-        <location filename="../src/utils/Dialogs.cpp" line="36"/>
+        <location filename="../src/utils/Dialogs.cpp" line="37"/>
         <source>No</source>
         <translation>いいえ</translation>
     </message>
     <message>
-        <location filename="../src/utils/Dialogs.cpp" line="37"/>
+        <location filename="../src/utils/Dialogs.cpp" line="38"/>
         <source>Yes</source>
         <translation>はい</translation>
     </message>
@@ -1154,67 +1154,72 @@ Used as the initial value in the Search dialog&apos;s Exclude dirs field.</sourc
 <context>
     <name>Farman::FileListPane</name>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="89"/>
+        <location filename="../src/ui/FileListPane.cpp" line="93"/>
+        <source>Click to edit the path. Press Enter to navigate, Esc to cancel.</source>
+        <translation>クリックでパス編集モード。Enter で移動、Esc でキャンセル。</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/FileListPane.cpp" line="101"/>
         <source>Browse folder...</source>
         <translation>フォルダを参照...</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="376"/>
+        <location filename="../src/ui/FileListPane.cpp" line="512"/>
         <source>CS</source>
         <translation>CS</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="377"/>
+        <location filename="../src/ui/FileListPane.cpp" line="513"/>
         <source>Dot-first</source>
         <translation>ドット優先</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="384"/>
+        <location filename="../src/ui/FileListPane.cpp" line="520"/>
         <source>Hidden</source>
         <translation>隠し</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="385"/>
+        <location filename="../src/ui/FileListPane.cpp" line="521"/>
         <source>Dirs only</source>
         <translation>ディレクトリのみ</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="386"/>
+        <location filename="../src/ui/FileListPane.cpp" line="522"/>
         <source>Files only</source>
         <translation>ファイルのみ</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="393"/>
+        <location filename="../src/ui/FileListPane.cpp" line="529"/>
         <source>(none)</source>
         <translation>(なし)</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="395"/>
+        <location filename="../src/ui/FileListPane.cpp" line="531"/>
         <source>Sort: %1  │  Filter: %2</source>
         <translation>ソート: %1  │  フィルタ: %2</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="437"/>
+        <location filename="../src/ui/FileListPane.cpp" line="573"/>
         <source>Add bookmark for this directory</source>
         <translation>このディレクトリをブックマークに追加</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="438"/>
+        <location filename="../src/ui/FileListPane.cpp" line="574"/>
         <source>Default bookmark (cannot be removed)</source>
         <translation>デフォルトブックマーク (削除不可)</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="439"/>
+        <location filename="../src/ui/FileListPane.cpp" line="575"/>
         <source>Remove bookmark for this directory</source>
         <translation>このディレクトリのブックマークを削除</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="461"/>
+        <location filename="../src/ui/FileListPane.cpp" line="597"/>
         <source>Home</source>
         <translation>ホーム</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="468"/>
+        <location filename="../src/ui/FileListPane.cpp" line="604"/>
         <source>Add Bookmark</source>
         <translation>ブックマークを追加</translation>
     </message>
@@ -1308,8 +1313,8 @@ What would you like to do?</source>
         <location filename="../src/ui/FileManagerPanel.cpp" line="1234"/>
         <location filename="../src/ui/FileManagerPanel.cpp" line="1277"/>
         <location filename="../src/ui/FileManagerPanel.cpp" line="1288"/>
-        <location filename="../src/ui/FileManagerPanel.cpp" line="1665"/>
-        <location filename="../src/ui/FileManagerPanel.cpp" line="1686"/>
+        <location filename="../src/ui/FileManagerPanel.cpp" line="1668"/>
+        <location filename="../src/ui/FileManagerPanel.cpp" line="1689"/>
         <source>Error</source>
         <translation>エラー</translation>
     </message>
@@ -1330,7 +1335,7 @@ What would you like to do?</source>
     </message>
     <message>
         <location filename="../src/ui/FileManagerPanel.cpp" line="1278"/>
-        <location filename="../src/ui/FileManagerPanel.cpp" line="1666"/>
+        <location filename="../src/ui/FileManagerPanel.cpp" line="1669"/>
         <source>A file or directory with the name &apos;%1&apos; already exists.</source>
         <translation>&apos;%1&apos; という名前のファイル / ディレクトリが既に存在します。</translation>
     </message>
@@ -1386,17 +1391,17 @@ What would you like to do?</source>
         <translation>%1 件をリネーム、%2 件失敗しました。</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileManagerPanel.cpp" line="1648"/>
+        <location filename="../src/ui/FileManagerPanel.cpp" line="1650"/>
         <source>Rename</source>
         <translation>リネーム</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileManagerPanel.cpp" line="1649"/>
+        <location filename="../src/ui/FileManagerPanel.cpp" line="1651"/>
         <source>Enter new name:</source>
         <translation>新しい名前を入力:</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileManagerPanel.cpp" line="1687"/>
+        <location filename="../src/ui/FileManagerPanel.cpp" line="1690"/>
         <source>Failed to rename &apos;%1&apos; to &apos;%2&apos;.</source>
         <translation>&apos;%1&apos; を &apos;%2&apos; にリネームできませんでした。</translation>
     </message>
@@ -3033,37 +3038,37 @@ Keybindings are not affected.</source>
 <context>
     <name>QObject</name>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="340"/>
+        <location filename="../src/ui/FileListPane.cpp" line="476"/>
         <source>Name</source>
         <translation>名前</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="341"/>
+        <location filename="../src/ui/FileListPane.cpp" line="477"/>
         <source>Size</source>
         <translation>サイズ</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="342"/>
+        <location filename="../src/ui/FileListPane.cpp" line="478"/>
         <source>Type</source>
         <translation>種別</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="343"/>
+        <location filename="../src/ui/FileListPane.cpp" line="479"/>
         <source>Modified</source>
         <translation>更新日時</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="351"/>
+        <location filename="../src/ui/FileListPane.cpp" line="487"/>
         <source>Dirs First</source>
         <translation>ディレクトリ先頭</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="352"/>
+        <location filename="../src/ui/FileListPane.cpp" line="488"/>
         <source>Dirs Last</source>
         <translation>ディレクトリ末尾</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileListPane.cpp" line="353"/>
+        <location filename="../src/ui/FileListPane.cpp" line="489"/>
         <source>Mixed</source>
         <translation>混在</translation>
     </message>
@@ -3078,12 +3083,12 @@ Keybindings are not affected.</source>
         <translation>iCloud Drive</translation>
     </message>
     <message>
-        <location filename="../src/utils/Dialogs.cpp" line="132"/>
+        <location filename="../src/utils/Dialogs.cpp" line="150"/>
         <source>Cancel</source>
         <translation>キャンセル</translation>
     </message>
     <message>
-        <location filename="../src/utils/Dialogs.cpp" line="133"/>
+        <location filename="../src/utils/Dialogs.cpp" line="151"/>
         <source>OK</source>
         <translation>OK</translation>
     </message>

@@ -89,7 +89,9 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::CTRL | Qt::Key_A),    "select.all"             },
 
     // Pane
-    { QKeySequence(Qt::Key_Tab),               "pane.switch"               },
+    // Tab は FileList → アドレスバー へのフォーカス移動に使うため
+    // pane.switch のデフォルトバインドからは外している。ペイン切り替えは
+    // ← / → の端到達 / マウスクリック / ユーザーが任意キーをバインドすれば良い。
     { QKeySequence(Qt::CTRL | Qt::Key_O),      "pane.toggle_single"        },
     { QKeySequence(Qt::Key_S),                 "pane.sort_filter"          },
     { QKeySequence(Qt::CTRL | Qt::Key_Right),  "pane.sync_other_to_active" },
