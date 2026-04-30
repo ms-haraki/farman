@@ -41,6 +41,13 @@ public:
   // キーイベント処理
   bool handleKeyEvent(QKeyEvent* event);
 
+protected:
+  // 非アクティブペイン側のビューをマウスクリックされたら、そのペインを
+  // アクティブにする。
+  bool eventFilter(QObject* watched, QEvent* event) override;
+
+public:
+
   // ファイル操作
   void copySelectedFiles();
   void moveSelectedFiles();

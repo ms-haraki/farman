@@ -20,14 +20,17 @@
 #include "core/workers/RemoveWorker.h"
 #include "settings/Settings.h"
 #include "utils/Dialogs.h"
-#include <QFileInfo>
-#include <QVBoxLayout>
-#include <QSplitter>
+#include <QAbstractItemView>
+#include <QDesktopServices>
+#include <QDir>
 #include <QFileDialog>
+#include <QFileInfo>
+#include <QInputDialog>
 #include <QLocale>
 #include <QMessageBox>
-#include <QInputDialog>
-#include <QDir>
+#include <QSplitter>
+#include <QUrl>
+#include <QVBoxLayout>
 #include <QKeyEvent>
 #include <QTableView>
 #include <QHeaderView>
@@ -97,6 +100,35 @@ void FileManagerPanel::setupUi() {
 
   // Splitterのサイズを均等に
   m_splitter->setSizes(QList<int>() << 600 << 600);
+
+  // 非アクティブペインのビューをマウスクリックされたら、そのペインを
+  // アクティブに切り替える。QTableView はマウスイベントを viewport に
+  // 配送するので、eventFilter は viewport 側に仕込む。
+  if (m_leftPane && m_leftPane->view() && m_leftPane->view()->viewport()) {
+    m_leftPane->view()->viewport()->installEventFilter(this);
+  }
+  if (m_rightPane && m_rightPane->view() && m_rightPane->view()->viewport()) {
+    m_rightPane->view()->viewport()->installEventFilter(this);
+  }
+
+  // 行のダブルクリックで Shift+Enter (= file.execute) と同じ「OS 既定アプリ
+  // で開く」処理を実行する。
+  auto wireDoubleClick = [this](FileListPane* pane) {
+    if (!pane || !pane->view()) return;
+    connect(pane->view(), &QAbstractItemView::doubleClicked, this,
+            [this, pane](const QModelIndex& idx) {
+      if (!idx.isValid() || !pane->model()) return;
+      const FileItem* item = pane->model()->itemAt(idx.row());
+      if (!item || item->isDotDot()) return;
+      const QString path = item->absolutePath();
+      const bool ok = QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+      Logger::instance().log(ok ? Logger::Info : Logger::Warn,
+        QStringLiteral("Execute: %1%2")
+          .arg(path, ok ? QString() : QStringLiteral(" (failed)")));
+    });
+  };
+  wireDoubleClick(m_leftPane);
+  wireDoubleClick(m_rightPane);
 
   // ===== Log Pane =====
   m_logPane = new LogPane(this);
@@ -395,6 +427,22 @@ void FileManagerPanel::syncOtherToActive() {
   if (path.isEmpty()) return;
   navigatePane(other, path);
   updatePathSignal();
+}
+
+bool FileManagerPanel::eventFilter(QObject* watched, QEvent* event) {
+  if (event->type() == QEvent::MouseButtonPress) {
+    // クリックされた viewport がどちらのペインかを判定して、非アクティブ側
+    // だった場合はそのペインをアクティブに切り替える。実際のクリック
+    // (カーソル移動など) は通常通り続行させたいので return false。
+    QObject* leftVp  = (m_leftPane && m_leftPane->view())   ? m_leftPane->view()->viewport()  : nullptr;
+    QObject* rightVp = (m_rightPane && m_rightPane->view()) ? m_rightPane->view()->viewport() : nullptr;
+    if (leftVp && watched == leftVp && m_activePane != PaneType::Left) {
+      setActivePane(PaneType::Left);
+    } else if (rightVp && watched == rightVp && m_activePane != PaneType::Right) {
+      setActivePane(PaneType::Right);
+    }
+  }
+  return QWidget::eventFilter(watched, event);
 }
 
 void FileManagerPanel::syncActiveToOther() {
