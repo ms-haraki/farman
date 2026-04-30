@@ -26,6 +26,18 @@ void FileListModel::setActive(bool active) {
   }
 }
 
+void FileListModel::setSinglePaneMode(bool single) {
+  if (m_singlePane == single) return;
+  m_singlePane = single;
+  if (!m_entries.isEmpty()) {
+    // サイズ列・更新日時列だけ再描画させる
+    emit dataChanged(
+      index(0, Size),
+      index(m_entries.size() - 1, LastModified),
+      { Qt::DisplayRole });
+  }
+}
+
 QString FileListModel::currentPath() const {
   return m_currentPath;
 }
@@ -311,19 +323,100 @@ QVariant FileListModel::data(const QModelIndex& index, int role) const {
         if (item->isDir()) {
           return QString("<DIR>");
         } else {
-          qint64 bytes = item->size();
-          if (bytes < 1024) {
-            return QString("%1 B").arg(bytes);
-          } else if (bytes < 1024 * 1024) {
-            return QString("%1 KB").arg(bytes / 1024.0, 0, 'f', 1);
-          } else if (bytes < 1024 * 1024 * 1024) {
-            return QString("%1 MB").arg(bytes / (1024.0 * 1024.0), 0, 'f', 1);
-          } else {
-            return QString("%1 GB").arg(bytes / (1024.0 * 1024.0 * 1024.0), 0, 'f', 1);
+          const Settings& s = Settings::instance();
+          const FileSizeFormat fmt = m_singlePane ? s.fileSizeFormatSingle()
+                                                  : s.fileSizeFormatDual();
+          const qint64 bytes = item->size();
+          // 桁区切りカンマは Auto 以外で適用 (デフォルト ON)。
+          const bool sep = m_singlePane ? s.fileSizeThousandsSeparatorSingle()
+                                        : s.fileSizeThousandsSeparatorDual();
+          const bool useSep = (fmt != FileSizeFormat::Auto) && sep;
+          QLocale loc(QLocale::English);
+          if (!useSep) {
+            // ロケールの数値書式から 1000 区切りを外す
+            loc.setNumberOptions(QLocale::OmitGroupSeparator);
+          }
+          switch (fmt) {
+            case FileSizeFormat::Bytes:
+              // 素のバイト数。OmitGroupSeparator を切替えるだけで
+              // "12,345,678" と "12345678" が切替わる。
+              return QStringLiteral("%1 B").arg(loc.toString(bytes));
+            case FileSizeFormat::SI:
+              // 1000-based KB/MB/GB
+              return loc.formattedDataSize(bytes, 1, QLocale::DataSizeSIFormat);
+            case FileSizeFormat::IEC:
+              // 1024-based KiB/MiB/GiB
+              return loc.formattedDataSize(bytes, 1, QLocale::DataSizeIecFormat);
+            case FileSizeFormat::Auto:
+            default:
+              // Auto は桁区切りトグルを無視し、ロケール既定に任せる
+              // (英語ロケールで 1024-based + KB ラベル)。
+              return QLocale(QLocale::English).formattedDataSize(bytes);
           }
         }
-      case LastModified:
-        return item->lastModified().toString("yyyy/MM/dd HH:mm:ss");
+      case LastModified: {
+        const Settings& s = Settings::instance();
+        const QString fmt = m_singlePane ? s.dateTimeFormatSingle()
+                                         : s.dateTimeFormatDual();
+        return item->lastModified().toString(
+          fmt.isEmpty() ? QStringLiteral("yyyy/MM/dd HH:mm:ss") : fmt);
+      }
+      case Created: {
+        if (item->name() == QStringLiteral("..")) return QString();
+        const QFileInfo& fi = item->fileInfo();
+        // birthTime は FS が対応していないと invalid を返す。その場合は空表示。
+        const QDateTime t = fi.birthTime();
+        if (!t.isValid()) return QString();
+        const Settings& s = Settings::instance();
+        const QString fmt = m_singlePane ? s.dateTimeFormatSingle()
+                                         : s.dateTimeFormatDual();
+        return t.toString(fmt.isEmpty() ? QStringLiteral("yyyy/MM/dd HH:mm:ss") : fmt);
+      }
+      case Permissions: {
+        if (item->name() == QStringLiteral("..")) return QString();
+        // "rwxr-xr-x" 形式に整形。Qt の QFile::Permissions ビットを参照。
+        const QFile::Permissions p = item->fileInfo().permissions();
+        QString s = QStringLiteral("---------");
+        if (p & QFile::ReadOwner)  s[0] = QLatin1Char('r');
+        if (p & QFile::WriteOwner) s[1] = QLatin1Char('w');
+        if (p & QFile::ExeOwner)   s[2] = QLatin1Char('x');
+        if (p & QFile::ReadGroup)  s[3] = QLatin1Char('r');
+        if (p & QFile::WriteGroup) s[4] = QLatin1Char('w');
+        if (p & QFile::ExeGroup)   s[5] = QLatin1Char('x');
+        if (p & QFile::ReadOther)  s[6] = QLatin1Char('r');
+        if (p & QFile::WriteOther) s[7] = QLatin1Char('w');
+        if (p & QFile::ExeOther)   s[8] = QLatin1Char('x');
+        return s;
+      }
+      case Attributes: {
+        if (item->name() == QStringLiteral("..")) return QString();
+        // クロスプラットフォームに使える QFileInfo 系のフラグだけで構成。
+        // Windows のシステム/アーカイブビット等は Qt API では取れない。
+        const QFileInfo& fi = item->fileInfo();
+        QString s;
+        if (fi.isHidden())    s.append(QLatin1Char('H'));
+        if (!fi.isWritable()) s.append(QLatin1Char('R'));
+        if (fi.isSymLink())   s.append(QLatin1Char('L'));
+        return s.isEmpty() ? QStringLiteral("-") : s;
+      }
+      case Owner: {
+        if (item->name() == QStringLiteral("..")) return QString();
+        const QString owner = item->fileInfo().owner();
+        return owner.isEmpty() ? QString::number(item->fileInfo().ownerId())
+                               : owner;
+      }
+      case Group: {
+        if (item->name() == QStringLiteral("..")) return QString();
+        const QString group = item->fileInfo().group();
+        return group.isEmpty() ? QString::number(item->fileInfo().groupId())
+                               : group;
+      }
+      case LinkTarget: {
+        if (item->name() == QStringLiteral("..")) return QString();
+        const QFileInfo& fi = item->fileInfo();
+        if (!fi.isSymLink()) return QString();
+        return QStringLiteral("→ %1").arg(fi.symLinkTarget());
+      }
     }
   }
   else if (role == Qt::DecorationRole) {
@@ -388,6 +481,12 @@ QVariant FileListModel::headerData(int section, Qt::Orientation orientation, int
     case Size:         return tr("Size");
     case Type:         return tr("Type");
     case LastModified: return tr("Modified");
+    case Created:      return tr("Created");
+    case Permissions:  return tr("Permissions");
+    case Attributes:   return tr("Attributes");
+    case Owner:        return tr("Owner");
+    case Group:        return tr("Group");
+    case LinkTarget:   return tr("Link Target");
     default:           return {};
   }
 }

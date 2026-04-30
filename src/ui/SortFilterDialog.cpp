@@ -125,10 +125,13 @@ void SortFilterDialog::setupUi(const QString& directoryPath,
   mainLayout->addWidget(filterGroup);
 
   // ── Save checkbox ──
-  m_saveCheck = new QCheckBox(tr("Save for this directory"), this);
+  m_saveCheck = new QCheckBox(
+    tr("Override defaults for this directory (save)"), this);
   m_saveCheck->setToolTip(
-    tr("Remember these settings and re-apply them whenever this directory is opened. "
-       "Unchecking a previously saved directory removes its saved settings."));
+    tr("Save these settings as a per-directory override. They take priority over "
+       "the Behavior tab defaults whenever this directory is opened. "
+       "Unchecking a previously saved directory removes its override and falls "
+       "back to the defaults."));
   mainLayout->addWidget(m_saveCheck);
 
   // ── Buttons ──

@@ -13,12 +13,20 @@ class FileListModel : public QAbstractItemModel {
   Q_OBJECT
 
 public:
-  // 列定義
+  // 列定義。先頭 4 つはずっと存在していた既定列、後ろ 5 つは Behavior タブの
+  // 「Columns」設定で 2 画面 / 1 画面ごとに ON/OFF できる拡張列。
+  // 並びは固定。Name は常に表示 (UI 側でも非表示にできない)。
   enum Column {
     Name         = 0,
     Type         = 1,
     Size         = 2,
     LastModified = 3,
+    Created      = 4,
+    Permissions  = 5,
+    Attributes   = 6,
+    Owner        = 7,
+    Group        = 8,
+    LinkTarget   = 9,
     ColumnCount
   };
 
@@ -37,6 +45,12 @@ public:
   // 専用のカラーに切替える。
   void setActive(bool active);
   bool isActive() const { return m_active; }
+
+  // 1 画面モードか 2 画面モードか。サイズ・更新日時の表示形式は
+  // モード別に Settings から読むので、モードが切り替わったら表示も
+  // 切り替える。
+  void setSinglePaneMode(bool single);
+  bool isSinglePaneMode() const { return m_singlePane; }
 
   // ── パス操作 ──────────────────────────────
   QString currentPath() const;
@@ -120,6 +134,8 @@ private:
 
   // ペインのアクティブ状態（表示カラーの切替用）
   bool            m_active = true;
+  // 現在のペイン表示モード（サイズ・日時のフォーマット切替用）
+  bool            m_singlePane = false;
 };
 
 } // namespace Farman

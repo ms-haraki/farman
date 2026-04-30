@@ -78,11 +78,42 @@ public:
   int    fileListRowHeight()           const;
   void   setFileListRowHeight(int px);
 
-  FileSizeFormat fileSizeFormat()       const;
-  void           setFileSizeFormat(FileSizeFormat fmt);
+  // ファイルサイズと日時の表示形式は 2 画面モードと 1 画面モードで別々に
+  // 持つ。表示中のモードに応じてどちらかが使われる。Single 側の既定値は
+  // Dual 側と同じ (旧設定からの移行時もコピーされる)。
+  FileSizeFormat fileSizeFormatDual()        const;
+  void           setFileSizeFormatDual(FileSizeFormat fmt);
+  FileSizeFormat fileSizeFormatSingle()      const;
+  void           setFileSizeFormatSingle(FileSizeFormat fmt);
 
-  QString        dateTimeFormat()       const;
-  void           setDateTimeFormat(const QString& fmt);
+  // 桁区切りカンマを使うか (`Auto` 以外で有効)。Dual / Single でそれぞれ。デフォルト ON。
+  bool           fileSizeThousandsSeparatorDual()   const;
+  void           setFileSizeThousandsSeparatorDual(bool enabled);
+  bool           fileSizeThousandsSeparatorSingle() const;
+  void           setFileSizeThousandsSeparatorSingle(bool enabled);
+
+  // ファイルリストの列表示 ON/OFF (Name 以外)。Dual / Single モードで別々。
+  // 並び順は固定 (FileListModel::Column の並び)。
+  struct ListColumnVisibility {
+    bool type         = true;
+    bool size         = true;
+    bool lastModified = true;
+    bool created      = false;
+    bool permissions  = false;
+    bool attributes   = false;
+    bool owner        = false;
+    bool group        = false;
+    bool linkTarget   = false;
+  };
+  ListColumnVisibility listColumnVisibilityDual()   const;
+  void                 setListColumnVisibilityDual(const ListColumnVisibility& v);
+  ListColumnVisibility listColumnVisibilitySingle() const;
+  void                 setListColumnVisibilitySingle(const ListColumnVisibility& v);
+
+  QString        dateTimeFormatDual()        const;
+  void           setDateTimeFormatDual(const QString& fmt);
+  QString        dateTimeFormatSingle()      const;
+  void           setDateTimeFormatSingle(const QString& fmt);
 
   // ── カラーリング ───────────────────────
   QList<ColorRule> colorRules()         const;
@@ -293,8 +324,15 @@ private:
   QFont            m_font;
   QFont            m_addressFont;
   int              m_fileListRowHeight = 0;  // 0 = Auto
-  FileSizeFormat   m_fileSizeFormat  = FileSizeFormat::Auto;
-  QString          m_dateTimeFormat  = "yyyy/MM/dd HH:mm:ss";
+  // ファイルサイズ / 日時の表示形式 (2 画面 / 1 画面で別々)
+  FileSizeFormat   m_fileSizeFormatDual    = FileSizeFormat::Auto;
+  FileSizeFormat   m_fileSizeFormatSingle  = FileSizeFormat::Auto;
+  bool             m_fileSizeThousandsSeparatorDual   = true;  // Auto 以外で適用
+  bool             m_fileSizeThousandsSeparatorSingle = true;
+  ListColumnVisibility m_listColumnsDual;
+  ListColumnVisibility m_listColumnsSingle;
+  QString          m_dateTimeFormatDual    = "yyyy/MM/dd HH:mm:ss";
+  QString          m_dateTimeFormatSingle  = "yyyy/MM/dd HH:mm:ss";
   QList<ColorRule> m_colorRules;
   CategoryColor    m_categoryColors[static_cast<int>(FileCategory::Count)];
   CategoryColor    m_selectedCategoryColors[static_cast<int>(FileCategory::Count)];

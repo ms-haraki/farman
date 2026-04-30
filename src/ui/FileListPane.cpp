@@ -148,10 +148,20 @@ void FileListPane::setupUi() {
   connect(m_view->horizontalHeader(), &QHeaderView::sectionClicked,
           this, &FileListPane::onHeaderClicked);
 
-  m_view->setColumnWidth(FileListModel::Name, 250);
-  m_view->setColumnWidth(FileListModel::Type, 80);
-  m_view->setColumnWidth(FileListModel::Size, 100);
+  m_view->setColumnWidth(FileListModel::Name,         250);
+  m_view->setColumnWidth(FileListModel::Type,          80);
+  m_view->setColumnWidth(FileListModel::Size,         100);
   m_view->setColumnWidth(FileListModel::LastModified, 150);
+  m_view->setColumnWidth(FileListModel::Created,      150);
+  m_view->setColumnWidth(FileListModel::Permissions,  100);
+  m_view->setColumnWidth(FileListModel::Attributes,    60);
+  m_view->setColumnWidth(FileListModel::Owner,        100);
+  m_view->setColumnWidth(FileListModel::Group,        100);
+  m_view->setColumnWidth(FileListModel::LinkTarget,   200);
+
+  // 列表示の初期適用 (デュアルペインモード)。
+  // 後で setSinglePaneMode から呼ばれて切り替わる。
+  applyColumnVisibility(/*singlePane=*/false);
 
   // 構築時の Qt 既定の行高を覚えておく。Settings で行高 = 0 (Auto) を
   // 選んだときにこの値に戻す。
@@ -201,6 +211,35 @@ void FileListPane::refreshAppearance() {
   // refreshBookmarkIndicator() 側で行う。背景色だけは揃えておきたいので
   // ここで呼び出しておく。
   refreshBookmarkIndicator();
+}
+
+void FileListPane::applyColumnVisibility(bool singlePane) {
+  if (!m_view) return;
+  const auto v = singlePane
+    ? Settings::instance().listColumnVisibilitySingle()
+    : Settings::instance().listColumnVisibilityDual();
+
+  // Name は常に表示。
+  m_view->setColumnHidden(FileListModel::Name,         false);
+  m_view->setColumnHidden(FileListModel::Type,         !v.type);
+  m_view->setColumnHidden(FileListModel::Size,         !v.size);
+  m_view->setColumnHidden(FileListModel::LastModified, !v.lastModified);
+  m_view->setColumnHidden(FileListModel::Created,      !v.created);
+#ifdef Q_OS_WIN
+  // Windows: Permissions / Owner / Group は概念が違うので強制的に非表示。
+  // Attributes だけ意味があるのでユーザー設定に従う。
+  m_view->setColumnHidden(FileListModel::Permissions,  true);
+  m_view->setColumnHidden(FileListModel::Attributes,   !v.attributes);
+  m_view->setColumnHidden(FileListModel::Owner,        true);
+  m_view->setColumnHidden(FileListModel::Group,        true);
+#else
+  // macOS / Linux: Attributes は Permissions と冗長になるので強制非表示。
+  m_view->setColumnHidden(FileListModel::Permissions,  !v.permissions);
+  m_view->setColumnHidden(FileListModel::Attributes,   true);
+  m_view->setColumnHidden(FileListModel::Owner,        !v.owner);
+  m_view->setColumnHidden(FileListModel::Group,        !v.group);
+#endif
+  m_view->setColumnHidden(FileListModel::LinkTarget,   !v.linkTarget);
 }
 
 QString FileListPane::currentPath() const {

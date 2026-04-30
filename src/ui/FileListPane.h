@@ -42,6 +42,10 @@ public:
   // 設定からパス表示のカラー等を再適用する
   void refreshAppearance();
 
+  // 1 画面 / 2 画面モードに応じて、表示する列を Settings から再適用する。
+  // setSinglePaneMode と applySettings の両方から呼ばれる。
+  void applyColumnVisibility(bool singlePane);
+
 signals:
   void folderButtonClicked();
   void currentChanged(const QModelIndex& current, const QModelIndex& previous);

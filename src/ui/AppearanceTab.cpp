@@ -16,9 +16,7 @@ namespace Farman {
 
 AppearanceTab::AppearanceTab(QWidget* parent)
   : QWidget(parent)
-  , m_fontButton(nullptr)
-  , m_fileSizeFormatCombo(nullptr)
-  , m_dateTimeFormatCombo(nullptr) {
+  , m_fontButton(nullptr) {
   setupUi();
   loadSettings();
 }
@@ -110,7 +108,9 @@ void AppearanceTab::setupUi() {
   QGroupBox* fileListGroup = new QGroupBox(tr("File List"), this);
   QVBoxLayout* fileListOuter = new QVBoxLayout(fileListGroup);
 
-  // Font / File Size / Date/Time を横並び
+  // Font と Row Height を横並びの 1 行に。
+  // ファイルサイズ・日時の表示形式は Behavior タブの「List Display」へ移動済み。
+  // ここは装飾 (フォント / 色 / Row Height / カテゴリカラー) だけ。
   QHBoxLayout* fileListRow = new QHBoxLayout();
 
   m_fontButton = new QPushButton(tr("Select Font..."), this);
@@ -118,41 +118,19 @@ void AppearanceTab::setupUi() {
   connect(m_fontButton, &QPushButton::clicked, this, &AppearanceTab::onSelectFont);
   addPair(fileListRow, tr("Font:"), m_fontButton);
 
-  m_fileSizeFormatCombo = new QComboBox(this);
-  m_fileSizeFormatCombo->addItem(tr("Bytes"), static_cast<int>(FileSizeFormat::Bytes));
-  m_fileSizeFormatCombo->addItem(tr("KB/MB/GB (1000)"), static_cast<int>(FileSizeFormat::SI));
-  m_fileSizeFormatCombo->addItem(tr("KiB/MiB/GiB (1024)"), static_cast<int>(FileSizeFormat::IEC));
-  m_fileSizeFormatCombo->addItem(tr("Auto"), static_cast<int>(FileSizeFormat::Auto));
-  m_fileSizeFormatCombo->setToolTip(tr("Choose how file sizes are displayed"));
-  addPair(fileListRow, tr("File Size:"), m_fileSizeFormatCombo);
-
-  m_dateTimeFormatCombo = new QComboBox(this);
-  m_dateTimeFormatCombo->setEditable(true);
-  m_dateTimeFormatCombo->addItem("yyyy/MM/dd HH:mm:ss");
-  m_dateTimeFormatCombo->addItem("yyyy-MM-dd HH:mm:ss");
-  m_dateTimeFormatCombo->addItem("dd/MM/yyyy HH:mm:ss");
-  m_dateTimeFormatCombo->addItem("MM/dd/yyyy HH:mm:ss");
-  m_dateTimeFormatCombo->addItem("yyyy/MM/dd");
-  m_dateTimeFormatCombo->setToolTip(
-    tr("Choose the date/time format. Use yyyy=year, MM=month, dd=day, "
-       "HH=hour, mm=minute, ss=second."));
-  addPair(fileListRow, tr("Date/Time:"), m_dateTimeFormatCombo);
-  fileListRow->addStretch();
-  fileListOuter->addLayout(fileListRow);
-
-  // 1 行目に詰めると横に溢れるので、Row Height は 2 行目に分離する。
-  // 0 を「Auto」(Qt 既定) として扱うため specialValueText を使う。
+  // Row Height — 0 を "Auto" として扱うため specialValueText を使う。
   m_rowHeightSpin = new QSpinBox(this);
   m_rowHeightSpin->setRange(0, 200);
   m_rowHeightSpin->setSpecialValueText(tr("Auto"));
   m_rowHeightSpin->setSuffix(tr(" px"));
   m_rowHeightSpin->setToolTip(
     tr("Custom row height for the file list, in pixels. 'Auto' uses the default height."));
+  fileListRow->addSpacing(16);
+  addPair(fileListRow, tr("Row Height:"), m_rowHeightSpin);
 
-  QHBoxLayout* fileListRow2 = new QHBoxLayout();
-  addPair(fileListRow2, tr("Row Height:"), m_rowHeightSpin);
-  fileListRow2->addStretch();
-  fileListOuter->addLayout(fileListRow2);
+  fileListRow->addStretch();
+  fileListOuter->addLayout(fileListRow);
+
   // 下のアクティブパネルグループとの間に余白を入れる
   fileListOuter->addSpacing(8);
 
@@ -208,18 +186,7 @@ void AppearanceTab::loadSettings() {
   m_addressFontValue = settings.addressFont();
   m_addressFontButton->setText(QString("%1, %2pt").arg(m_addressFontValue.family()).arg(m_addressFontValue.pointSize()));
 
-  // Load file size format
-  FileSizeFormat fmt = settings.fileSizeFormat();
-  for (int i = 0; i < m_fileSizeFormatCombo->count(); ++i) {
-    if (m_fileSizeFormatCombo->itemData(i).toInt() == static_cast<int>(fmt)) {
-      m_fileSizeFormatCombo->setCurrentIndex(i);
-      break;
-    }
-  }
-
-  // Load date/time format
-  m_pendingDateTimeFormat = settings.dateTimeFormat();
-  m_dateTimeFormatCombo->setCurrentText(m_pendingDateTimeFormat);
+  // ファイルサイズ・日時の表示形式は Behavior タブで読み書きする
 
   // Load file list row height (0 = Auto = SpinBox の specialValueText が出る)
   m_rowHeightSpin->setValue(settings.fileListRowHeight());
@@ -360,14 +327,7 @@ void AppearanceTab::save() {
   settings.setFont(m_selectedFont);
   settings.setAddressFont(m_addressFontValue);
 
-  // Save file size format
-  FileSizeFormat fmt = static_cast<FileSizeFormat>(
-    m_fileSizeFormatCombo->currentData().toInt()
-  );
-  settings.setFileSizeFormat(fmt);
-
-  // Save date/time format
-  settings.setDateTimeFormat(m_dateTimeFormatCombo->currentText());
+  // ファイルサイズ・日時の表示形式は Behavior タブで読み書きする
   settings.setFileListRowHeight(m_rowHeightSpin->value());
 
 

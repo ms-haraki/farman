@@ -191,6 +191,10 @@ void FileManagerPanel::applySettings() {
   m_leftPane->refreshAppearance();
   m_rightPane->refreshAppearance();
 
+  // 列表示 (Behavior の Columns 設定) を現在のモードで再適用
+  m_leftPane->applyColumnVisibility(m_singlePaneMode);
+  m_rightPane->applyColumnVisibility(m_singlePaneMode);
+
   m_leftPane->model()->refresh();
   m_rightPane->model()->refresh();
 
@@ -713,6 +717,17 @@ void FileManagerPanel::setSinglePaneMode(bool single) {
     m_leftPane->show();
     m_rightPane->show();
   }
+
+  // サイズ・更新日時の表示形式を Single / Dual で切替えるため、
+  // 両ペインのモデルにも伝える。
+  if (m_leftPane && m_leftPane->model())
+    m_leftPane->model()->setSinglePaneMode(single);
+  if (m_rightPane && m_rightPane->model())
+    m_rightPane->model()->setSinglePaneMode(single);
+
+  // 列表示も Single / Dual で切替え。
+  if (m_leftPane)  m_leftPane->applyColumnVisibility(single);
+  if (m_rightPane) m_rightPane->applyColumnVisibility(single);
 }
 
 FileListPane* FileManagerPanel::activePane() const {

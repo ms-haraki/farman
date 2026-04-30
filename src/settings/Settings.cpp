@@ -37,9 +37,21 @@ void Settings::applyDefaults() {
   m_binaryViewerFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
 
   // ── 表示設定 ─────────────────────
-  m_fileSizeFormat        = FileSizeFormat::Auto;
-  m_fileListRowHeight     = 0;
-  m_dateTimeFormat        = QStringLiteral("yyyy/MM/dd HH:mm:ss");
+  m_fileSizeFormatDual         = FileSizeFormat::Auto;
+  m_fileSizeFormatSingle       = FileSizeFormat::Auto;
+  m_fileSizeThousandsSeparatorDual   = true;
+  m_fileSizeThousandsSeparatorSingle = true;
+  m_fileListRowHeight          = 0;
+  m_dateTimeFormatDual         = QStringLiteral("yyyy/MM/dd HH:mm:ss");
+  m_dateTimeFormatSingle       = QStringLiteral("yyyy/MM/dd HH:mm:ss");
+
+  // 列表示の既定値: 2 画面は従来通り 4 列、1 画面はもう少し情報量を増やす。
+  m_listColumnsDual = ListColumnVisibility{};   // type/size/modified ON 既定
+  m_listColumnsSingle = ListColumnVisibility{};
+  m_listColumnsSingle.created     = true;
+  m_listColumnsSingle.permissions = true;
+  m_listColumnsSingle.owner       = true;
+  m_listColumnsSingle.group       = true;
   m_colorRules.clear();
   m_useInactivePaneColors = false;
 
@@ -229,12 +241,52 @@ void Settings::setAddressFont(const QFont& font) {
   m_addressFont = font;
 }
 
-FileSizeFormat Settings::fileSizeFormat() const {
-  return m_fileSizeFormat;
+FileSizeFormat Settings::fileSizeFormatDual() const {
+  return m_fileSizeFormatDual;
 }
 
-void Settings::setFileSizeFormat(FileSizeFormat fmt) {
-  m_fileSizeFormat = fmt;
+void Settings::setFileSizeFormatDual(FileSizeFormat fmt) {
+  m_fileSizeFormatDual = fmt;
+}
+
+FileSizeFormat Settings::fileSizeFormatSingle() const {
+  return m_fileSizeFormatSingle;
+}
+
+void Settings::setFileSizeFormatSingle(FileSizeFormat fmt) {
+  m_fileSizeFormatSingle = fmt;
+}
+
+bool Settings::fileSizeThousandsSeparatorDual() const {
+  return m_fileSizeThousandsSeparatorDual;
+}
+
+void Settings::setFileSizeThousandsSeparatorDual(bool enabled) {
+  m_fileSizeThousandsSeparatorDual = enabled;
+}
+
+bool Settings::fileSizeThousandsSeparatorSingle() const {
+  return m_fileSizeThousandsSeparatorSingle;
+}
+
+void Settings::setFileSizeThousandsSeparatorSingle(bool enabled) {
+  m_fileSizeThousandsSeparatorSingle = enabled;
+}
+
+Settings::ListColumnVisibility Settings::listColumnVisibilityDual() const {
+  return m_listColumnsDual;
+}
+
+void Settings::setListColumnVisibilityDual(const ListColumnVisibility& v) {
+  m_listColumnsDual = v;
+}
+
+Settings::ListColumnVisibility Settings::listColumnVisibilitySingle() const {
+  return m_listColumnsSingle;
+}
+
+void Settings::setListColumnVisibilitySingle(const ListColumnVisibility& v) {
+  m_listColumnsSingle = v;
 }
 
 int  Settings::fileListRowHeight() const { return m_fileListRowHeight; }
@@ -243,12 +295,20 @@ void Settings::setFileListRowHeight(int px) {
   m_fileListRowHeight = px;
 }
 
-QString Settings::dateTimeFormat() const {
-  return m_dateTimeFormat;
+QString Settings::dateTimeFormatDual() const {
+  return m_dateTimeFormatDual;
 }
 
-void Settings::setDateTimeFormat(const QString& fmt) {
-  m_dateTimeFormat = fmt;
+void Settings::setDateTimeFormatDual(const QString& fmt) {
+  m_dateTimeFormatDual = fmt;
+}
+
+QString Settings::dateTimeFormatSingle() const {
+  return m_dateTimeFormatSingle;
+}
+
+void Settings::setDateTimeFormatSingle(const QString& fmt) {
+  m_dateTimeFormatSingle = fmt;
 }
 
 QList<ColorRule> Settings::colorRules() const {
@@ -912,10 +972,71 @@ void Settings::load() {
     }
   }
 
-  m_fileSizeFormat = stringToFileSizeFormat(appearance.value("fileSizeFormat").toString());
+  // ファイルサイズ / 日時表示形式: Dual / Single の 2 系統。旧キー
+  // (fileSizeFormat / dateTimeFormat) があったらそれを両方の既定値に
+  // して移行する。
+  const QString legacySize = appearance.value("fileSizeFormat").toString();
+  const QString legacyDate = appearance.value("dateTimeFormat").toString();
+
+  if (appearance.contains("fileSizeFormatDual")) {
+    m_fileSizeFormatDual = stringToFileSizeFormat(
+      appearance.value("fileSizeFormatDual").toString());
+  } else if (!legacySize.isEmpty()) {
+    m_fileSizeFormatDual = stringToFileSizeFormat(legacySize);
+  }
+  if (appearance.contains("fileSizeFormatSingle")) {
+    m_fileSizeFormatSingle = stringToFileSizeFormat(
+      appearance.value("fileSizeFormatSingle").toString());
+  } else if (!legacySize.isEmpty()) {
+    m_fileSizeFormatSingle = stringToFileSizeFormat(legacySize);
+  }
+
+  // 桁区切りカンマも Dual / Single に分割。旧キーがあれば両方の既定値にする。
+  if (appearance.contains("fileSizeThousandsSeparatorDual")) {
+    m_fileSizeThousandsSeparatorDual =
+      appearance.value("fileSizeThousandsSeparatorDual").toBool(true);
+  } else if (appearance.contains("fileSizeThousandsSeparator")) {
+    m_fileSizeThousandsSeparatorDual =
+      appearance.value("fileSizeThousandsSeparator").toBool(true);
+  }
+  if (appearance.contains("fileSizeThousandsSeparatorSingle")) {
+    m_fileSizeThousandsSeparatorSingle =
+      appearance.value("fileSizeThousandsSeparatorSingle").toBool(true);
+  } else if (appearance.contains("fileSizeThousandsSeparator")) {
+    m_fileSizeThousandsSeparatorSingle =
+      appearance.value("fileSizeThousandsSeparator").toBool(true);
+  }
+
+  // 列表示 (Dual / Single)。値が無いキーは構造体既定値のまま。
+  auto loadCols = [&](const QJsonObject& src, ListColumnVisibility& dst) {
+    if (src.contains("type"))         dst.type         = src.value("type").toBool(dst.type);
+    if (src.contains("size"))         dst.size         = src.value("size").toBool(dst.size);
+    if (src.contains("lastModified")) dst.lastModified = src.value("lastModified").toBool(dst.lastModified);
+    if (src.contains("created"))      dst.created      = src.value("created").toBool(dst.created);
+    if (src.contains("permissions"))  dst.permissions  = src.value("permissions").toBool(dst.permissions);
+    if (src.contains("attributes"))   dst.attributes   = src.value("attributes").toBool(dst.attributes);
+    if (src.contains("owner"))        dst.owner        = src.value("owner").toBool(dst.owner);
+    if (src.contains("group"))        dst.group        = src.value("group").toBool(dst.group);
+    if (src.contains("linkTarget"))   dst.linkTarget   = src.value("linkTarget").toBool(dst.linkTarget);
+  };
+  loadCols(appearance.value("listColumnsDual").toObject(),   m_listColumnsDual);
+  loadCols(appearance.value("listColumnsSingle").toObject(), m_listColumnsSingle);
+
   m_fileListRowHeight = appearance.value("fileListRowHeight").toInt(0);
   if (m_fileListRowHeight < 0) m_fileListRowHeight = 0;
-  m_dateTimeFormat = appearance.value("dateTimeFormat").toString("yyyy/MM/dd HH:mm:ss");
+
+  if (appearance.contains("dateTimeFormatDual")) {
+    m_dateTimeFormatDual = appearance.value("dateTimeFormatDual")
+                             .toString("yyyy/MM/dd HH:mm:ss");
+  } else if (!legacyDate.isEmpty()) {
+    m_dateTimeFormatDual = legacyDate;
+  }
+  if (appearance.contains("dateTimeFormatSingle")) {
+    m_dateTimeFormatSingle = appearance.value("dateTimeFormatSingle")
+                               .toString("yyyy/MM/dd HH:mm:ss");
+  } else if (!legacyDate.isEmpty()) {
+    m_dateTimeFormatSingle = legacyDate;
+  }
 
   // Load color rules
   QJsonArray colorRulesArray = appearance.value("colorRules").toArray();
@@ -1332,9 +1453,28 @@ void Settings::save() const {
   addressFontObj["family"] = m_addressFont.family();
   addressFontObj["pointSize"] = m_addressFont.pointSize();
   appearance["addressFont"] = addressFontObj;
-  appearance["fileSizeFormat"]    = fileSizeFormatToString(m_fileSizeFormat);
-  appearance["fileListRowHeight"] = m_fileListRowHeight;
-  appearance["dateTimeFormat"] = m_dateTimeFormat;
+  appearance["fileSizeFormatDual"]         = fileSizeFormatToString(m_fileSizeFormatDual);
+  appearance["fileSizeFormatSingle"]       = fileSizeFormatToString(m_fileSizeFormatSingle);
+  appearance["fileSizeThousandsSeparatorDual"]   = m_fileSizeThousandsSeparatorDual;
+  appearance["fileSizeThousandsSeparatorSingle"] = m_fileSizeThousandsSeparatorSingle;
+  auto saveCols = [](const ListColumnVisibility& v) -> QJsonObject {
+    QJsonObject o;
+    o["type"]         = v.type;
+    o["size"]         = v.size;
+    o["lastModified"] = v.lastModified;
+    o["created"]      = v.created;
+    o["permissions"]  = v.permissions;
+    o["attributes"]   = v.attributes;
+    o["owner"]        = v.owner;
+    o["group"]        = v.group;
+    o["linkTarget"]   = v.linkTarget;
+    return o;
+  };
+  appearance["listColumnsDual"]   = saveCols(m_listColumnsDual);
+  appearance["listColumnsSingle"] = saveCols(m_listColumnsSingle);
+  appearance["fileListRowHeight"]          = m_fileListRowHeight;
+  appearance["dateTimeFormatDual"]         = m_dateTimeFormatDual;
+  appearance["dateTimeFormatSingle"]       = m_dateTimeFormatSingle;
 
   QJsonArray colorRulesArray;
   for (const ColorRule& rule : m_colorRules) {

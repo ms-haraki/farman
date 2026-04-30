@@ -56,11 +56,7 @@ private:
   QPushButton*   m_addressFontButton = nullptr;
   QFont          m_addressFontValue;
 
-  // File size format
-  QComboBox*     m_fileSizeFormatCombo;
-
-  // Date/time format
-  QComboBox*     m_dateTimeFormatCombo;
+  // ファイルサイズ・日時の表示形式は Behavior タブ側に移動した
 
   // ファイルリスト 1 行の縦幅 (0 = Auto)
   QSpinBox*      m_rowHeightSpin = nullptr;
@@ -83,8 +79,7 @@ private:
   QComboBox*   m_cursorShapeCombo     = nullptr;
   QSpinBox*    m_cursorThicknessSpin  = nullptr;
 
-  // Pending changes
-  QString m_pendingDateTimeFormat;
+  // (旧 m_pendingDateTimeFormat* は Behavior タブへ移動)
 };
 
 } // namespace Farman
