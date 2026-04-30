@@ -580,6 +580,22 @@ BinaryView では `setPlainText` 前後で `AddressHighlighter` を一時的に
     (ソース表示はテキストビュアーと同じ挙動)。
   - 相対パス画像の表示 (`<img>` / `![alt](path)`) はファイルのある
     ディレクトリを `setSearchPaths` でベースに指定して解決する。
+- **動画 / 音声ビュアー**
+  - 対象 (動画): `.mp4` `.mov` `.m4v` `.webm` `.avi` `.mkv` 他
+  - 対象 (音声): `.wav` `.mp3` `.m4a` `.flac` `.ogg` `.aac` 他
+  - 候補ライブラリ: Qt Multimedia (`QMediaPlayer` + 動画用 `QVideoWidget`、
+    音声単体用 `QAudioOutput`) が第一候補。コーデック対応はプラットフォーム
+    のネイティブバックエンド (macOS: AVFoundation / Windows: Media
+    Foundation / Linux: GStreamer) に依存する。
+  - 必要機能: 再生 / 一時停止 / 停止 / シーク (スライダ + ←/→ で
+    数秒単位、Shift+←/→ で大きく) / 音量 / ミュート / ループ再生切替 /
+    再生速度 (0.5x / 1.0x / 1.5x / 2.0x)。
+  - 動画ビュアーはアスペクト比保持で表示領域にフィットさせる。フルスクリーン
+    切替も対応したい (ビュアー側で `Qt::Key_F` などにバインド)。
+  - 音声単体ファイルは波形プレビューや再生位置だけのコンパクト UI で良い。
+    将来的に簡易な波形描画 (peaks) を入れる余地は残す。
+  - ファイルが大きいことが多いので、起動時はメタデータだけ読んで本体ストリーム
+    は再生開始時にロードする (`QMediaPlayer::setSource`)。
 - **CSV ビュアー**
   - 対象: `.csv` `.tsv` (区切り自動判定 + 手動切替)
   - テキストビュアーとは別経路にして、表形式で `QTableView` で表示。
