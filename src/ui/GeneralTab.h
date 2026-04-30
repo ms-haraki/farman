@@ -68,6 +68,7 @@ private:
   QLineEdit*   m_rightCustomPathEdit       = nullptr;
   QToolButton* m_rightBrowseButton         = nullptr;
   QCheckBox*   m_confirmOnExitCheck        = nullptr;
+  QCheckBox*   m_singleInstanceCheck       = nullptr;
 
   // Application language
   QComboBox*   m_languageCombo             = nullptr;

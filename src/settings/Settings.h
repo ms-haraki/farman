@@ -154,6 +154,11 @@ public:
   bool confirmOnExit()                  const;
   void setConfirmOnExit(bool confirm);
 
+  // 二重起動を禁止するか。ON のとき既に farman が動いていれば、新規プロセス
+  // は起動せず既存ウィンドウを前面に出す。
+  bool singleInstance()                 const;
+  void setSingleInstance(bool enabled);
+
   // ── 言語設定 ─────────────────────────────
   // UI 言語。変更は次回起動時に反映される (実装上の制限、再起動を促す)。
   LanguageMode language()               const;
@@ -355,6 +360,7 @@ private:
   QString          m_customInitialPath[static_cast<int>(PaneType::Count)];
 
   bool             m_confirmOnExit   = false;
+  bool             m_singleInstance  = true;
   LanguageMode     m_language         = LanguageMode::Auto;
   bool             m_logVisible       = true;
   int              m_logPaneHeight    = 120;  // px

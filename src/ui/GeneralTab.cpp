@@ -246,6 +246,14 @@ void GeneralTab::setupUi() {
   m_confirmOnExitCheck->setToolTip(tr("Show confirmation dialog when closing the application"));
   mainLayout->addWidget(m_confirmOnExitCheck);
 
+  m_singleInstanceCheck = new QCheckBox(
+    tr("Prevent multiple instances (takes effect on next launch)"), this);
+  m_singleInstanceCheck->setToolTip(
+    tr("If on, launching farman while another instance is already running "
+       "will bring the existing window to the front instead of starting a "
+       "new process. Off allows multiple parallel instances."));
+  mainLayout->addWidget(m_singleInstanceCheck);
+
   m_languageCombo = new QComboBox(this);
   m_languageCombo->addItem(tr("Auto (System)"), static_cast<int>(LanguageMode::Auto));
   m_languageCombo->addItem(tr("English"),       static_cast<int>(LanguageMode::English));
@@ -282,6 +290,7 @@ void GeneralTab::loadSettings() {
   onRightInitialPathModeChanged(m_rightInitialPathModeCombo->currentIndex());
 
   m_confirmOnExitCheck->setChecked(settings.confirmOnExit());
+  m_singleInstanceCheck->setChecked(settings.singleInstance());
   for (int i = 0; i < m_languageCombo->count(); ++i) {
     if (m_languageCombo->itemData(i).toInt() == static_cast<int>(settings.language())) {
       m_languageCombo->setCurrentIndex(i);
@@ -346,6 +355,7 @@ void GeneralTab::save() {
   settings.setCustomInitialPath(PaneType::Left,  m_leftCustomPathEdit->text().trimmed());
   settings.setCustomInitialPath(PaneType::Right, m_rightCustomPathEdit->text().trimmed());
   settings.setConfirmOnExit(m_confirmOnExitCheck->isChecked());
+  settings.setSingleInstance(m_singleInstanceCheck->isChecked());
   settings.setLanguage(static_cast<LanguageMode>(m_languageCombo->currentData().toInt()));
 
   WindowSizeMode sizeMode = static_cast<WindowSizeMode>(m_windowSizeModeCombo->currentData().toInt());

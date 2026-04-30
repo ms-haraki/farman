@@ -71,6 +71,7 @@ void Settings::applyDefaults() {
   m_customInitialPath[static_cast<int>(PaneType::Left)].clear();
   m_customInitialPath[static_cast<int>(PaneType::Right)].clear();
   m_confirmOnExit = false;
+  m_singleInstance = true;
   m_language      = LanguageMode::Auto;
 
   // ── ログ ─────────────────────────
@@ -407,6 +408,14 @@ void Settings::setCustomInitialPath(PaneType pane, const QString& path) {
 
 bool Settings::confirmOnExit() const {
   return m_confirmOnExit;
+}
+
+bool Settings::singleInstance() const {
+  return m_singleInstance;
+}
+
+void Settings::setSingleInstance(bool enabled) {
+  m_singleInstance = enabled;
 }
 
 void Settings::setConfirmOnExit(bool confirm) {
@@ -1144,6 +1153,7 @@ void Settings::load() {
   // Load behavior settings
   QJsonObject behavior = root.value("behavior").toObject();
   m_confirmOnExit = behavior.value("confirmOnExit").toBool(false);
+  m_singleInstance = behavior.value("singleInstance").toBool(true);
   {
     const QString langStr = behavior.value("language").toString("auto");
     if      (langStr == "en") m_language = LanguageMode::English;
@@ -1521,6 +1531,7 @@ void Settings::save() const {
   // Save behavior settings
   QJsonObject behavior;
   behavior["confirmOnExit"] = m_confirmOnExit;
+  behavior["singleInstance"] = m_singleInstance;
   switch (m_language) {
     case LanguageMode::English:  behavior["language"] = "en";   break;
     case LanguageMode::Japanese: behavior["language"] = "ja";   break;

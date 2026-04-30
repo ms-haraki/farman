@@ -7,7 +7,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Core5Compat Concurrent LinguistTools)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Core5Compat Concurrent Network LinguistTools)
 
 # Homebrew の libarchive は keg-only なので明示的にパスを通す
 if(APPLE AND EXISTS /opt/homebrew/opt/libarchive)
@@ -138,6 +138,7 @@ target_link_libraries(farman PRIVATE
   Qt6::Widgets
   Qt6::Core5Compat
   Qt6::Concurrent
+  Qt6::Network
   LibArchive::LibArchive
 )
 
