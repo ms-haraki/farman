@@ -1,0 +1,16 @@
+[Desktop Entry]
+# Linux のアプリケーションメニュー / Activities に出すための entry。
+# linuxdeploy が AppImage を作る際にも参照する (--desktop-file 引数)。
+Version=1.0
+Type=Application
+Name=Farman
+GenericName=File Manager
+Comment=A two-pane file manager
+Comment[ja]=2 ペイン式のファイルマネージャー
+Exec=farman %F
+Icon=farman
+Categories=System;FileManager;Utility;
+Terminal=false
+StartupNotify=true
+StartupWMClass=farman
+MimeType=inode/directory;

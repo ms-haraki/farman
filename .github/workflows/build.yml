@@ -56,21 +56,24 @@ jobs:
             os: macos-latest
             qt_host: mac
             qt_arch: clang_64
-            artifact_path: build/farman.app
+            # macdeployqt が Qt frameworks を埋め込んだ .dmg を生成する
+            artifact_path: build/farman.dmg
             artifact_name: farman-macos
 
           - name: Linux (x86_64)
             os: ubuntu-latest
             qt_host: linux
             qt_arch: linux_gcc_64
-            artifact_path: build/farman
+            # linuxdeploy + qt plugin で AppImage を生成する
+            artifact_path: farman-x86_64.AppImage
             artifact_name: farman-linux
 
           - name: Windows (x86_64)
             os: windows-latest
             qt_host: windows
             qt_arch: win64_msvc2022_64
-            artifact_path: build/Release/farman.exe
+            # windeployqt + vcpkg DLL コピー後の build/Release/ ディレクトリ全体
+            artifact_path: build/Release
             artifact_name: farman-windows
 
     steps:
@@ -134,11 +137,60 @@ jobs:
       - name: Build
         run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
 
+      # ──────── Deploy: 配布可能なパッケージへ整形 ────────
+      # ビルド直後の生バイナリでは他のマシンで動かないので、各 OS の流儀で
+      # Qt frameworks や依存 DLL をバンドルし、配布用パッケージにする。
+
+      - name: Deploy (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # macdeployqt で Qt frameworks を .app の Contents/Frameworks に埋める
+          # & 同時に build/farman.dmg を生成
+          macdeployqt build/farman.app -dmg
+
+      - name: Deploy (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # windeployqt で Qt DLL をフラットにコピー
+          windeployqt --release --no-translations build/Release/farman.exe
+
+          # vcpkg 経由で入れた libarchive / uchardet とその依存 DLL を
+          # コピー。include 関係 / debug 用 .pdb は不要なので .dll だけ。
+          Copy-Item "$env:VCPKG_ROOT/installed/x64-windows/bin/*.dll" `
+            -Destination build/Release/
+
+      - name: Deploy (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          # linuxdeploy 本体と Qt プラグインを取得
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy*.AppImage
+
+          # GitHub runner には FUSE が無いので、AppImage を直接実行できない。
+          # APPIMAGE_EXTRACT_AND_RUN=1 で内部的に展開実行させる。
+          export APPIMAGE_EXTRACT_AND_RUN=1
+
+          # AppImage 生成
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            -e build/farman \
+            -i images/icon-256.png \
+            -d linux/farman.desktop \
+            --plugin qt \
+            --output appimage
+
+          # 出力ファイル名は <Name>-<arch>.AppImage 等と揺れるので
+          # 配布物の名前を一定にするためリネーム
+          mv ./*.AppImage ./farman-x86_64.AppImage
+
       # ──────── Artifact upload ────────
       # ビルド成果物を 14 日間保存。GitHub Actions タブの該当 run 詳細から
-      # zip でダウンロードできる。実機 Windows での動作確認などに使う。
-      # 注: Windows の farman.exe 単体では Qt DLL 不足で起動できない。
-      # 起動可能パッケージにするには別途 windeployqt が必要 (後追加予定)。
+      # zip でダウンロードできる。
+      #   macOS:   build/farman.dmg            (.dmg 単体)
+      #   Linux:   farman-x86_64.AppImage      (AppImage 単体)
+      #   Windows: build/Release/              (DLL 同梱ディレクトリ全体)
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
