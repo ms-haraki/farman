@@ -35,7 +35,11 @@ on:
   workflow_dispatch:
 
 env:
-  QT_VERSION: 6.11.0
+  # Qt 6.11.0 は Linux/macOS のオンラインインストーラには来ているが、
+  # Windows 用バイナリがまだミラーに来ていなかったため CI では一段下げて
+  # 6.10.3 で揃える。手元 Homebrew は 6.11.0 のままで OK
+  # (CI の目的はビルド検証なので Qt マイナー差は問題にならない)。
+  QT_VERSION: 6.10.3
   BUILD_TYPE: Release
 
 jobs:
