@@ -47,6 +47,7 @@ qt_add_executable(farman
   src/ui/LogPane.cpp
   src/ui/ProgressDialog.cpp
   src/ui/SettingsDialog.cpp
+  src/ui/ShortcutListDialog.cpp
   src/ui/KeybindingTab.cpp
   src/ui/AppearanceTab.cpp
   src/ui/BehaviorTab.cpp
@@ -90,6 +91,7 @@ qt_add_executable(farman
   src/viewer/BinaryViewerPlugin.cpp
   src/keybinding/ICommand.cpp
   src/keybinding/CommandRegistry.cpp
+  src/keybinding/CommandLayout.cpp
   src/keybinding/KeyBindingManager.cpp
   src/keybinding/commands/BaseCommand.cpp
   src/keybinding/commands/NavigationCommands.cpp

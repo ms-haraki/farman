@@ -13,6 +13,7 @@ class QLabel;
 namespace Farman {
 
 class FileManagerPanel;
+class ShortcutListDialog;
 
 class MainWindow : public QMainWindow {
   Q_OBJECT
@@ -40,6 +41,8 @@ private:
   void registerCommands();
   void createMenus();
   void showAboutDialog();
+  // ショートカット一覧ウィンドウのトグル表示。
+  void toggleShortcutList();
 
   // どちらのパネルがアクティブかでステータスバーの表示元を切り替えるため、
   // それぞれの最新ステータスをキャッシュしておく
@@ -55,6 +58,9 @@ private:
   // ステータスバー (左: フォーカス中ファイルの絶対パス / 右: 件数・選択要約)
   QLabel*      m_statusPathLabel    = nullptr;
   QLabel*      m_statusSummaryLabel = nullptr;
+
+  // ショートカット一覧ウィンドウ (遅延生成)。
+  ShortcutListDialog* m_shortcutListDialog = nullptr;
 };
 
 } // namespace Farman

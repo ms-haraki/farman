@@ -3,6 +3,7 @@
 #include "FileListPane.h"
 #include "ViewerPanel.h"
 #include "SettingsDialog.h"
+#include "ShortcutListDialog.h"
 #include "BookmarkListDialog.h"
 #include "HistoryDialog.h"
 #include "SearchDialog.h"
@@ -13,6 +14,7 @@
 #include "../model/FileListModel.h"
 #include "../utils/Dialogs.h"
 #include <QDesktopServices>
+#include <QScreen>
 #include <QStackedWidget>
 #include <QStatusBar>
 #include <QLabel>
@@ -267,7 +269,7 @@ void MainWindow::registerCommands() {
   // Navigation commands
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.up",
-    "Up",
+    tr("Up"),
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Up, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -277,7 +279,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.down",
-    "Down",
+    tr("Down"),
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Down, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -287,7 +289,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.left",
-    "Left",
+    tr("Left"),
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Left, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -297,7 +299,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.right",
-    "Right",
+    tr("Right"),
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Right, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -307,7 +309,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.home",
-    "Jump to Top",
+    tr("Jump to Top"),
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Home, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -317,7 +319,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.end",
-    "Jump to Bottom",
+    tr("Jump to Bottom"),
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_End, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -327,7 +329,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.pageup",
-    "Page Up",
+    tr("Page Up"),
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_PageUp, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -337,7 +339,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.pagedown",
-    "Page Down",
+    tr("Page Down"),
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_PageDown, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -347,7 +349,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.enter",
-    "Enter",
+    tr("Enter"),
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -357,7 +359,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "navigate.parent",
-    "Parent Directory",
+    tr("Parent Directory"),
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Backspace, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -368,7 +370,7 @@ void MainWindow::registerCommands() {
   // Selection commands
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "select.toggle",
-    "Toggle Selection",
+    tr("Toggle Selection"),
     [this]() {
       // カーソル据え置きで選択トグル。
       m_fileManagerPanel->toggleSelection();
@@ -378,7 +380,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "select.toggle_and_down",
-    "Toggle Selection and Move Down",
+    tr("Toggle Selection and Move Down"),
     [this]() {
       // 選択トグル後にカーソルを下へ。handleSpaceKey の挙動。
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Space, Qt::NoModifier);
@@ -389,7 +391,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "select.invert",
-    "Invert Selection",
+    tr("Invert Selection"),
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Asterisk, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -399,7 +401,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "select.all",
-    "Select All",
+    tr("Select All"),
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_A, Qt::ControlModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -410,7 +412,7 @@ void MainWindow::registerCommands() {
   // Pane commands
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "pane.switch",
-    "Switch Pane",
+    tr("Switch Pane"),
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Tab, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -420,7 +422,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "pane.toggle_single",
-    "Toggle Single Pane Mode",
+    tr("Toggle Single Pane Mode"),
     [this]() {
       m_fileManagerPanel->togglePaneMode();
     },
@@ -429,7 +431,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "pane.sort_filter",
-    "Sort & Filter...",
+    tr("Sort & Filter..."),
     [this]() {
       m_fileManagerPanel->openSortFilterDialog();
     },
@@ -438,7 +440,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "pane.sync_other_to_active",
-    "Sync Other Pane to Active",
+    tr("Sync Other Pane to Active"),
     [this]() {
       m_fileManagerPanel->syncOtherToActive();
     },
@@ -447,7 +449,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "pane.sync_active_to_other",
-    "Sync Active Pane to Other",
+    tr("Sync Active Pane to Other"),
     [this]() {
       m_fileManagerPanel->syncActiveToOther();
     },
@@ -457,7 +459,7 @@ void MainWindow::registerCommands() {
   // File operation commands
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.copy",
-    "Copy",
+    tr("Copy"),
     [this]() {
       m_fileManagerPanel->copySelectedFiles();
     },
@@ -466,7 +468,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.move",
-    "Move",
+    tr("Move"),
     [this]() {
       m_fileManagerPanel->moveSelectedFiles();
     },
@@ -475,7 +477,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.delete",
-    "Delete",
+    tr("Delete"),
     [this]() {
       m_fileManagerPanel->deleteSelectedFiles();
     },
@@ -484,7 +486,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.mkdir",
-    "Make Directory",
+    tr("Make Directory"),
     [this]() {
       m_fileManagerPanel->createDirectory();
     },
@@ -493,7 +495,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.newfile",
-    "New File",
+    tr("New File"),
     [this]() {
       m_fileManagerPanel->createFile();
     },
@@ -502,7 +504,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.attributes",
-    "Change Attributes",
+    tr("Change Attributes"),
     [this]() {
       m_fileManagerPanel->changeAttributes();
     },
@@ -511,7 +513,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.search",
-    "Search Files...",
+    tr("Search Files..."),
     [this]() {
       const QString start = m_fileManagerPanel->activePane()->currentPath();
       SearchDialog dlg(start, this);
@@ -528,21 +530,21 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.pack",
-    "Create Archive",
+    tr("Create Archive"),
     [this]() { m_fileManagerPanel->createArchive(); },
     "file"
   ));
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.unpack",
-    "Extract Archive",
+    tr("Extract Archive"),
     [this]() { m_fileManagerPanel->extractArchive(); },
     "file"
   ));
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.rename",
-    "Rename",
+    tr("Rename"),
     [this]() {
       m_fileManagerPanel->renameItem();
     },
@@ -551,7 +553,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.bulk_rename",
-    "Bulk Rename...",
+    tr("Bulk Rename..."),
     [this]() {
       m_fileManagerPanel->bulkRenameItems();
     },
@@ -560,7 +562,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.copy_path",
-    "Copy Path",
+    tr("Copy Path"),
     [this]() {
       auto* pane  = m_fileManagerPanel->activePane();
       auto* model = pane->model();
@@ -578,7 +580,7 @@ void MainWindow::registerCommands() {
   // Application commands
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "app.quit",
-    "Quit",
+    tr("Quit"),
     [this]() {
       QApplication::quit();
     },
@@ -587,7 +589,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "app.settings",
-    "Settings",
+    tr("Settings"),
     [this]() {
       showSettingsDialog();
     },
@@ -596,7 +598,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "view.file",
-    "View File",
+    tr("View File"),
     [this]() {
       QKeyEvent event(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
       m_fileManagerPanel->handleKeyEvent(&event);
@@ -606,7 +608,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "view.choose",
-    "Open With Viewer...",
+    tr("Open With Viewer..."),
     [this]() {
       auto* pane = m_fileManagerPanel->activePane();
       auto* model = pane->model();
@@ -636,7 +638,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.execute",
-    "Execute / Open Externally",
+    tr("Execute / Open Externally"),
     [this]() {
       auto* pane = m_fileManagerPanel->activePane();
       auto* model = pane->model();
@@ -657,7 +659,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "view.toggle_log",
-    "Toggle Log Pane",
+    tr("Toggle Log Pane"),
     [this]() {
       const bool nowVisible = !m_fileManagerPanel->isLogPaneVisible();
       m_fileManagerPanel->setLogPaneVisible(nowVisible);
@@ -667,10 +669,19 @@ void MainWindow::registerCommands() {
     "view"
   ));
 
+  // ショートカット一覧の表示トグル (`?` キー)
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "help.shortcuts",
+    tr("Keyboard Shortcuts"),
+    [this]() { toggleShortcutList(); },
+    "help",
+    tr("Show or hide the keyboard shortcuts reference window")
+  ));
+
   // Bookmark commands
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "bookmark.toggle",
-    "Toggle Bookmark",
+    tr("Toggle Bookmark"),
     [this]() {
       m_fileManagerPanel->activePane()->toggleBookmarkForCurrentPath();
     },
@@ -679,7 +690,7 @@ void MainWindow::registerCommands() {
 
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "bookmark.list",
-    "Bookmarks...",
+    tr("Bookmarks..."),
     [this]() {
       BookmarkListDialog dlg(this);
       if (dlg.exec() == QDialog::Accepted) {
@@ -697,7 +708,7 @@ void MainWindow::registerCommands() {
   // History commands
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "history.show",
-    "History...",
+    tr("History..."),
     [this]() {
       const DirectoryHistory& hist = m_fileManagerPanel->history(
         m_fileManagerPanel->activePane() == m_fileManagerPanel->leftPane()
@@ -828,6 +839,8 @@ void MainWindow::createMenus() {
 
   // Help
   QMenu* helpMenu = bar->addMenu(tr("&Help"));
+  // ショートカット一覧 (`?` キー)
+  addCmd(helpMenu, "help.shortcuts", tr("Keyboard Shortcuts"), /*global=*/true);
   // Settings はビュアー表示中でも開けるように global=true
   QAction* settingsAction = addCmd(helpMenu, "app.settings", tr("Settings..."), /*global=*/true);
   // macOS ではアプリケーションメニューの Preferences に移動する
@@ -845,6 +858,38 @@ void MainWindow::showAboutDialog() {
        "Copyright &copy; Mashsoft Inc.<br>"
        "<a href=\"https://www.mashsoft.co.jp\">https://www.mashsoft.co.jp</a>")
       .arg(version));
+}
+
+void MainWindow::toggleShortcutList() {
+  // 開いていれば閉じる、閉じていれば開く。初回のみ生成する。
+  if (m_shortcutListDialog && m_shortcutListDialog->isVisible()) {
+    m_shortcutListDialog->close();
+    return;
+  }
+  if (!m_shortcutListDialog) {
+    m_shortcutListDialog = new ShortcutListDialog(this);
+  } else {
+    m_shortcutListDialog->rebuild();  // キーバインドが変わっている可能性
+  }
+  // 初期位置: メインウィンドウの右側に並べて配置。
+  const QRect main = geometry();
+  const QSize dlgSize = m_shortcutListDialog->size();
+  int x = main.x() + main.width() + 12;
+  int y = main.y();
+  // 画面外に出ないよう、はみ出すなら main 右端からの距離を縮める。
+  if (auto* scr = screen()) {
+    const QRect avail = scr->availableGeometry();
+    if (x + dlgSize.width() > avail.right()) {
+      x = qMax(avail.right() - dlgSize.width(), avail.left());
+    }
+    if (y + dlgSize.height() > avail.bottom()) {
+      y = qMax(avail.bottom() - dlgSize.height(), avail.top());
+    }
+  }
+  m_shortcutListDialog->move(x, y);
+  m_shortcutListDialog->show();
+  m_shortcutListDialog->raise();
+  m_shortcutListDialog->activateWindow();
 }
 
 void MainWindow::showSettingsDialog() {

@@ -131,6 +131,13 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     // Application
     { QKeySequence(Qt::CTRL | Qt::Key_Comma), "app.settings" },
     { QKeySequence(Qt::CTRL | Qt::Key_Q),     "app.quit"     },
+
+    // Help
+    // 「?」キーは Shift+/ なので、Shift 修飾子の扱いがプラットフォームや
+    // 配列で揺れる。両方登録しておけば確実に拾える。
+    { QKeySequence(Qt::Key_Question),                  "help.shortcuts" },
+    { QKeySequence(Qt::SHIFT | Qt::Key_Question),      "help.shortcuts" },
+    { QKeySequence(Qt::SHIFT | Qt::Key_Slash),         "help.shortcuts" },
   };
 }
 

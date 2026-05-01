@@ -1,5 +1,6 @@
 #include "KeybindingTab.h"
 #include "keybinding/KeyBindingManager.h"
+#include "keybinding/CommandLayout.h"
 #include "keybinding/CommandRegistry.h"
 #include "keybinding/ICommand.h"
 #include "utils/Dialogs.h"
@@ -189,90 +190,79 @@ void KeybindingTab::loadKeybindings() {
 
 void KeybindingTab::updateTable() {
   m_table->setRowCount(0);
+  m_table->setUpdatesEnabled(false);
 
-  auto& registry = CommandRegistry::instance();
+  auto& registry   = CommandRegistry::instance();
   auto& keyManager = KeyBindingManager::instance();
 
-  QList<ICommand*> commands = registry.allCommands();
+  // ショートカット一覧と並びを統一するため、CommandLayout のヘルパで
+  // カテゴリ別 + 登録順にグルーピングしたものを使う。各グループの先頭に
+  // 見出し行を 1 行ずつ挿入する。
+  const auto groups = commandsGroupedByCategory(registry);
+  for (const auto& group : groups) {
+    // 見出し行 (3 列にまたがる)
+    const int hdrRow = m_table->rowCount();
+    m_table->insertRow(hdrRow);
+    auto* hdr = new QTableWidgetItem(group.display);
+    QFont f = hdr->font();
+    f.setBold(true);
+    hdr->setFont(f);
+    hdr->setBackground(palette().color(QPalette::Mid));
+    hdr->setForeground(palette().color(QPalette::WindowText));
+    hdr->setFlags(Qt::ItemIsEnabled);  // 選択不可 (ダブルクリックでも編集に入らない)
+    m_table->setItem(hdrRow, 0, hdr);
+    m_table->setSpan(hdrRow, 0, 1, 3);
 
-  // Define preferred order for Navigation commands
-  QMap<QString, int> navigationOrder = {
-    {"Up", 0},
-    {"Down", 1},
-    {"Page Up", 2},
-    {"Page Down", 3},
-    {"Jump to Top", 4},
-    {"Jump to Bottom", 5},
-    {"Left", 6},
-    {"Right", 7},
-    {"Enter", 8},
-    {"Parent Directory", 9}
-  };
+    // 各コマンド行 (登録順)
+    for (ICommand* cmd : group.commands) {
+      const int row = m_table->rowCount();
+      m_table->insertRow(row);
+      const QString commandId = cmd->id();
 
-  // Sort commands by category and then by label
-  std::sort(commands.begin(), commands.end(), [&navigationOrder](ICommand* a, ICommand* b) {
-    if (a->category() != b->category()) {
-      return a->category() < b->category();
-    }
-
-    // Special handling for navigation category
-    if (a->category() == "navigation") {
-      int orderA = navigationOrder.value(a->label(), 999);
-      int orderB = navigationOrder.value(b->label(), 999);
-      if (orderA != orderB) {
-        return orderA < orderB;
+      // Command name
+      QTableWidgetItem* nameItem = new QTableWidgetItem(cmd->label());
+      nameItem->setData(Qt::UserRole, commandId);
+      nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
+      if (!cmd->description().isEmpty()) {
+        nameItem->setToolTip(cmd->description());
       }
-    }
+      m_table->setItem(row, 0, nameItem);
 
-    return a->label() < b->label();
-  });
-
-  m_table->setRowCount(commands.size());
-
-  for (int i = 0; i < commands.size(); ++i) {
-    ICommand* cmd = commands[i];
-    QString commandId = cmd->id();
-
-    // Command name (with category)
-    QString displayName = QString("%1 / %2").arg(cmd->category(), cmd->label());
-    QTableWidgetItem* nameItem = new QTableWidgetItem(displayName);
-    nameItem->setData(Qt::UserRole, commandId); // Store command ID
-    nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
-    m_table->setItem(i, 0, nameItem);
-
-    // Current key
-    QList<QKeySequence> keys = keyManager.keysForCommand(commandId);
-    QString currentKey;
-    if (!keys.isEmpty()) {
-      currentKey = keySequenceToString(keys.first());
-      if (keys.size() > 1) {
-        currentKey += tr(" (and %1 more)").arg(keys.size() - 1);
+      // Current key
+      QList<QKeySequence> keys = keyManager.keysForCommand(commandId);
+      QString currentKey;
+      if (!keys.isEmpty()) {
+        currentKey = keySequenceToString(keys.first());
+        if (keys.size() > 1) {
+          currentKey += tr(" (and %1 more)").arg(keys.size() - 1);
+        }
       }
-    }
-    QTableWidgetItem* currentItem = new QTableWidgetItem(currentKey);
-    currentItem->setFlags(currentItem->flags() & ~Qt::ItemIsEditable);
-    m_table->setItem(i, 1, currentItem);
+      QTableWidgetItem* currentItem = new QTableWidgetItem(currentKey);
+      currentItem->setFlags(currentItem->flags() & ~Qt::ItemIsEditable);
+      m_table->setItem(row, 1, currentItem);
 
-    // New key (pending changes)
-    QString newKey;
-    if (m_pendingChanges.contains(commandId)) {
-      QKeySequence seq = m_pendingChanges[commandId];
-      if (!seq.isEmpty()) {
-        newKey = keySequenceToString(seq);
-      } else {
-        newKey = tr("(unbound)");
+      // New key (pending changes)
+      QString newKey;
+      if (m_pendingChanges.contains(commandId)) {
+        QKeySequence seq = m_pendingChanges[commandId];
+        if (!seq.isEmpty()) {
+          newKey = keySequenceToString(seq);
+        } else {
+          newKey = tr("(unbound)");
+        }
       }
+      QTableWidgetItem* newItem = new QTableWidgetItem(newKey);
+      newItem->setFlags(newItem->flags() & ~Qt::ItemIsEditable);
+      if (!newKey.isEmpty()) {
+        QFont font = newItem->font();
+        font.setBold(true);
+        newItem->setFont(font);
+      }
+      m_table->setItem(row, 2, newItem);
     }
-    QTableWidgetItem* newItem = new QTableWidgetItem(newKey);
-    newItem->setFlags(newItem->flags() & ~Qt::ItemIsEditable);
-    if (!newKey.isEmpty()) {
-      QFont font = newItem->font();
-      font.setBold(true);
-      newItem->setFont(font);
-    }
-    m_table->setItem(i, 2, newItem);
   }
 
+  m_table->setUpdatesEnabled(true);
   // Don't call resizeColumnsToContents() as we have fixed column sizes
 }
 
@@ -318,6 +308,10 @@ void KeybindingTab::startRecording(int row) {
   }
 
   m_editingCommandId = nameItem->data(Qt::UserRole).toString();
+  // 見出し行 (UserRole 未設定 = 空) を編集対象にしない
+  if (m_editingCommandId.isEmpty()) {
+    return;
+  }
   m_editingRow = row;
   m_inRecordMode = true;
   m_recordedKey = QKeySequence();
@@ -496,6 +490,10 @@ void KeybindingTab::onClearBinding() {
   }
 
   QString commandId = nameItem->data(Qt::UserRole).toString();
+  // 見出し行 (UserRole 未設定 = 空) は対象外
+  if (commandId.isEmpty()) {
+    return;
+  }
 
   // Set to empty sequence (unbound)
   m_pendingChanges[commandId] = QKeySequence();

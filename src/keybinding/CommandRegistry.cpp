@@ -29,6 +29,7 @@ void CommandRegistry::registerCommand(std::shared_ptr<ICommand> cmd) {
   }
 
   m_commands.insert(id, cmd);
+  m_orderedIds.append(id);
   qDebug() << "CommandRegistry: registered command" << id << ":" << cmd->label();
 }
 
@@ -66,13 +67,15 @@ ICommand* CommandRegistry::command(const QString& commandId) const {
 }
 
 QList<ICommand*> CommandRegistry::allCommands() const {
+  // 登録順 (m_orderedIds の順) で返す。表示順を統一するため。
   QList<ICommand*> result;
-  result.reserve(m_commands.size());
-
-  for (const auto& cmd : m_commands) {
-    result.append(cmd.get());
+  result.reserve(m_orderedIds.size());
+  for (const QString& id : m_orderedIds) {
+    auto it = m_commands.find(id);
+    if (it != m_commands.end()) {
+      result.append(it.value().get());
+    }
   }
-
   return result;
 }
 

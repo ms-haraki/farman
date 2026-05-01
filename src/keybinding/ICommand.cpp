@@ -6,10 +6,12 @@ LambdaCommand::LambdaCommand(
   QString               id,
   QString               label,
   std::function<void()> fn,
-  QString               category)
+  QString               category,
+  QString               description)
   : m_id(std::move(id))
   , m_label(std::move(label))
   , m_category(std::move(category))
+  , m_description(std::move(description))
   , m_fn(std::move(fn)) {
 }
 
@@ -23,6 +25,10 @@ QString LambdaCommand::label() const {
 
 QString LambdaCommand::category() const {
   return m_category;
+}
+
+QString LambdaCommand::description() const {
+  return m_description;
 }
 
 void LambdaCommand::execute() {
