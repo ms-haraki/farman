@@ -144,9 +144,23 @@ jobs:
       - name: Deploy (macOS)
         if: runner.os == 'macOS'
         run: |
-          # macdeployqt で Qt frameworks を .app の Contents/Frameworks に埋める
-          # & 同時に build/farman.dmg を生成
-          macdeployqt build/farman.app -dmg
+          # 1. macdeployqt で Qt frameworks を .app の Contents/Frameworks に埋める。
+          #    -dmg は付けない: macdeployqt は frameworks の rpath を書き換える際
+          #    元々付いていた ad-hoc 署名を破壊する。先に DMG 化すると壊れた署名の
+          #    まま固まってしまい、配布先で「壊れているため開けません」と弾かれる。
+          macdeployqt build/farman.app
+
+          # 2. .app 全体を ad-hoc 署名で再署名する。Apple Developer ID は使えない
+          #    が、署名の整合性が取れていれば Gatekeeper は「未署名アプリ」として
+          #    扱ってくれる (右クリック → Open で起動可)。
+          codesign --force --deep --sign - build/farman.app
+          codesign --verify --deep --strict build/farman.app
+
+          # 3. 整合済みの .app を DMG にパッケージする
+          hdiutil create -volname farman \
+            -srcfolder build/farman.app \
+            -ov -format UDZO \
+            build/farman.dmg
 
       - name: Deploy (Windows)
         if: runner.os == 'Windows'

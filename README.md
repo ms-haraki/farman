@@ -48,8 +48,15 @@ Qt6 / C++20 製のクロスプラットフォーム 2 画面ファイラ。
 | `farman-windows` | `farman.exe` + Qt DLL + libarchive / uchardet 関連 DLL |
 | `farman-linux` | `farman-x86_64.AppImage` |
 
-> **macOS**: 初回は Gatekeeper の警告が出るので右クリック → **Open** を選択
-> (未署名のため。1.0 以降に Apple Developer ID で署名予定)。
+> **macOS**: 未署名アプリのため、初回は Gatekeeper による警告が出ます:
+>
+> - 警告が「**右クリック → Open**」で開けるタイプならそれで OK
+> - 「**壊れているため開けません**」と出る場合は quarantine 属性のせい:
+>   ```bash
+>   xattr -cr /Applications/farman.app
+>   ```
+>   を実行してから再度起動 (これは未署名アプリ全般の対処法。
+>   Apple Developer ID 署名は v1.0 以降に対応予定)。
 >
 > **Windows**: SmartScreen が警告を出す可能性があります。「詳細情報」→
 > 「実行」で起動してください (未署名のため)。
