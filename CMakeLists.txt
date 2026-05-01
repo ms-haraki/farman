@@ -63,6 +63,7 @@ qt_add_executable(farman
   src/ui/BookmarkEditDialog.cpp
   src/ui/HistoryDialog.cpp
   src/ui/SearchDialog.cpp
+  src/ui/PropertiesDialog.cpp
   src/ui/CreateArchiveDialog.cpp
   src/ui/ExtractArchiveDialog.cpp
   src/ui/ClickableLabel.cpp
@@ -76,6 +77,7 @@ qt_add_executable(farman
   src/core/workers/MoveWorker.cpp
   src/core/workers/RemoveWorker.cpp
   src/core/workers/SearchWorker.cpp
+  src/core/workers/PropertiesWorker.cpp
   src/core/workers/ArchiveCreateWorker.cpp
   src/core/workers/ArchiveExtractWorker.cpp
   src/model/FileListModel.cpp

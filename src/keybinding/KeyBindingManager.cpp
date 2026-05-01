@@ -113,6 +113,9 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     // ファイル実行 (OS 既定アプリで開く)。Enter / Return の両方をバインド。
     { QKeySequence(Qt::SHIFT | Qt::Key_Return), "file.execute" },
     { QKeySequence(Qt::SHIFT | Qt::Key_Enter),  "file.execute" },
+    // プロパティダイアログ (Alt+Enter)
+    { QKeySequence(Qt::ALT   | Qt::Key_Return), "file.properties" },
+    { QKeySequence(Qt::ALT   | Qt::Key_Enter),  "file.properties" },
 
     // View
     { QKeySequence(Qt::Key_V), "view.file" },

@@ -4,6 +4,7 @@
 #include "ViewerPanel.h"
 #include "SettingsDialog.h"
 #include "ShortcutListDialog.h"
+#include "PropertiesDialog.h"
 #include "BookmarkListDialog.h"
 #include "HistoryDialog.h"
 #include "SearchDialog.h"
@@ -636,6 +637,25 @@ void MainWindow::registerCommands() {
     "view"
   ));
 
+  // ファイル / ディレクトリのプロパティ表示 (Alt+Enter)
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "file.properties",
+    tr("Properties..."),
+    [this]() {
+      auto* pane = m_fileManagerPanel->activePane();
+      auto* model = pane->model();
+      const QModelIndex idx = pane->view()->currentIndex();
+      if (!idx.isValid()) return;
+      const FileItem* item = model->itemAt(idx.row());
+      if (!item || item->isDotDot()) return;
+      PropertiesDialog dlg(item->absolutePath(), this);
+      dlg.exec();
+    },
+    "file",
+    tr("Show file or directory details. For directories, recursively "
+       "calculates the total size in the background.")
+  ));
+
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "file.execute",
     tr("Execute / Open Externally"),
@@ -783,6 +803,7 @@ void MainWindow::createMenus() {
   addCmd(fileMenu, "file.delete",     tr("Delete"));
   fileMenu->addSeparator();
   addCmd(fileMenu, "file.attributes", tr("Change Attributes..."));
+  addCmd(fileMenu, "file.properties", tr("Properties..."));
   fileMenu->addSeparator();
   addCmd(fileMenu, "file.execute",    tr("Execute / Open Externally"));
   fileMenu->addSeparator();
