@@ -191,7 +191,13 @@ jobs:
           # (images/icon-256.png のままだと "Could not find suitable icon" で失敗)。
           cp images/icon-256.png farman.png
 
-          # AppImage 生成
+          # OUTPUT 環境変数で AppImage の出力ファイル名を直接指定する
+          # (linuxdeploy-plugin-appimage が appimagetool に -o ... として渡す)。
+          # これを指定しないと "Farman-x86_64.AppImage" のように Name フィールド
+          # 由来のキャピタライズされた名前になり、後段の mv が linuxdeploy*.AppImage
+          # まで巻き込んで複数ソース扱いになってしまう。
+          export OUTPUT=farman-x86_64.AppImage
+
           ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
             -e build/farman \
@@ -200,9 +206,8 @@ jobs:
             --plugin qt \
             --output appimage
 
-          # 出力ファイル名は <Name>-<arch>.AppImage 等と揺れるので
-          # 配布物の名前を一定にするためリネーム
-          mv ./*.AppImage ./farman-x86_64.AppImage
+          # 念のため存在確認 (artifact upload で path 解決できないと無音失敗するため)
+          ls -la farman-x86_64.AppImage
 
       # ──────── Artifact upload ────────
       # ビルド成果物を 14 日間保存。GitHub Actions タブの該当 run 詳細から
