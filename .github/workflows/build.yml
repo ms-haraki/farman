@@ -1,0 +1,143 @@
+# GitHub Actions: macOS / Linux / Windows の 3 OS で farman をビルドする matrix CI。
+#
+#   トリガ:
+#     - main / staging / develop への push
+#     - 上記ブランチ向けの PR
+#     - GitHub UI からの手動実行 (workflow_dispatch)
+#
+#   ブランチモデル:
+#     main    → 本番 / リリース済み。直接 push 不可 (PR 経由のみ)
+#     staging → リリース候補 / β。直接 push 不可 (PR 経由のみ)
+#     develop → 開発の最新。直接 push 可
+#     プロモーション順: develop → staging → main
+#     リリース時のパッケージング (DMG, インストーラ, AppImage 等) は
+#     別の release.yml workflow で扱う予定 (タグ push トリガ)。
+#
+#   各 OS で行うこと:
+#     1. Qt 6 を install-qt-action で取得 (キャッシュ有効)
+#     2. libarchive / uchardet をインストール
+#        - macOS:  brew
+#        - Linux:  apt
+#        - Windows: vcpkg (windows-latest にプリインストール済み)
+#     3. cmake configure → build (Release)
+#     4. ビルド成果物を artifact として 14 日保存
+#
+#   詰まったら failed step のログを見て、当該 OS の依存パッケージや
+#   CMake 検索パスを足していくのが基本の運用。
+
+name: Build
+
+on:
+  push:
+    branches: [main, staging, develop]
+  pull_request:
+    branches: [main, staging, develop]
+  workflow_dispatch:
+
+env:
+  QT_VERSION: 6.11.0
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # 1 つコケても他 OS は最後まで走らせる。
+      # 1 push で 3 OS 分のエラーをまとめて確認できるほうが効率的。
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (arm64)
+            os: macos-latest
+            qt_host: mac
+            qt_arch: clang_64
+            artifact_path: build/farman.app
+            artifact_name: farman-macos
+
+          - name: Linux (x86_64)
+            os: ubuntu-latest
+            qt_host: linux
+            qt_arch: linux_gcc_64
+            artifact_path: build/farman
+            artifact_name: farman-linux
+
+          - name: Windows (x86_64)
+            os: windows-latest
+            qt_host: windows
+            qt_arch: win64_msvc2022_64
+            artifact_path: build/Release/farman.exe
+            artifact_name: farman-windows
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ──────── Qt 本体 ────────
+      # CMakeLists.txt の find_package(Qt6 ... Core5Compat ...) に対応するため
+      # qt5compat モジュールを追加で取得する。Core/Widgets/Concurrent/Network
+      # は desktop ターゲットに含まれているのでデフォで OK。
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: ${{ matrix.qt_host }}
+          target: desktop
+          arch: ${{ matrix.qt_arch }}
+          modules: 'qt5compat'
+          cache: true
+
+      # ──────── 依存ライブラリ ────────
+      - name: Install deps (macOS)
+        if: runner.os == 'macOS'
+        run: brew install libarchive uchardet pkg-config
+
+      - name: Install deps (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libarchive-dev \
+            libuchardet-dev \
+            pkg-config \
+            libgl1-mesa-dev \
+            libxkbcommon-dev
+
+      - name: Install deps (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # windows-latest には vcpkg プリインストール済み (環境変数 VCPKG_INSTALLATION_ROOT)
+          vcpkg install libarchive:x64-windows uchardet:x64-windows
+          # 後段の cmake configure 用に VCPKG_ROOT を露出
+          "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" `
+            | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      # ──────── Configure ────────
+      - name: Configure (Unix)
+        if: runner.os != 'Windows'
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake -B build `
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+      # ──────── Build ────────
+      - name: Build
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      # ──────── Artifact upload ────────
+      # ビルド成果物を 14 日間保存。GitHub Actions タブの該当 run 詳細から
+      # zip でダウンロードできる。実機 Windows での動作確認などに使う。
+      # 注: Windows の farman.exe 単体では Qt DLL 不足で起動できない。
+      # 起動可能パッケージにするには別途 windeployqt が必要 (後追加予定)。
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_path }}
+          retention-days: 14
