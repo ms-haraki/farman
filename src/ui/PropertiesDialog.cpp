@@ -77,12 +77,12 @@ PropertiesDialog::~PropertiesDialog() {
 void PropertiesDialog::setupUi() {
   auto* mainLayout = new QVBoxLayout(this);
 
-  auto* form = new QFormLayout();
-  form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
+  m_form = new QFormLayout();
+  m_form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
   // ラベル名 (Name: / Path: 等) を左寄せにすることで、ラベル列がダイアログの
   // 左端に張り付き、値列も左から始まる。深いパスが入っても自然に見える。
-  form->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-  form->setFormAlignment(Qt::AlignLeft | Qt::AlignTop);
+  m_form->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+  m_form->setFormAlignment(Qt::AlignLeft | Qt::AlignTop);
 
   auto makeValueLabel = [this]() -> QLabel* {
     auto* lbl = new QLabel(this);
@@ -104,21 +104,21 @@ void PropertiesDialog::setupUi() {
   m_groupLabel       = makeValueLabel();
   m_linkTargetLabel  = makeValueLabel();
 
-  form->addRow(tr("Name:"),        m_nameLabel);
-  form->addRow(tr("Path:"),        m_pathLabel);
-  form->addRow(tr("Type:"),        m_typeLabel);
-  form->addRow(tr("Size:"),        m_sizeLabel);
-  form->addRow(tr("Modified:"),    m_modifiedLabel);
-  form->addRow(tr("Created:"),     m_createdLabel);
-  form->addRow(tr("Accessed:"),    m_accessedLabel);
-  form->addRow(tr("Permissions:"), m_permissionsLabel);
-  form->addRow(tr("Owner:"),       m_ownerLabel);
-  form->addRow(tr("Group:"),       m_groupLabel);
+  m_form->addRow(tr("Name:"),        m_nameLabel);
+  m_form->addRow(tr("Path:"),        m_pathLabel);
+  m_form->addRow(tr("Type:"),        m_typeLabel);
+  m_form->addRow(tr("Size:"),        m_sizeLabel);
+  m_form->addRow(tr("Modified:"),    m_modifiedLabel);
+  m_form->addRow(tr("Created:"),     m_createdLabel);
+  m_form->addRow(tr("Accessed:"),    m_accessedLabel);
+  m_form->addRow(tr("Permissions:"), m_permissionsLabel);
+  m_form->addRow(tr("Owner:"),       m_ownerLabel);
+  m_form->addRow(tr("Group:"),       m_groupLabel);
   // リンク先はシンボリックリンクの場合のみ後で表示する。行は常に置いておく
   // が空のままでもよい。
-  form->addRow(tr("Link Target:"), m_linkTargetLabel);
+  m_form->addRow(tr("Link Target:"), m_linkTargetLabel);
 
-  mainLayout->addLayout(form);
+  mainLayout->addLayout(m_form);
 
   // OK だけのボタンバー (読み取り専用なので Cancel は不要)。
   auto* buttonBox = new QDialogButtonBox(QDialogButtonBox::Close, this);
@@ -171,6 +171,24 @@ void PropertiesDialog::populateStaticInfo() {
   } else {
     m_linkTargetLabel->setText(QStringLiteral("—"));
   }
+
+  // プラットフォーム別に意味の薄い行を非表示にする。
+  //   - Windows は ACL ベースなので Permissions の rwx 表記は実態と乖離する。
+  //     Owner / Group も Unix uid/gid 概念とは違うため隠す。
+  //     Link Target はシンボリックリンク自体が稀なので常に隠す。
+  //   - macOS / Linux は通常通りすべて表示しつつ、Link Target だけは
+  //     シンボリックリンクの場合に限って表示する (それ以外の行高を詰めるため)。
+  // Settings → Behavior → List Display の列表示と方針を揃えている。
+#ifdef Q_OS_WIN
+  m_form->setRowVisible(m_permissionsLabel, false);
+  m_form->setRowVisible(m_ownerLabel,       false);
+  m_form->setRowVisible(m_groupLabel,       false);
+  m_form->setRowVisible(m_linkTargetLabel,  false);
+#else
+  if (!fi.isSymLink()) {
+    m_form->setRowVisible(m_linkTargetLabel, false);
+  }
+#endif
 }
 
 void PropertiesDialog::onStatsUpdated(qint64 totalBytes, int fileCount, int dirCount) {

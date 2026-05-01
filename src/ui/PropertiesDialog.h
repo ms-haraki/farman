@@ -3,6 +3,7 @@
 #include <QDialog>
 #include <QString>
 
+class QFormLayout;
 class QLabel;
 class QPushButton;
 
@@ -36,6 +37,10 @@ private:
 
   QString          m_path;
   bool             m_isDir = false;
+
+  // 行ごとの表示/非表示を切り替えるために form layout を保持する
+  // (Windows では POSIX 系項目を行ごと隠すため)。
+  QFormLayout*     m_form = nullptr;
 
   // 一覧表示用のラベル群
   QLabel*          m_nameLabel        = nullptr;
