@@ -148,11 +148,12 @@ set_target_properties(farman PROPERTIES
 )
 
 # 翻訳: .ts → .qm を生成し、Qt リソースとして実行ファイルに埋め込む。
-# `cmake --build build --target update_translations` で .ts を更新できる。
+# `cmake --build build --target update_translations` で .ts を更新できる
+# (Qt 6.10+ が `update_translations` という集約ターゲットを自動生成するため
+# LUPDATE_TARGET は明示しない。明示すると Qt の自動生成と衝突する)。
 qt_add_translations(farman
   TS_FILES translations/farman_ja.ts
   RESOURCE_PREFIX /translations
-  LUPDATE_TARGET update_translations
 )
 
 target_link_libraries(farman PRIVATE
