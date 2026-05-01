@@ -172,11 +172,16 @@ jobs:
           # APPIMAGE_EXTRACT_AND_RUN=1 で内部的に展開実行させる。
           export APPIMAGE_EXTRACT_AND_RUN=1
 
+          # linuxdeploy は .desktop の Icon=foo に対して foo.png / foo.svg を
+          # 探すので、ファイル名を Icon= フィールドに合わせる必要がある
+          # (images/icon-256.png のままだと "Could not find suitable icon" で失敗)。
+          cp images/icon-256.png farman.png
+
           # AppImage 生成
           ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
             -e build/farman \
-            -i images/icon-256.png \
+            -i farman.png \
             -d linux/farman.desktop \
             --plugin qt \
             --output appimage
