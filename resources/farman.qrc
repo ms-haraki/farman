@@ -1,0 +1,15 @@
+<!DOCTYPE RCC>
+<!--
+  ランタイム用のアプリアイコン。
+  - macOS の Dock / バンドルアイコンは Contents/Resources/icon.icns 側 (Info.plist
+    の CFBundleIconFile) が使われる。
+  - 一方で QApplication::setWindowIcon() で参照するアイコン
+    (タスクバー / ウィンドウタイトル / Linux の WM 表示など) は実行ファイルに
+    埋め込んだ PNG を使う。
+  - 大きめサイズを 1 枚埋めておけば、Qt が必要に応じて縮小してくれる。
+-->
+<RCC version="1.0">
+  <qresource prefix="/icons">
+    <file alias="farman.png">../images/icon-512.png</file>
+  </qresource>
+</RCC>

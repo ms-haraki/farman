@@ -36,8 +36,20 @@ if(NOT UCHARDET_FOUND)
   endif()
 endif()
 
+# macOS .app バンドルに同梱するアイコン。
+# - tools/generate_icon_assets.sh で images/icon.svg から手動で再生成する
+#   (CMake からは自動実行しない)。
+# - MACOSX_PACKAGE_LOCATION で Contents/Resources/ 配下に配置され、
+#   下の MACOSX_BUNDLE_ICON_FILE が Info.plist の CFBundleIconFile を埋める。
+set(FARMAN_MACOS_ICON "${CMAKE_SOURCE_DIR}/images/icon.icns")
+if(APPLE AND EXISTS "${FARMAN_MACOS_ICON}")
+  set_source_files_properties("${FARMAN_MACOS_ICON}" PROPERTIES
+    MACOSX_PACKAGE_LOCATION "Resources")
+endif()
+
 qt_add_executable(farman
   src/main.cpp
+  resources/farman.qrc
   src/ui/MainWindow.cpp
   src/ui/FileListPane.cpp
   src/ui/FileListView.cpp
@@ -104,6 +116,11 @@ qt_add_executable(farman
   src/settings/Settings.cpp
 )
 
+# macOS の場合のみ .icns をバンドルに同梱
+if(APPLE AND EXISTS "${FARMAN_MACOS_ICON}")
+  target_sources(farman PRIVATE "${FARMAN_MACOS_ICON}")
+endif()
+
 target_include_directories(farman PRIVATE
   ${CMAKE_SOURCE_DIR}/src
 )
@@ -127,6 +144,7 @@ set_target_properties(farman PROPERTIES
   MACOSX_BUNDLE_BUNDLE_VERSION           "${PROJECT_VERSION}"
   MACOSX_BUNDLE_SHORT_VERSION_STRING     "${PROJECT_VERSION}"
   MACOSX_BUNDLE_COPYRIGHT                "Copyright (c) Mashsoft Inc."
+  MACOSX_BUNDLE_ICON_FILE                "icon.icns"
 )
 
 # 翻訳: .ts → .qm を生成し、Qt リソースとして実行ファイルに埋め込む。

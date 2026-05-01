@@ -1,5 +1,6 @@
 #include <QApplication>
 #include <QDir>
+#include <QIcon>
 #include <QLibraryInfo>
 #include <QLocalServer>
 #include <QLocalSocket>
@@ -28,6 +29,11 @@ int main(int argc, char *argv[]) {
 
   app.setOrganizationName("Farman");
   app.setApplicationName("farman");
+
+  // ランタイム用アイコン (タスクバー / ウィンドウタイトル / Linux WM など)。
+  // macOS の Dock とバンドル本体のアイコンは Info.plist + Contents/Resources の
+  // icon.icns 側 (CMake で MACOSX_BUNDLE_ICON_FILE 指定) が使われる。
+  app.setWindowIcon(QIcon(QStringLiteral(":/icons/farman.png")));
 
   // Settings をロードして UI 言語を決定する。
   // QTranslator は QApplication と同じ寿命にしたいので static にしておく。
