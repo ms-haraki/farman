@@ -1,5 +1,8 @@
 # farman
 
+[![Build](https://github.com/ms-haraki/farman/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/ms-haraki/farman/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Qt6 / C++20 製のクロスプラットフォーム 2 画面ファイラ。
 キーボードのみで全ての操作を完結できる、使い勝手の良いファイラを目指してます。
 
@@ -24,58 +27,158 @@ Qt6 / C++20 製のクロスプラットフォーム 2 画面ファイラ。
 
 ## 動作環境
 
-- macOS (Apple Silicon / Intel)
-- Windows (10 以降)
-- Linux (Qt6 が動く環境)
+- **macOS** 12 (Monterey) 以降 / Apple Silicon (M1/M2/M3/M4)
+  - 1.0 リリース前は Intel Mac を非対応とします (Universal Binary 化を v1.0 で検討)
+- **Windows** 10 / 11 (x64)
+- **Linux** Qt 6 が動く X11 / Wayland 環境 (Ubuntu 22.04 以降で動作確認)
 
-## ビルド
+## バイナリの入手
 
-### 前提パッケージ
+正式リリース前のため、配布バイナリはまだ提供していません。
+最新の開発ビルドは GitHub Actions の成果物から取得できます:
 
-macOS (Homebrew):
+<https://github.com/ms-haraki/farman/actions/workflows/build.yml>
+
+該当ワークフローの run を選んで、Artifacts からプラットフォーム別の zip を
+ダウンロードしてください:
+
+| Artifact 名 | 中身 |
+|---|---|
+| `farman-macos` | `.dmg` (Qt frameworks 同梱) |
+| `farman-windows` | `farman.exe` + Qt DLL + libarchive / uchardet 関連 DLL |
+| `farman-linux` | `farman-x86_64.AppImage` |
+
+> **macOS**: 初回は Gatekeeper の警告が出るので右クリック → **Open** を選択
+> (未署名のため。1.0 以降に Apple Developer ID で署名予定)。
+>
+> **Windows**: SmartScreen が警告を出す可能性があります。「詳細情報」→
+> 「実行」で起動してください (未署名のため)。
+
+## ソースからのビルド
+
+### macOS
+
+前提パッケージ (Homebrew):
 
 ```bash
-brew install qt libarchive uchardet
+brew install qt libarchive uchardet pkg-config
 ```
 
-Linux (Debian / Ubuntu):
-
-```bash
-sudo apt install qt6-base-dev qt6-tools-dev qt6-5compat-dev \
-                 libarchive-dev libuchardet-dev cmake
-```
-
-### 設定 & ビルド
+ビルド:
 
 ```bash
 cmake -B build -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt
 cmake --build build
 ```
 
-クリーンビルド:
-
-```bash
-rm -rf build
-cmake -B build -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/qt
-cmake --build build
-```
-
-### 起動
-
-macOS:
+起動:
 
 ```bash
 open ./build/farman.app
-# 開発時にデバッグログを Terminal で見たいときは:
+# 開発時にデバッグログを Terminal で見たいときはバンドル内の実行ファイルを直接:
 ./build/farman.app/Contents/MacOS/farman
 ```
 
-Windows / Linux:
+配布用 `.dmg` の作成:
 
 ```bash
-./build/farman      # Linux
-build\farman.exe    # Windows
+macdeployqt build/farman.app -dmg
+# build/farman.dmg が生成される
 ```
+
+### Linux (Debian / Ubuntu)
+
+前提パッケージ:
+
+```bash
+sudo apt install -y \
+  qt6-base-dev qt6-tools-dev qt6-5compat-dev \
+  libarchive-dev libuchardet-dev \
+  cmake pkg-config libgl1-mesa-dev libxkbcommon-dev
+```
+
+ビルド:
+
+```bash
+cmake -B build
+cmake --build build
+```
+
+起動:
+
+```bash
+./build/farman
+```
+
+配布用 AppImage の作成 (linuxdeploy 利用):
+
+```bash
+# 初回のみ
+wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+wget https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+chmod +x linuxdeploy*.AppImage
+
+# 生成
+./linuxdeploy-x86_64.AppImage \
+  --appdir AppDir \
+  -e build/farman \
+  -i images/icon-256.png \
+  -d linux/farman.desktop \
+  --plugin qt \
+  --output appimage
+```
+
+### Windows
+
+前提:
+
+1. **Visual Studio 2022** をインストール (C++ によるデスクトップ開発ワークロード)
+2. **Qt 6.10 以降** を [Qt Online Installer](https://www.qt.io/download-qt-installer-oss) からインストール
+   - コンポーネント: **MSVC 2022 64-bit** + **Qt 5 Compatibility Module** にチェック
+   - 例: `C:\Qt\6.10.3\msvc2022_64\`
+3. **vcpkg** で libarchive / uchardet を取得:
+   ```powershell
+   git clone https://github.com/microsoft/vcpkg C:\vcpkg
+   cd C:\vcpkg
+   .\bootstrap-vcpkg.bat
+   .\vcpkg integrate install
+   .\vcpkg install libarchive:x64-windows uchardet:x64-windows
+   ```
+
+ビルド (Developer Command Prompt for VS 2022 から):
+
+```powershell
+cmake -B build ^
+  -DCMAKE_PREFIX_PATH="C:\Qt\6.10.3\msvc2022_64" ^
+  -DCMAKE_TOOLCHAIN_FILE="C:\vcpkg\scripts\buildsystems\vcpkg.cmake"
+cmake --build build --config Release
+```
+
+起動:
+
+```powershell
+build\Release\farman.exe
+```
+
+配布用パッケージ (Qt DLL + 依存 DLL を実行ファイル横に同梱):
+
+```powershell
+windeployqt --release build\Release\farman.exe
+copy C:\vcpkg\installed\x64-windows\bin\*.dll build\Release\
+# build\Release\ ディレクトリ全体を zip して配布
+```
+
+### クリーンビルド (全プラットフォーム共通)
+
+```bash
+rm -rf build         # Windows: rmdir /s /q build
+# 上記の cmake コマンドを再実行
+```
+
+## CI
+
+`.github/workflows/build.yml` で **3 OS × push 毎** の自動ビルド検証を行っています。
+タグ push 時のリリース自動化は将来 `release.yml` で対応予定。
 
 ## デフォルトキーバインド (抜粋)
 
@@ -108,8 +211,13 @@ build\farman.exe    # Windows
 
 ## 設定の保存場所
 
-- macOS: `~/Library/Preferences/Farman/farman/settings.json`
-- ログ既定値: 同ディレクトリ下 `farman-YYYY-MM-DD.log` (Settings から変更可)
+| OS | パス |
+|---|---|
+| macOS | `~/Library/Preferences/Farman/farman/settings.json` |
+| Linux | `~/.config/Farman/farman/settings.json` |
+| Windows | `%APPDATA%\Farman\farman\settings.json` |
+
+ログ既定値: 同ディレクトリ下 `farman-YYYY-MM-DD.log` (Settings から変更可)
 
 ## ドキュメント
 
@@ -119,7 +227,15 @@ build\farman.exe    # Windows
 
 ## 翻訳
 
-`translations/farman_ja.ts` が日本語訳。Qt Linguist (`/opt/homebrew/opt/qt/bin/Linguist`) で開いて編集可能。`tr()` 文字列の抽出は:
+`translations/farman_ja.ts` が日本語訳。Qt Linguist で開いて編集可能:
+
+| OS | Linguist のパス例 |
+|---|---|
+| macOS | `/opt/homebrew/opt/qt/bin/Linguist` |
+| Linux | `/usr/bin/linguist6` (apt 版) |
+| Windows | `C:\Qt\6.10.3\msvc2022_64\bin\linguist.exe` |
+
+`tr()` 文字列の抽出 (.ts への反映):
 
 ```bash
 cmake --build build --target update_translations
