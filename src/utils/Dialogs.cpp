@@ -92,15 +92,43 @@ bool confirm(QWidget* parent,
 
 void applyAltShortcut(QPushButton* btn, Qt::Key key) {
   if (!btn) return;
-  const QKeySequence seq(Qt::ALT | key);
-  const QString hint = QStringLiteral(" (%1)").arg(seq.toString(QKeySequence::NativeText));
+
+  // & は mnemonic 用の予約文字。重複付加の誤検知を避けるため一旦除去する。
   QString text = btn->text();
+  text.remove(QLatin1Char('&'));
+
+  const QKeySequence seq(Qt::ALT | key);
+
+#ifdef Q_OS_MAC
+  // macOS は & mnemonic を表示しない (Apple HIG)。代わりに末尾に "(⌥X)" を
+  // 追加して、ショートカットを視覚的に伝える。
+  const QString hint = QStringLiteral(" (%1)").arg(seq.toString(QKeySequence::NativeText));
   if (!text.endsWith(hint)) {
-    // & は mnemonic 用の予約文字。macOS では表示されない上、重複付加の誤検知の
-    // 元になるため一旦除去する。
-    text.remove(QLatin1Char('&'));
     btn->setText(text + hint);
   }
+#else
+  // Windows / Linux は & mnemonic がネイティブ流儀。Alt 押下時に該当文字が
+  // アンダーラインで描画される。Qt の QPushButton はこれを自動でやってくれる
+  // ので、該当文字の前に & を挿入するだけでよい。
+  //   - 英語: "Copy" + Qt::Key_C → "&Copy"  (C にアンダーライン)
+  //   - 日本語: "コピー" + Qt::Key_C → 該当字無いので "コピー (&C)" と末尾追加
+  //     これは Windows の和文ボタン慣習 (例: "OK(&O)") に揃える形。
+  const QChar target = QChar(static_cast<int>(key)).toLower();
+  bool inserted = false;
+  for (int i = 0; i < text.length(); ++i) {
+    if (text[i].toLower() == target) {
+      text.insert(i, QLatin1Char('&'));
+      inserted = true;
+      break;
+    }
+  }
+  if (!inserted) {
+    const QChar upper = QChar(static_cast<int>(key));
+    text += QStringLiteral(" (&%1)").arg(upper);
+  }
+  btn->setText(text);
+#endif
+
   btn->setShortcut(seq);
   btn->setFocusPolicy(Qt::StrongFocus);
 }
