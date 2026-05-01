@@ -822,6 +822,13 @@ void MainWindow::createMenus() {
   addCmd(editMenu, "select.invert",          tr("Invert Selection"));
   addCmd(editMenu, "select.toggle",          tr("Toggle Selection"));
   addCmd(editMenu, "select.toggle_and_down", tr("Toggle and Move Down"));
+  editMenu->addSeparator();
+  // Settings は Edit メニュー末尾に置く (Windows/Linux の慣習)。
+  // macOS では setMenuRole(PreferencesRole) によりアプリケーションメニューの
+  // Preferences へ自動的に移動するため、ここの位置はあくまで非 Mac の置き場所。
+  // ビュアー表示中でも開けるように global=true。
+  QAction* settingsAction = addCmd(editMenu, "app.settings", tr("Settings..."), /*global=*/true);
+  settingsAction->setMenuRole(QAction::PreferencesRole);
 
   // View
   QMenu* viewMenu = bar->addMenu(tr("&View"));
@@ -862,10 +869,6 @@ void MainWindow::createMenus() {
   QMenu* helpMenu = bar->addMenu(tr("&Help"));
   // ショートカット一覧 (`?` キー)
   addCmd(helpMenu, "help.shortcuts", tr("Keyboard Shortcuts"), /*global=*/true);
-  // Settings はビュアー表示中でも開けるように global=true
-  QAction* settingsAction = addCmd(helpMenu, "app.settings", tr("Settings..."), /*global=*/true);
-  // macOS ではアプリケーションメニューの Preferences に移動する
-  settingsAction->setMenuRole(QAction::PreferencesRole);
   QAction* aboutAction = new QAction(tr("About farman..."), this);
   aboutAction->setMenuRole(QAction::AboutRole);
   connect(aboutAction, &QAction::triggered, this, &MainWindow::showAboutDialog);
