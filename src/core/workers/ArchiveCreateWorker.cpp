@@ -1,18 +1,29 @@
 #include "ArchiveCreateWorker.h"
+#include <QDateTime>
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
 #include <QDirIterator>
 #include <archive.h>
 #include <archive_entry.h>
-#include <sys/stat.h>
+#ifndef Q_OS_WIN
+  #include <sys/stat.h>
+#endif
 
 namespace Farman {
 
 namespace {
 
-// archive_write_open_filename は UTF-8 の char* を取る
 static constexpr qint64 kReadBufSize = 64 * 1024;
+
+#ifdef Q_OS_WIN
+// QString → const wchar_t* の薄いヘルパ。Windows では QString は内部的に
+// UTF-16 を保持しているので、utf16() の戻りをそのまま wchar_t* として
+// 扱える (Windows の wchar_t は 16-bit)。
+inline const wchar_t* asWChar(const QString& s) {
+  return reinterpret_cast<const wchar_t*>(s.utf16());
+}
+#endif
 
 } // anonymous namespace
 
@@ -56,7 +67,15 @@ void ArchiveCreateWorker::run() {
       break;
   }
 
-  if (archive_write_open_filename(a, m_outputPath.toUtf8().constData()) != ARCHIVE_OK) {
+  // Windows では archive_write_open_filename (char*) が ANSI 解釈なので、
+  // 日本語パス (例: OneDrive\ドキュメント) や OneDrive 配下が開けない。
+  // wchar_t* 版を使えば QString の UTF-16 表現をそのまま渡せる。
+#ifdef Q_OS_WIN
+  const int openResult = archive_write_open_filename_w(a, asWChar(m_outputPath));
+#else
+  const int openResult = archive_write_open_filename(a, m_outputPath.toUtf8().constData());
+#endif
+  if (openResult != ARCHIVE_OK) {
     emit errorOccurred(m_outputPath,
                        QString::fromUtf8(archive_error_string(a)));
     archive_write_free(a);
@@ -115,18 +134,9 @@ void ArchiveCreateWorker::run() {
 bool ArchiveCreateWorker::addEntry(::archive* a,
                                    const QString& absPath,
                                    const QString& entryName) {
-  // Qt の QFile::Permissions をそのまま mode_t にキャストすると bits が
-  // POSIX と食い違い、結果としてヘッダの file size/type が不正になって
-  // 展開時に 0 バイトになる。stat(2) で直接取って archive_entry_copy_stat
-  // に渡せば mode/size/mtime がまとめて正しく設定される。
-  struct stat st {};
-  if (::stat(absPath.toUtf8().constData(), &st) != 0) {
-    emit errorOccurred(absPath, "stat failed");
-    return false;
-  }
-
   // 先にファイルを開いておく。open できない（= 権限無し）場合、ヘッダだけ
   // 書いてデータを書かない「壊れたエントリ」を残さないようここでエラー終了する。
+  // QFile は Windows でも内部で UTF-16 path を使うので日本語パスが通る。
   QFile f(absPath);
   if (!f.open(QIODevice::ReadOnly)) {
     emit errorOccurred(absPath, "Failed to open for reading");
@@ -134,8 +144,32 @@ bool ArchiveCreateWorker::addEntry(::archive* a,
   }
 
   struct archive_entry* entry = archive_entry_new();
+
+#ifdef Q_OS_WIN
+  // Windows: ::stat (ANSI) は UTF-8 path をうまく解釈できないので、
+  // QFileInfo で取れる情報を archive_entry に直接セットする。POSIX permission
+  // は意味が薄いため無難なデフォルト (0644) を入れておく。
+  archive_entry_copy_pathname_w(entry, asWChar(entryName));
+  QFileInfo fi(absPath);
+  archive_entry_set_size(entry, fi.size());
+  archive_entry_set_filetype(entry, AE_IFREG);
+  archive_entry_set_mtime(entry, fi.lastModified().toSecsSinceEpoch(), 0);
+  archive_entry_set_perm(entry, 0644);
+#else
+  // Unix は ::stat → archive_entry_copy_stat が一番確実 (mode/size/mtime
+  // 一括で正しく入る)。Qt の QFile::Permissions を mode_t に手で詰め直すと
+  // bits 不整合でヘッダの file size/type が壊れる罠があるため、stat 経由を
+  // そのまま維持する。
+  struct stat st {};
+  if (::stat(absPath.toUtf8().constData(), &st) != 0) {
+    emit errorOccurred(absPath, "stat failed");
+    f.close();
+    archive_entry_free(entry);
+    return false;
+  }
   archive_entry_set_pathname(entry, entryName.toUtf8().constData());
   archive_entry_copy_stat(entry, &st);
+#endif
 
   const int hr = archive_write_header(a, entry);
   if (hr < ARCHIVE_OK) {
@@ -185,17 +219,29 @@ bool ArchiveCreateWorker::addEntry(::archive* a,
 bool ArchiveCreateWorker::addDirectoryRecursive(::archive* a,
                                                 const QString& absPath,
                                                 const QString& entryName) {
-  // ディレクトリ自身のエントリ（stat 経由で mode/mtime を正しく設定）
+  // ディレクトリ自身のエントリ
   {
+    const QString dirEntryName = entryName + QLatin1Char('/');
+    struct archive_entry* entry = archive_entry_new();
+
+#ifdef Q_OS_WIN
+    // Windows: addEntry と同様に ::stat 回避 + wchar_t pathname。
+    archive_entry_copy_pathname_w(entry, asWChar(dirEntryName));
+    QFileInfo fi(absPath);
+    archive_entry_set_filetype(entry, AE_IFDIR);
+    archive_entry_set_mtime(entry, fi.lastModified().toSecsSinceEpoch(), 0);
+    archive_entry_set_perm(entry, 0755);
+#else
     struct stat st {};
     if (::stat(absPath.toUtf8().constData(), &st) != 0) {
       emit errorOccurred(absPath, "stat failed");
+      archive_entry_free(entry);
       return false;
     }
-    struct archive_entry* entry = archive_entry_new();
-    archive_entry_set_pathname(entry,
-      (entryName + QLatin1Char('/')).toUtf8().constData());
+    archive_entry_set_pathname(entry, dirEntryName.toUtf8().constData());
     archive_entry_copy_stat(entry, &st);
+#endif
+
     const int r = archive_write_header(a, entry);
     archive_entry_free(entry);
     if (r < ARCHIVE_OK) {
