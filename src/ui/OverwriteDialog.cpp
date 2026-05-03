@@ -95,16 +95,20 @@ void OverwriteDialog::setupUi(const QString& srcPath, const QString& dstPath) {
             onActionChanged();
           });
 
-  // カーソル位置: 拡張子の手前（dot-file 保護のため先頭 '.' は無視）
+  // 初期選択: ベース名を選択しつつカーソルを拡張子の手前に置く。
+  // 拡張子はそのまま残しつつ、ユーザーがすぐにベース名だけタイプし直せるようにする。
+  // 先頭 '.' (dot-file) は拡張子としてではなくベース名の一部とみなす。
+  // CreateArchiveDialog の初期ファイル名や inputText(BeforeExtension) と同じ挙動。
   int extPos = -1;
   for (int i = 1; i < m_originalName.length(); ++i) {
     if (m_originalName[i] == QLatin1Char('.')) { extPos = i; break; }
   }
-  const int cursorPos = (extPos > 0) ? extPos : m_originalName.length();
-  QTimer::singleShot(0, m_renameEdit, [this, cursorPos]() {
+  const int basenameLen = (extPos > 0) ? extPos : m_originalName.length();
+  QTimer::singleShot(0, m_renameEdit, [this, basenameLen]() {
     m_renameEdit->setFocus();
-    m_renameEdit->deselect();
-    m_renameEdit->setCursorPosition(cursorPos);
+    // setSelection(start, length) はカーソルを選択末尾に置くので別途
+    // setCursorPosition は不要。
+    m_renameEdit->setSelection(0, basenameLen);
   });
 
   // ── OK / Cancel ──

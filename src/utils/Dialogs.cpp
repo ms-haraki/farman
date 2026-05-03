@@ -150,7 +150,12 @@ QString inputText(QWidget* parent,
   auto* edit = new QLineEdit(defaultValue, &dlg);
   edit->setFocusPolicy(Qt::StrongFocus);
   if (cursor == TextInputCursor::BeforeExtension) {
-    // 拡張子の手前にカーソル。先頭 '.' (ドットファイル) はスキップ。
+    // ベース名を選択しつつカーソルを拡張子の手前に置く。
+    // 先頭 '.' (ドットファイル) は拡張子としてではなくベース名の一部とみなす。
+    //   "foo.txt"      → "foo" を選択、カーソルは '.' の直前
+    //   "foo.tar.gz"   → "foo" を選択 (最初の '.' の直前)
+    //   ".gitignore"   → 全選択 (拡張子とみなさない)
+    //   "Makefile"     → 全選択 ('.' なし)
     // ダイアログ show() 直後に Qt が selectAll を再適用してくることが
     // あるので、QTimer で次のイベントループまで遅延してから上書きする。
     int extPos = -1;
@@ -160,8 +165,10 @@ QString inputText(QWidget* parent,
     const int pos = (extPos > 0) ? extPos : defaultValue.length();
     QTimer::singleShot(0, edit, [edit, pos]() {
       edit->setFocus();
-      edit->deselect();
-      edit->setCursorPosition(pos);
+      // setSelection(start, length) は選択範囲を設定すると同時に
+      // カーソルを選択末尾 (= pos) に移動するので、別途 setCursorPosition
+      // を呼ぶ必要はない。
+      edit->setSelection(0, pos);
     });
   } else {
     edit->selectAll();

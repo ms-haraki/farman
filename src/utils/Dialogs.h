@@ -43,10 +43,11 @@ void applyAltShortcut(QPushButton* btn, Qt::Key key);
 // CursorPolicy: ダイアログを開いた直後の入力欄カーソル位置／選択状態。
 //  - SelectAll: 既定。defaultValue 全体を選択 (新規入力で上書きしやすい)
 //  - BeforeExtension: 拡張子の手前 = 最初に出てくる '.' の直前にカーソル、
-//      選択無し ("foo.tar.gz" なら "foo" の直後、"foo.txt" なら "foo" の直後)。
+//      かつそこまでのベース名を選択状態にする。
+//      ("foo.tar.gz" なら "foo" を選択、カーソルは最初の '.' の直前)
 //      リネーム向け。先頭が '.' のドットファイル ('.gitignore' 等) は
-//      拡張子として扱わず、その後の `.` を見る。コピー衝突時の
-//      OverwriteDialog のリネーム入力欄と同じ挙動。
+//      拡張子として扱わず、その後の `.` を見る (見つからなければ全選択)。
+//      アーカイブ作成 / OverwriteDialog のリネーム入力欄も同じ挙動。
 enum class TextInputCursor {
   SelectAll,
   BeforeExtension,
