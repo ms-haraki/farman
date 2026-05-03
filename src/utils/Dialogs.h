@@ -18,10 +18,21 @@ bool confirm(QWidget* parent,
              const QString& text,
              bool defaultYes = false);
 
-// ボタンにショートカットキー（Alt+key）を設定し、テキスト末尾に
-// 「(⌥X)」/「(Alt+X)」のネイティブ表記を添える。Tab でフォーカスを
-// 当てられるよう focusPolicy も StrongFocus に明示する。
-// 既に同じ表記が末尾にあれば重複付加はしない（再呼び出し安全）。
+// ラベル文字列に Alt+key ショートカットの視覚的ヒントを埋め込む。
+// 戻り値はそのまま QLabel / QRadioButton / QPushButton の text に使える。
+//   Windows / Linux: 該当文字の前に '&' を挿入 (例: "&Foo")。
+//                    Qt が該当文字をアンダーラインで描画し、QPushButton や
+//                    QRadioButton では Alt+key で自動アクティベートされる。
+//                    該当字が無ければ末尾 "(&F)" 形式にフォールバック
+//                    (例: 日本語訳 "コピー" + Qt::Key_C → "コピー (&C)")。
+//   macOS:           HIG により '&' mnemonic は表示されないため、末尾に
+//                    "(⌥X)" 形式で添える (例: "Foo (⌥F)")。
+// 入力中の '&' は一旦除去するため、繰り返し呼び出しても二重付加しない。
+QString withAltMnemonic(const QString& text, Qt::Key key);
+
+// ボタンにショートカットキー (Alt+key) を設定し、表記を withAltMnemonic で
+// 整える。Tab でフォーカスを当てられるよう focusPolicy も StrongFocus に
+// 明示する。再呼び出し安全。
 void applyAltShortcut(QPushButton* btn, Qt::Key key);
 
 // テキスト入力ダイアログ（QInputDialog の置き換え）。

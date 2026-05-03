@@ -30,9 +30,6 @@ void DeleteConfirmDialog::setupUi(const QString& message, bool defaultToTrash) {
   setModal(true);
   resize(480, 0);
 
-  const QString altT = QKeySequence(Qt::ALT | Qt::Key_T).toString(QKeySequence::NativeText);
-  const QString altP = QKeySequence(Qt::ALT | Qt::Key_P).toString(QKeySequence::NativeText);
-
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
   auto* label = new QLabel(message, this);
@@ -40,10 +37,13 @@ void DeleteConfirmDialog::setupUi(const QString& message, bool defaultToTrash) {
   mainLayout->addWidget(label);
 
   // ── Action 選択 ──
+  // ラジオラベルに Alt+key の視覚ヒントを埋める (withAltMnemonic 経由)。
   QGroupBox* actionGroup = new QGroupBox(tr("Action"), this);
   QVBoxLayout* actionLayout = new QVBoxLayout(actionGroup);
-  m_trashRadio     = new QRadioButton(tr("Move to Trash (%1)").arg(altT), this);
-  m_permanentRadio = new QRadioButton(tr("Delete permanently (%1)").arg(altP), this);
+  m_trashRadio     = new QRadioButton(
+    withAltMnemonic(tr("Move to Trash"), Qt::Key_T), this);
+  m_permanentRadio = new QRadioButton(
+    withAltMnemonic(tr("Delete permanently"), Qt::Key_P), this);
   m_trashRadio->setFocusPolicy(Qt::StrongFocus);
   m_permanentRadio->setFocusPolicy(Qt::StrongFocus);
   (defaultToTrash ? m_trashRadio : m_permanentRadio)->setChecked(true);

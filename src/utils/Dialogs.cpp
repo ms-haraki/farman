@@ -90,46 +90,43 @@ bool confirm(QWidget* parent,
   return dlg.exec() == QDialog::Accepted;
 }
 
-void applyAltShortcut(QPushButton* btn, Qt::Key key) {
-  if (!btn) return;
-
-  // & は mnemonic 用の予約文字。重複付加の誤検知を避けるため一旦除去する。
-  QString text = btn->text();
-  text.remove(QLatin1Char('&'));
+QString withAltMnemonic(const QString& text, Qt::Key key) {
+  // & は mnemonic 用の予約文字。再呼び出しに備えて一旦除去する。
+  QString out = text;
+  out.remove(QLatin1Char('&'));
 
   const QKeySequence seq(Qt::ALT | key);
 
 #ifdef Q_OS_MAC
-  // macOS は & mnemonic を表示しない (Apple HIG)。代わりに末尾に "(⌥X)" を
-  // 追加して、ショートカットを視覚的に伝える。
+  // macOS は & mnemonic を表示しない (Apple HIG)。末尾に "(⌥X)" を添えて
+  // ショートカットを視覚的に伝える。既に末尾に hint があれば追加しない。
   const QString hint = QStringLiteral(" (%1)").arg(seq.toString(QKeySequence::NativeText));
-  if (!text.endsWith(hint)) {
-    btn->setText(text + hint);
-  }
+  if (out.endsWith(hint)) return out;
+  return out + hint;
 #else
   // Windows / Linux は & mnemonic がネイティブ流儀。Alt 押下時に該当文字が
-  // アンダーラインで描画される。Qt の QPushButton はこれを自動でやってくれる
-  // ので、該当文字の前に & を挿入するだけでよい。
+  // アンダーラインで描画される。QPushButton / QRadioButton / QCheckBox は
+  // この & 表記から Alt+key で自動的にアクティベートする。
   //   - 英語: "Copy" + Qt::Key_C → "&Copy"  (C にアンダーライン)
   //   - 日本語: "コピー" + Qt::Key_C → 該当字無いので "コピー (&C)" と末尾追加
   //     これは Windows の和文ボタン慣習 (例: "OK(&O)") に揃える形。
   const QChar target = QChar(static_cast<int>(key)).toLower();
-  bool inserted = false;
-  for (int i = 0; i < text.length(); ++i) {
-    if (text[i].toLower() == target) {
-      text.insert(i, QLatin1Char('&'));
-      inserted = true;
-      break;
+  for (int i = 0; i < out.length(); ++i) {
+    if (out[i].toLower() == target) {
+      out.insert(i, QLatin1Char('&'));
+      return out;
     }
   }
-  if (!inserted) {
-    const QChar upper = QChar(static_cast<int>(key));
-    text += QStringLiteral(" (&%1)").arg(upper);
-  }
-  btn->setText(text);
+  // 該当字なし: "(&F)" 末尾追加
+  const QChar upper = QChar(static_cast<int>(key));
+  return out + QStringLiteral(" (&%1)").arg(upper);
 #endif
+}
 
-  btn->setShortcut(seq);
+void applyAltShortcut(QPushButton* btn, Qt::Key key) {
+  if (!btn) return;
+  btn->setText(withAltMnemonic(btn->text(), key));
+  btn->setShortcut(QKeySequence(Qt::ALT | key));
   btn->setFocusPolicy(Qt::StrongFocus);
 }
 

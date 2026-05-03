@@ -34,8 +34,6 @@ void ExtractArchiveDialog::setupUi(const QString& archivePath,
   setModal(true);
   resize(560, 0);
 
-  const QString altD = QKeySequence(Qt::ALT | Qt::Key_D).toString(QKeySequence::NativeText);
-
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
   QFormLayout* form = new QFormLayout();
@@ -54,7 +52,12 @@ void ExtractArchiveDialog::setupUi(const QString& archivePath,
   m_browseButton->setFocusPolicy(Qt::StrongFocus);
   dirRowLayout->addWidget(m_dirEdit, 1);
   dirRowLayout->addWidget(m_browseButton);
-  form->addRow(tr("Output directory (%1):").arg(altD), dirRow);
+  // ラベルに Alt+D の視覚ヒントを埋め (withAltMnemonic 経由) + setBuddy で
+  // Alt+D 押下時に出力先入力欄へフォーカスを送る。
+  auto* dirLabel = new QLabel(
+    withAltMnemonic(tr("Output directory:"), Qt::Key_D), this);
+  dirLabel->setBuddy(m_dirEdit);
+  form->addRow(dirLabel, dirRow);
 
   mainLayout->addLayout(form);
 

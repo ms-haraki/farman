@@ -63,8 +63,6 @@ void SearchDialog::setupUi(const QString& initialPath) {
   setModal(true);
   resize(820, 720);
 
-  const QString altS = QKeySequence(Qt::ALT | Qt::Key_S).toString(QKeySequence::NativeText);
-
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
   QFormLayout* form = new QFormLayout();
@@ -110,7 +108,8 @@ void SearchDialog::setupUi(const QString& initialPath) {
   form->addRow(tr("Exclude files:"), m_excludeFileEdit);
 
   // Include subdirectories
-  m_subdirsCheck = new QCheckBox(tr("Include subdirectories (%1)").arg(altS), this);
+  m_subdirsCheck = new QCheckBox(
+    withAltMnemonic(tr("Include subdirectories"), Qt::Key_S), this);
   m_subdirsCheck->setChecked(true);
   m_subdirsCheck->setFocusPolicy(Qt::StrongFocus);
   form->addRow(QString(), m_subdirsCheck);

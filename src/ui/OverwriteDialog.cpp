@@ -47,17 +47,17 @@ void OverwriteDialog::setupUi(const QString& srcPath, const QString& dstPath) {
   mainLayout->addLayout(pathForm);
 
   // ── Action 選択 ──
-  const QString altO = QKeySequence(Qt::ALT | Qt::Key_O).toString(QKeySequence::NativeText);
-  const QString altR = QKeySequence(Qt::ALT | Qt::Key_R).toString(QKeySequence::NativeText);
-  const QString altS = QKeySequence(Qt::ALT | Qt::Key_S).toString(QKeySequence::NativeText);
-  const QString altN = QKeySequence(Qt::ALT | Qt::Key_N).toString(QKeySequence::NativeText);
-
+  // ラジオラベルに Alt+key の視覚ヒントを埋める。withAltMnemonic が
+  // Windows / Linux では '&' 挿入、macOS では "(⌥X)" 末尾追加に振り分ける。
   QGroupBox* actionGroup = new QGroupBox(tr("Action"), this);
   QVBoxLayout* actionLayout = new QVBoxLayout(actionGroup);
 
-  m_overwriteRadio = new QRadioButton(tr("Overwrite the existing file (%1)").arg(altO), this);
-  m_renameRadio    = new QRadioButton(tr("Rename to (%1):").arg(altR), this);
-  m_skipRadio      = new QRadioButton(tr("Skip this file (%1)").arg(altS), this);
+  m_overwriteRadio = new QRadioButton(
+    withAltMnemonic(tr("Overwrite the existing file"), Qt::Key_O), this);
+  m_renameRadio    = new QRadioButton(
+    withAltMnemonic(tr("Rename to:"), Qt::Key_R), this);
+  m_skipRadio      = new QRadioButton(
+    withAltMnemonic(tr("Skip this file"), Qt::Key_S), this);
 
   actionLayout->addWidget(m_overwriteRadio);
 

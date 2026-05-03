@@ -102,13 +102,9 @@ void TransferConfirmDialog::setupUi(Operation op,
   itemsLayout->addWidget(list);
   mainLayout->addWidget(itemsGroup, 1);
 
-  // Overwrite mode。ラベルに Alt+キーをネイティブ表記で明記する。
-  // macOS では「⌥O」、Windows / Linux では「Alt+O」のような表示になる。
-  const QString altO =
-    QKeySequence(Qt::ALT | Qt::Key_O).toString(QKeySequence::NativeText);
-  const QString altS =
-    QKeySequence(Qt::ALT | Qt::Key_S).toString(QKeySequence::NativeText);
-
+  // Overwrite mode。ラベルに Alt+key の視覚ヒントを埋める (withAltMnemonic 経由)。
+  // Windows / Linux は & mnemonic で該当文字をアンダーライン表示、
+  // macOS は HIG に従い末尾 "(⌥X)" 形式。
   QFormLayout* overwriteForm = new QFormLayout();
   m_overwriteModeCombo = new QComboBox(this);
   m_overwriteModeCombo->addItem(tr("Ask"),            static_cast<int>(OverwriteMode::Ask));
@@ -116,7 +112,10 @@ void TransferConfirmDialog::setupUi(Operation op,
   m_overwriteModeCombo->addItem(tr("Auto-rename"),    static_cast<int>(OverwriteMode::AutoRename));
   m_overwriteModeCombo->setToolTip(
     tr("How to handle files that already exist at the destination."));
-  overwriteForm->addRow(tr("On overwrite (%1):").arg(altO), m_overwriteModeCombo);
+  auto* overwriteLabel = new QLabel(
+    withAltMnemonic(tr("On overwrite:"), Qt::Key_O), this);
+  overwriteLabel->setBuddy(m_overwriteModeCombo);
+  overwriteForm->addRow(overwriteLabel, m_overwriteModeCombo);
 
   // Auto-rename テンプレート: AutoRename モード時のみ有効
   m_autoRenameEdit = new QLineEdit(this);
@@ -124,7 +123,10 @@ void TransferConfirmDialog::setupUi(Operation op,
   m_autoRenameEdit->setToolTip(
     tr("Suffix appended to rename conflicting files. "
        "Use {n} as the counter placeholder (e.g., ' ({n})' → 'foo (1).txt')."));
-  overwriteForm->addRow(tr("Rename suffix (%1):").arg(altS), m_autoRenameEdit);
+  auto* renameSuffixLabel = new QLabel(
+    withAltMnemonic(tr("Rename suffix:"), Qt::Key_S), this);
+  renameSuffixLabel->setBuddy(m_autoRenameEdit);
+  overwriteForm->addRow(renameSuffixLabel, m_autoRenameEdit);
   auto updateEditEnabled = [this]() {
     const auto mode = static_cast<OverwriteMode>(
       m_overwriteModeCombo->currentData().toInt());

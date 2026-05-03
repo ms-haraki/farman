@@ -40,9 +40,6 @@ void BookmarkEditDialog::setupUi(const QString& initialName,
   setModal(true);
   resize(560, 0);
 
-  const QString altN = QKeySequence(Qt::ALT | Qt::Key_N).toString(QKeySequence::NativeText);
-  const QString altP = QKeySequence(Qt::ALT | Qt::Key_P).toString(QKeySequence::NativeText);
-
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
   QFormLayout* form = new QFormLayout();
@@ -50,9 +47,14 @@ void BookmarkEditDialog::setupUi(const QString& initialName,
   // ダイアログ幅いっぱいまで使う
   form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
 
+  // ラベル文字列に Alt+key の視覚ヒントを埋める。
+  // Windows/Linux は & mnemonic + Qt 自動アクティベート、
+  // macOS は (⌥X) 末尾追加 (どちらも withAltMnemonic が振り分ける)。
   m_nameEdit = new QLineEdit(initialName, this);
   m_nameEdit->setFocusPolicy(Qt::StrongFocus);
-  form->addRow(tr("Name (%1):").arg(altN), m_nameEdit);
+  auto* nameLabel = new QLabel(withAltMnemonic(tr("Name:"), Qt::Key_N), this);
+  nameLabel->setBuddy(m_nameEdit);   // Win/Linux で Alt+N により buddy にフォーカス
+  form->addRow(nameLabel, m_nameEdit);
 
   // Path: 入力欄 + フォルダアイコンボタン
   QWidget* pathRow = new QWidget(this);
@@ -70,7 +72,9 @@ void BookmarkEditDialog::setupUi(const QString& initialName,
   m_browseButton->setFocusPolicy(Qt::StrongFocus);
   pathRowLayout->addWidget(m_pathEdit, 1);
   pathRowLayout->addWidget(m_browseButton);
-  form->addRow(tr("Path (%1):").arg(altP), pathRow);
+  auto* pathLabel = new QLabel(withAltMnemonic(tr("Path:"), Qt::Key_P), this);
+  pathLabel->setBuddy(m_pathEdit);
+  form->addRow(pathLabel, pathRow);
 
   mainLayout->addLayout(form);
 

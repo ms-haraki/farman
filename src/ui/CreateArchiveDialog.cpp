@@ -62,16 +62,14 @@ void CreateArchiveDialog::setupUi(const QString& defaultOutputDir) {
   setModal(true);
   resize(560, 0);
 
-  const QString altF = QKeySequence(Qt::ALT | Qt::Key_F).toString(QKeySequence::NativeText);
-  const QString altD = QKeySequence(Qt::ALT | Qt::Key_D).toString(QKeySequence::NativeText);
-  const QString altM = QKeySequence(Qt::ALT | Qt::Key_M).toString(QKeySequence::NativeText);
-
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
   QFormLayout* form = new QFormLayout();
   form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
 
   // Format
+  // ラベルに Alt+key の視覚ヒントを埋め (withAltMnemonic 経由) + setBuddy で
+  // Alt+key 押下時に対応フィールドへフォーカスを送る。
   m_formatCombo = new QComboBox(this);
   m_formatCombo->addItem(QStringLiteral("zip"),     static_cast<int>(ArchiveCreateWorker::Format::Zip));
   m_formatCombo->addItem(QStringLiteral("tar"),     static_cast<int>(ArchiveCreateWorker::Format::Tar));
@@ -79,7 +77,9 @@ void CreateArchiveDialog::setupUi(const QString& defaultOutputDir) {
   m_formatCombo->addItem(QStringLiteral("tar.bz2"), static_cast<int>(ArchiveCreateWorker::Format::TarBz2));
   m_formatCombo->addItem(QStringLiteral("tar.xz"),  static_cast<int>(ArchiveCreateWorker::Format::TarXz));
   m_formatCombo->setFocusPolicy(Qt::StrongFocus);
-  form->addRow(tr("Format (%1):").arg(altF), m_formatCombo);
+  auto* formatLabel = new QLabel(withAltMnemonic(tr("Format:"), Qt::Key_F), this);
+  formatLabel->setBuddy(m_formatCombo);
+  form->addRow(formatLabel, m_formatCombo);
 
   // Output directory + Browse
   QWidget* dirRow = new QWidget(this);
@@ -93,12 +93,16 @@ void CreateArchiveDialog::setupUi(const QString& defaultOutputDir) {
   m_browseButton->setFocusPolicy(Qt::StrongFocus);
   dirRowLayout->addWidget(m_dirEdit, 1);
   dirRowLayout->addWidget(m_browseButton);
-  form->addRow(tr("Directory (%1):").arg(altD), dirRow);
+  auto* dirLabel = new QLabel(withAltMnemonic(tr("Directory:"), Qt::Key_D), this);
+  dirLabel->setBuddy(m_dirEdit);
+  form->addRow(dirLabel, dirRow);
 
   // Output filename
   m_nameEdit = new QLineEdit(this);
   m_nameEdit->setFocusPolicy(Qt::StrongFocus);
-  form->addRow(tr("File name (%1):").arg(altM), m_nameEdit);
+  auto* nameLabel = new QLabel(withAltMnemonic(tr("File name:"), Qt::Key_M), this);
+  nameLabel->setBuddy(m_nameEdit);
+  form->addRow(nameLabel, m_nameEdit);
 
   mainLayout->addLayout(form);
 
