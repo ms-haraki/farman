@@ -128,13 +128,22 @@ void BehaviorTab::setupUi() {
     tr("When navigating with Shift+letter, match the character after the leading "
        "dot for files/directories starting with '.' (e.g. Shift+G jumps to .gitignore)"));
 
+  m_syncBrowseShowDisabledDialogCheck = new QCheckBox(
+    tr("Notify with a dialog when Sync Browse is auto-disabled"), this);
+  m_syncBrowseShowDisabledDialogCheck->setToolTip(
+    tr("If checked, show a dialog when Sync Browse is automatically turned off "
+       "because the matching directory was not found in the other pane. "
+       "This can also be controlled from the dialog itself ('Do not show this "
+       "dialog next time')."));
+
   // 2 列均等幅の Grid に左寄せで並べる
   QGridLayout* navGrid = new QGridLayout();
   navGrid->setColumnStretch(0, 1);
   navGrid->setColumnStretch(1, 1);
-  navGrid->addWidget(m_cursorLoopCheck,        0, 0, Qt::AlignLeft);
-  navGrid->addWidget(m_persistHistoryCheck,    0, 1, Qt::AlignLeft);
-  navGrid->addWidget(m_typeAheadDotfilesCheck, 1, 0, 1, 2, Qt::AlignLeft);
+  navGrid->addWidget(m_cursorLoopCheck,                     0, 0, Qt::AlignLeft);
+  navGrid->addWidget(m_persistHistoryCheck,                 0, 1, Qt::AlignLeft);
+  navGrid->addWidget(m_typeAheadDotfilesCheck,              1, 0, 1, 2, Qt::AlignLeft);
+  navGrid->addWidget(m_syncBrowseShowDisabledDialogCheck,   2, 0, 1, 2, Qt::AlignLeft);
   navigationLayout->addLayout(navGrid);
 
   mainLayout->addWidget(navigationGroup);
@@ -413,6 +422,7 @@ void BehaviorTab::loadSettings() {
   m_cursorLoopCheck->setChecked(settings.cursorLoop());
   m_persistHistoryCheck->setChecked(settings.persistHistory());
   m_typeAheadDotfilesCheck->setChecked(settings.typeAheadIncludeDotfiles());
+  m_syncBrowseShowDisabledDialogCheck->setChecked(settings.syncBrowseShowDisabledDialog());
 
   // File operations
   m_autoRenameTemplateEdit->setText(settings.autoRenameTemplate());
@@ -500,6 +510,7 @@ void BehaviorTab::save() {
   settings.setCursorLoop(m_cursorLoopCheck->isChecked());
   settings.setPersistHistory(m_persistHistoryCheck->isChecked());
   settings.setTypeAheadIncludeDotfiles(m_typeAheadDotfilesCheck->isChecked());
+  settings.setSyncBrowseShowDisabledDialog(m_syncBrowseShowDisabledDialogCheck->isChecked());
 
   // Save file operation settings
   settings.setAutoRenameTemplate(m_autoRenameTemplateEdit->text());

@@ -81,7 +81,9 @@ MainWindow::~MainWindow() = default;
 void MainWindow::setupUi() {
   // タイトルバーはアプリ名 + バージョンのみ。左右ペインのパスは
   // ステータスバーに既に出ているのでタイトルでは繰り返さない。
-  setWindowTitle(QStringLiteral("farman ") + QStringLiteral(QT_STRINGIFY(FARMAN_VERSION)));
+  // Sync Browse が ON のときは末尾 "[Sync]" を付けるため、ベース部分は別途保持。
+  m_windowTitleBase = QStringLiteral("farman ") + QStringLiteral(QT_STRINGIFY(FARMAN_VERSION));
+  updateWindowTitle();
 
   // Apply window size settings
   auto& settings = Settings::instance();
@@ -148,7 +150,12 @@ void MainWindow::setupUi() {
   m_statusPathLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
   m_statusSummaryLabel = new QLabel(this);
   m_statusSummaryLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  // Sync Browse の状態表示 (OFF 時は空文字 = 何も出ない)。
+  // 件数の左隣に置くと「いま何モードか」をパスから視線を逸らさず確認できる。
+  m_statusSyncBrowseLabel = new QLabel(this);
+  m_statusSyncBrowseLabel->setObjectName(QStringLiteral("syncBrowseLabel"));
   statusBar()->addWidget(m_statusPathLabel, /*stretch*/ 1);
+  statusBar()->addPermanentWidget(m_statusSyncBrowseLabel);
   statusBar()->addPermanentWidget(m_statusSummaryLabel);
 
   connect(m_fileManagerPanel, &FileManagerPanel::activeFocusedPathChanged,
@@ -167,6 +174,16 @@ void MainWindow::setupUi() {
     m_viewerStatusSummary = summary;
     if (m_stack->currentWidget() == m_viewerPanel) updateStatusBar();
   });
+}
+
+void MainWindow::updateWindowTitle() {
+  // 同期ブラウズが ON のときだけサフィックス "[Sync]" を付ける。
+  // ユーザーがメニューを開かなくてもタイトルバーで状態が分かるようにするため。
+  const bool syncOn = m_fileManagerPanel && m_fileManagerPanel->isSyncBrowseEnabled();
+  const QString title = syncOn
+    ? m_windowTitleBase + QStringLiteral(" — [Sync]")
+    : m_windowTitleBase;
+  setWindowTitle(title);
 }
 
 void MainWindow::updateStatusBar() {
@@ -453,6 +470,15 @@ void MainWindow::registerCommands() {
     tr("Sync Active Pane to Other"),
     [this]() {
       m_fileManagerPanel->syncActiveToOther();
+    },
+    "pane"
+  ));
+
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "pane.sync_browse_toggle",
+    tr("Toggle Sync Browse"),
+    [this]() {
+      m_fileManagerPanel->toggleSyncBrowse();
     },
     "pane"
   ));
@@ -841,9 +867,31 @@ void MainWindow::createMenus() {
   singlePaneAction->setChecked(m_fileManagerPanel->isSinglePaneMode());
   connect(viewMenu, &QMenu::aboutToShow, this, [this, singlePaneAction]() {
     singlePaneAction->setChecked(m_fileManagerPanel->isSinglePaneMode());
+    if (m_syncBrowseAction) {
+      // シングルペイン中は Sync Browse の意味がないので項目を disable する。
+      // チェックマーク自体は FileManagerPanel::syncBrowseChanged で同期済み。
+      m_syncBrowseAction->setEnabled(!m_fileManagerPanel->isSinglePaneMode());
+    }
   });
   addCmd(viewMenu, "pane.sort_filter", tr("Sort && Filter..."));
   viewMenu->addSeparator();
+  // 同期ブラウズ (常時連動モード) のトグル。チェックマークで現状を示し、
+  // FileManagerPanel::syncBrowseChanged シグナルで双方向に状態を同期する。
+  // シングルペイン時はメニュー側で disable する。
+  m_syncBrowseAction = addCmd(viewMenu, "pane.sync_browse_toggle", tr("Sync Browse"));
+  m_syncBrowseAction->setCheckable(true);
+  connect(m_fileManagerPanel, &FileManagerPanel::syncBrowseChanged,
+          this, [this](bool on) {
+    if (m_syncBrowseAction) {
+      QSignalBlocker blocker(m_syncBrowseAction);
+      m_syncBrowseAction->setChecked(on);
+    }
+    if (m_statusSyncBrowseLabel) {
+      m_statusSyncBrowseLabel->setText(on ? tr("Sync Browse: ON") : QString());
+    }
+    updateWindowTitle();
+  });
+  // 単発同期 (1 回だけアクティブ → 反対側 / 反対側 → アクティブ)
   addCmd(viewMenu, "pane.sync_other_to_active", tr("Sync Other Pane to Active"));
   addCmd(viewMenu, "pane.sync_active_to_other", tr("Sync Active Pane to Other"));
   viewMenu->addSeparator();

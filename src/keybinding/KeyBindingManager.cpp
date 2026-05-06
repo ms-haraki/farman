@@ -96,6 +96,7 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::Key_S),                 "pane.sort_filter"          },
     { QKeySequence(Qt::CTRL | Qt::Key_Right),  "pane.sync_other_to_active" },
     { QKeySequence(Qt::CTRL | Qt::Key_Left),   "pane.sync_active_to_other" },
+    { QKeySequence(Qt::Key_Y),                 "pane.sync_browse_toggle"   },
 
     // File operations — 簡略キーボードでも打てる一文字キーをデフォルトに
     { QKeySequence(Qt::Key_C), "file.copy"    },
@@ -192,7 +193,8 @@ void KeyBindingManager::loadFromSettings() {
   // version < 8: app.quit を Q → Ctrl+Q (macOS では Cmd+Q) に戻す。
   // OS 標準のショートカットに揃えるため。
   // version < 9: view.toggle_log (Ctrl+L) を新規追加。
-  if (version < 9) {
+  // version < 10: pane.sync_browse_toggle (y) を新規追加。
+  if (version < 10) {
     qDebug() << "KeyBindingManager: migrating bindings from version" << version;
     loadDefaults();
     saveToSettings();
@@ -250,7 +252,7 @@ void KeyBindingManager::saveToSettings() const {
 
   QJsonObject root;
   root["bindings"] = bindings;
-  root["version"] = 9;
+  root["version"] = 10;
 
   QJsonDocument doc(root);
   QString jsonData = QString::fromUtf8(doc.toJson(QJsonDocument::Indented));

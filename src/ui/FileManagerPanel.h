@@ -38,6 +38,13 @@ public:
   bool isSinglePaneMode() const { return m_singlePaneMode; }
   void togglePaneMode();
 
+  // 同期ブラウズ (Sync Browse): 片方のペインで cd すると、もう一方も
+  // 起点からの相対パスで追従する。シングルペイン時は自動的に OFF にし、
+  // トグル操作も無効になる。永続化はしない (起動時は常に OFF)。
+  bool isSyncBrowseEnabled() const { return m_syncBrowseEnabled; }
+  void setSyncBrowseEnabled(bool enabled);
+  void toggleSyncBrowse();
+
   // キーイベント処理
   bool handleKeyEvent(QKeyEvent* event);
 
@@ -97,6 +104,8 @@ signals:
   void activeFocusedPathChanged(const QString& path);
   // ステータスバー連携用: アクティブペインの要約 (件数 / 選択数 / サイズ)。
   void activeSummaryChanged(const QString& summary);
+  // 同期ブラウズの ON/OFF が切り替わったとき (UI 更新トリガ)。
+  void syncBrowseChanged(bool enabled);
 
 private slots:
   void onLeftPaneCurrentChanged(const QModelIndex& current, const QModelIndex& previous);
@@ -121,6 +130,14 @@ private:
   // ペインのパス遷移を一元化するヘルパ（applyPathSortFilter 適用まで面倒を見る）
   bool navigatePane(PaneType paneType, const QString& path);
 
+  // Sync Browse: navigatePane 成功時に呼ばれ、もう一方のペインに同じ
+  // 「相対変化」を適用する。oldPath → newPath の差分を取り、もう一方の
+  // 現在地から同じ動きをさせる。ターゲットが存在しなければ何もしない。
+  // 再帰呼び出しを防ぐため m_syncBrowseInProgress フラグでガード。
+  void maybeSyncFollow(PaneType navigatedPane,
+                       const QString& oldPath,
+                       const QString& newPath);
+
   QSplitter* m_splitter;
   FileListPane* m_leftPane;
   FileListPane* m_rightPane;
@@ -128,6 +145,14 @@ private:
 
   PaneType m_activePane;
   bool m_singlePaneMode;
+
+  // ── Sync Browse ─────────────────────
+  // ON/OFF はメニュー (View → Sync Browse) または `y` キーで切替。
+  // アンカー (起点) は持たず、片方のペインがディレクトリを移動した瞬間に
+  // 「同じ相対変化」をもう一方のペインの現在地から再生する方式。
+  // 浮遊トグルボタンは将来ツールバー実装のタイミングで再検討する。
+  bool    m_syncBrowseEnabled    = false;
+  bool    m_syncBrowseInProgress = false;
 
   DirectoryHistory m_leftHistory;
   DirectoryHistory m_rightHistory;

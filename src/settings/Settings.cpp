@@ -418,6 +418,14 @@ void Settings::setSingleInstance(bool enabled) {
   m_singleInstance = enabled;
 }
 
+bool Settings::syncBrowseShowDisabledDialog() const {
+  return m_syncBrowseShowDisabledDialog;
+}
+
+void Settings::setSyncBrowseShowDisabledDialog(bool show) {
+  m_syncBrowseShowDisabledDialog = show;
+}
+
 void Settings::setConfirmOnExit(bool confirm) {
   m_confirmOnExit = confirm;
 }
@@ -1154,6 +1162,7 @@ void Settings::load() {
   QJsonObject behavior = root.value("behavior").toObject();
   m_confirmOnExit = behavior.value("confirmOnExit").toBool(false);
   m_singleInstance = behavior.value("singleInstance").toBool(true);
+  m_syncBrowseShowDisabledDialog = behavior.value("syncBrowseShowDisabledDialog").toBool(true);
   {
     const QString langStr = behavior.value("language").toString("auto");
     if      (langStr == "en") m_language = LanguageMode::English;
@@ -1532,6 +1541,7 @@ void Settings::save() const {
   QJsonObject behavior;
   behavior["confirmOnExit"] = m_confirmOnExit;
   behavior["singleInstance"] = m_singleInstance;
+  behavior["syncBrowseShowDisabledDialog"] = m_syncBrowseShowDisabledDialog;
   switch (m_language) {
     case LanguageMode::English:  behavior["language"] = "en";   break;
     case LanguageMode::Japanese: behavior["language"] = "ja";   break;

@@ -1,4 +1,5 @@
 #include "Dialogs.h"
+#include <QCheckBox>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QHBoxLayout>
@@ -128,6 +129,45 @@ void applyAltShortcut(QPushButton* btn, Qt::Key key) {
   btn->setText(withAltMnemonic(btn->text(), key));
   btn->setShortcut(QKeySequence(Qt::ALT | key));
   btn->setFocusPolicy(Qt::StrongFocus);
+}
+
+bool informWithSuppress(QWidget* parent,
+                        const QString& title,
+                        const QString& message,
+                        bool initiallyShow) {
+  QDialog dlg(parent);
+  dlg.setWindowTitle(title);
+  dlg.setModal(true);
+  dlg.resize(480, 0);
+
+  auto* layout = new QVBoxLayout(&dlg);
+
+  auto* msg = new QLabel(message, &dlg);
+  msg->setWordWrap(true);
+  msg->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  layout->addWidget(msg);
+
+  // 「次回以降表示しない」(チェック ON で「次回以降表示しない」)
+  // initiallyShow=true (= 通常呼び出し: 設定上はまだ表示する) → チェック OFF
+  // initiallyShow=false (= 既に「表示しない」設定だが手動で再表示している場合) →
+  //   チェック ON で開いて、ユーザーが解除すれば「再び表示する」に戻せる。
+  auto* suppressCheck = new QCheckBox(
+    QObject::tr("Do not show this dialog next time"), &dlg);
+  suppressCheck->setChecked(!initiallyShow);
+  layout->addWidget(suppressCheck);
+
+  auto* btnBox = new QDialogButtonBox(QDialogButtonBox::Ok, &dlg);
+  auto* okBtn = btnBox->button(QDialogButtonBox::Ok);
+  applyAltShortcut(okBtn, Qt::Key_O);
+  okBtn->setDefault(true);
+  layout->addWidget(btnBox);
+
+  QObject::connect(btnBox, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+
+  dlg.exec();
+
+  // 戻り値は「次回以降も表示するか」: チェックが OFF なら true (= 表示し続ける)
+  return !suppressCheck->isChecked();
 }
 
 QString inputText(QWidget* parent,

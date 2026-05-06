@@ -159,6 +159,12 @@ public:
   bool singleInstance()                 const;
   void setSingleInstance(bool enabled);
 
+  // 同期ブラウズが「追従先が存在しないため自動 OFF」した瞬間に通知
+  // ダイアログを出すかどうか。ダイアログ側の「次回以降表示しない」
+  // チェックを ON にした時にもこのフラグが false になる。デフォは true。
+  bool syncBrowseShowDisabledDialog()        const;
+  void setSyncBrowseShowDisabledDialog(bool show);
+
   // ── 言語設定 ─────────────────────────────
   // UI 言語。変更は次回起動時に反映される (実装上の制限、再起動を促す)。
   LanguageMode language()               const;
@@ -361,6 +367,7 @@ private:
 
   bool             m_confirmOnExit   = false;
   bool             m_singleInstance  = true;
+  bool             m_syncBrowseShowDisabledDialog = true;
   LanguageMode     m_language         = LanguageMode::Auto;
   bool             m_logVisible       = true;
   int              m_logPaneHeight    = 120;  // px

@@ -136,22 +136,41 @@ Total Commander / Double Commander に近い操作感を目指す。
   デフォルトキー `Ctrl+Left`。
 - View メニューにも同名のエントリを置く。
 
-### 同期ブラウズ (Sync Browse) *（未実装）*
+### 同期ブラウズ (Sync Browse)
 
 トグル ON のとき、片方のペインでディレクトリを移動するともう一方の
-ペインも同じ **相対パス** で追従するモード。Krusader / Total Commander
-の Sync Browse 相当。
+ペインも **同じ相対変化** をその場の現在地から実行するモード。
+Krusader / Total Commander の Sync Browse 相当。
 
-- View メニュー (or キーバインド) でトグル ON/OFF。
-- 起点: トグル ON にした瞬間の左右ペインのディレクトリ。以降、
-  片方が `cd subdir` すると相対的に同じ subdir へもう一方が動く。
-  片方が親へ移動すれば、もう一方も親方向へ動く。
-- 相対パスでの追従先が存在しない場合は、追従側はそのまま据え置き
-  (エラーは静かにスキップ、ログに残す)。
+- 切替手段:
+  - **View メニュー**: チェック付きの "Sync Browse" 項目。
+  - **キーバインド**: 既定 `y` (Settings → Keybindings で変更可)。
+  - 将来ツールバー実装時にトグルボタンも追加予定 (バックログ)。
+- ON のときの視覚インジケータ:
+  - メニューのチェックマーク
+  - ステータスバー右側に "Sync Browse: ON" ラベル
+  - ウィンドウタイトルにサフィックス "[Sync]"
+- 動き方: ON にした瞬間に左右の起点を覚えるなどはせず、**ナビゲート毎に
+  「片方のペインが oldPath → newPath で進んだ相対変化」を計算し、
+  もう一方の現在地から同じ動きをさせる**。
+  - 例: 左で `cd src` (`/old/farman` → `/old/farman/src`) すると、
+    右が `/new/farman` にいれば `/new/farman/src` へ追従。
+  - 例: 左で `cd ..` すると右も親方向へ移動。
+  - 例: 絶対ジャンプ (アドレスバー編集や bookmark で全く別の場所へ
+    飛ぶ) の場合、計算結果のターゲットがもう一方に存在しないことが
+    多いので自然に no-op になる。
+- 相対パスでの追従先が存在しない場合は **同期を自動解除** する
+  (据え置きを続けると左右がズレたまま気付かない恐れがあるため、
+   明示的に OFF にして状態をユーザーに知らせる)。ログにも記録。
 - 用途: 同名ディレクトリ構造を持つ 2 つのツリー (例: 旧版と新版の
   ソース、バックアップ元と先) を並行に行き来する。
 - ペイン切替・ファイル選択・コピー / 移動などの操作はトグル状態に
   影響されず通常通り動作する。
+- **シングルペイン時の挙動**:
+  - シングルペインに入った瞬間に Sync Browse は強制 OFF。
+  - シングルペイン中はメニュー項目が disabled、`y` キーは no-op
+    (ログに記録)。
+  - 2 ペインに戻っても自動復元はしない (ユーザーが明示再 ON)。
 - トグル状態は持ち越さない (起動時は OFF)。Settings に保存しない。
 
 ### アクティブペインの切替
@@ -991,7 +1010,8 @@ BinaryView では `setPlainText` 前後で `AddressHighlighter` を一時的に
 ようにするのが目的。
 
 - 配置候補: Copy / Move / Delete / New File / New Directory / Rename /
-  Search / Bookmark / Settings / Toggle Single Pane / Toggle Log Pane など。
+  Search / Bookmark / Settings / Toggle Single Pane / Toggle Log Pane /
+  **Sync Browse トグル (🔗)** など。
 - 各ボタンは `CommandRegistry` の既存コマンドを呼び出すだけ
   (`addCmd` ヘルパと同様)。実体ロジックの重複は無し。
 - ボタンに割り当てたキーバインドはツールチップに表記する

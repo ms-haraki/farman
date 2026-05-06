@@ -7,6 +7,7 @@
 #include "../keybinding/KeyBindingManager.h"
 #include "ViewerPanel.h"
 
+class QAction;
 class QStackedWidget;
 class QLabel;
 
@@ -55,9 +56,19 @@ private:
   QStackedWidget* m_stack;
   FileManagerPanel* m_fileManagerPanel;
   ViewerPanel* m_viewerPanel;
-  // ステータスバー (左: フォーカス中ファイルの絶対パス / 右: 件数・選択要約)
-  QLabel*      m_statusPathLabel    = nullptr;
-  QLabel*      m_statusSummaryLabel = nullptr;
+  // ステータスバー (左: フォーカス中ファイルの絶対パス / 中央: Sync Browse 状態 /
+  // 右: 件数・選択要約)
+  QLabel*      m_statusPathLabel        = nullptr;
+  QLabel*      m_statusSummaryLabel     = nullptr;
+  QLabel*      m_statusSyncBrowseLabel  = nullptr;
+
+  // View メニューの Sync Browse トグル項目 (FileManagerPanel 状態と同期)。
+  QAction*     m_syncBrowseAction = nullptr;
+
+  // ウィンドウタイトルのベース部分 (例: "farman 0.9.0")。Sync Browse が ON
+  // のときにサフィックス "[Sync]" を追加するため、再構築用に保持しておく。
+  QString      m_windowTitleBase;
+  void         updateWindowTitle();
 
   // ショートカット一覧ウィンドウ (遅延生成)。
   ShortcutListDialog* m_shortcutListDialog = nullptr;

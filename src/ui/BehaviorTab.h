@@ -36,6 +36,7 @@ private:
   QCheckBox*  m_cursorLoopCheck;
   QCheckBox*  m_persistHistoryCheck;
   QCheckBox*  m_typeAheadDotfilesCheck;
+  QCheckBox*  m_syncBrowseShowDisabledDialogCheck = nullptr;
 
   // File operation settings
   QLineEdit*  m_autoRenameTemplateEdit;

@@ -35,6 +35,18 @@ QString withAltMnemonic(const QString& text, Qt::Key key);
 // 明示する。再呼び出し安全。
 void applyAltShortcut(QPushButton* btn, Qt::Key key);
 
+// 情報通知ダイアログ + 「次回以降表示しない」チェックを 1 つ持つ汎用ヘルパ。
+// initiallyShow = true で開かれた直後はチェック OFF。ユーザーが OK を押した
+// 時点での「次回も表示するか」 (= チェックの逆) を戻り値で返す。
+//   bool keep = informWithSuppress(parent, title, message, true);
+//   if (!keep) Settings::instance().setXxxShow(false);
+// initiallyShow = false で呼んでも普通に表示するが、その場合チェックは
+// 既定で ON (表示しない側) になる。
+bool informWithSuppress(QWidget* parent,
+                        const QString& title,
+                        const QString& message,
+                        bool initiallyShow);
+
 // テキスト入力ダイアログ（QInputDialog の置き換え）。
 // OK/Cancel にショートカット（Alt+O/Alt+X）を設定し、Tab 順は
 // 入力欄 → Cancel → OK（実行系が最後）。

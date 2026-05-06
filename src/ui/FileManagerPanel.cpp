@@ -286,6 +286,8 @@ bool FileManagerPanel::navigatePane(PaneType paneType, const QString& path) {
   model->setAttrFilter(s.attrFilter);
   model->setNameFilters(s.nameFilters);
 
+  // 同期ブラウズの「相対変化」計算用に、setPath 前のパスを取っておく。
+  const QString oldPath = pane->currentPath();
   const bool ok = pane->setPath(path);
   if (ok) {
     DirectoryHistory& hist = (paneType == PaneType::Left) ? m_leftHistory : m_rightHistory;
@@ -293,9 +295,96 @@ bool FileManagerPanel::navigatePane(PaneType paneType, const QString& path) {
     Logger::instance().info(QStringLiteral("%1 pane: %2")
       .arg(paneType == PaneType::Left ? QStringLiteral("Left") : QStringLiteral("Right"))
       .arg(pane->currentPath()));
+    // 同期ブラウズが有効ならもう一方のペインに同じ相対変化を適用する。
+    maybeSyncFollow(paneType, oldPath, pane->currentPath());
   }
   return ok;
 }
+
+void FileManagerPanel::maybeSyncFollow(PaneType navigatedPane,
+                                       const QString& oldPath,
+                                       const QString& newPath) {
+  if (!m_syncBrowseEnabled)    return;
+  if (m_syncBrowseInProgress)  return;  // 反対ペイン navigate からの再帰を防ぐ
+  if (m_singlePaneMode)        return;
+  if (oldPath == newPath)      return;  // 実質変化なし
+
+  const PaneType otherType = (navigatedPane == PaneType::Left) ? PaneType::Right : PaneType::Left;
+  FileListPane* other = (otherType == PaneType::Left) ? m_leftPane : m_rightPane;
+  if (!other) return;
+
+  // 「片方のペインが oldPath → newPath で進んだ相対変化」を、もう一方の
+  // 現在地に同じく適用して目的地を作る。
+  //   例 1: cd into "src"
+  //         oldPath=/old/farman   newPath=/old/farman/src
+  //         relative="src"   other_current=/new/farman   target=/new/farman/src
+  //   例 2: cd .. (親へ)
+  //         oldPath=/old/farman/src   newPath=/old/farman
+  //         relative=".."   other_current=/new/farman/src   target=/new/farman
+  //   例 3: 全く関係ない場所への絶対ジャンプ
+  //         oldPath=/old/farman   newPath=/tmp/foo
+  //         relative="../../tmp/foo" を /new/farman に適用 → /tmp/foo
+  //         多くの場合 other 側に存在しないため "skipped" でログのみ。
+  const QString relative = QDir(oldPath).relativeFilePath(newPath);
+  const QString target   = QDir::cleanPath(QDir(other->currentPath()).absoluteFilePath(relative));
+
+  if (!QFileInfo(target).isDir()) {
+    // 追従先が存在しない時点で「同期できなくなった」と扱い、同期を自動解除する。
+    // 据え置きを続けると左右がどんどんズレた状態でユーザーがそれに気付かない
+    // 恐れがあるため、明示的に OFF にしてユーザーに状態を知らせる。
+    Logger::instance().info(
+      QStringLiteral("Sync Browse: disabled (target not found: %1)").arg(target));
+    setSyncBrowseEnabled(false);
+
+    // 通知ダイアログ (Settings で抑制可)。ダイアログ内の「次回以降表示しない」
+    // チェックを ON にすると、その瞬間 Settings を更新して以後表示しなくなる。
+    auto& settings = Settings::instance();
+    if (settings.syncBrowseShowDisabledDialog()) {
+      const bool keep = informWithSuppress(
+        this,
+        tr("Sync Browse Disabled"),
+        tr("Sync Browse was turned off because the matching directory "
+           "was not found in the other pane:\n\n%1").arg(target),
+        /*initiallyShow=*/true);
+      if (!keep) {
+        settings.setSyncBrowseShowDisabledDialog(false);
+        settings.save();
+      }
+    }
+    return;
+  }
+
+  m_syncBrowseInProgress = true;
+  navigatePane(otherType, target);
+  m_syncBrowseInProgress = false;
+}
+
+void FileManagerPanel::setSyncBrowseEnabled(bool enabled) {
+  if (m_syncBrowseEnabled == enabled) return;
+
+  if (enabled && m_singlePaneMode) {
+    Logger::instance().warn(
+      tr("Sync Browse cannot be enabled while single pane mode is active."));
+    return;
+  }
+
+  m_syncBrowseEnabled = enabled;
+  Logger::instance().info(enabled
+    ? QStringLiteral("Sync Browse: ON")
+    : QStringLiteral("Sync Browse: OFF"));
+
+  emit syncBrowseChanged(enabled);
+}
+
+void FileManagerPanel::toggleSyncBrowse() {
+  if (m_singlePaneMode) {
+    Logger::instance().info(
+      tr("Sync Browse toggle ignored: single pane mode is active."));
+    return;
+  }
+  setSyncBrowseEnabled(!m_syncBrowseEnabled);
+}
+
 
 DirectoryHistory& FileManagerPanel::history(PaneType pane) {
   return (pane == PaneType::Left) ? m_leftHistory : m_rightHistory;
@@ -757,6 +846,13 @@ void FileManagerPanel::togglePaneMode() {
 
 void FileManagerPanel::setSinglePaneMode(bool single) {
   m_singlePaneMode = single;
+
+  // シングルペインに入ったら同期ブラウズを強制 OFF にする
+  // (1 ペインで「相方」がいないため意味を成さない)。
+  // 2 ペインに戻っても自動復元はしない (ユーザーが明示的に再 ON する想定)。
+  if (single && m_syncBrowseEnabled) {
+    setSyncBrowseEnabled(false);
+  }
 
   if (single) {
     // 1ペインモード: 非アクティブなペインを非表示
