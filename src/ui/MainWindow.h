@@ -72,6 +72,11 @@ private:
 
   // ショートカット一覧ウィンドウ (遅延生成)。
   ShortcutListDialog* m_shortcutListDialog = nullptr;
+
+  // Tools メニュー (外部アプリ連携)。UserCommandManager の userCommandsChanged で
+  // rebuildToolsMenu() が呼ばれ、addCmd() ベースで再構築する。
+  QMenu* m_toolsMenu = nullptr;
+  void   rebuildToolsMenu();
 };
 
 } // namespace Farman

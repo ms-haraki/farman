@@ -65,6 +65,7 @@ qt_add_executable(farman
   src/ui/BehaviorTab.cpp
   src/ui/GeneralTab.cpp
   src/ui/ViewersTab.cpp
+  src/ui/ExternalAppsTab.cpp
   src/ui/SortFilterDialog.cpp
   src/ui/TransferConfirmDialog.cpp
   src/ui/OverwriteDialog.cpp
@@ -83,6 +84,10 @@ qt_add_executable(farman
   src/core/BookmarkManager.cpp
   src/core/DirectoryHistory.cpp
   src/core/Logger.cpp
+  src/core/UserCommand.cpp
+  src/core/PlaceholderExpander.cpp
+  src/core/UserCommandRunner.cpp
+  src/core/UserCommandManager.cpp
   src/utils/Dialogs.cpp
   src/core/workers/WorkerBase.cpp
   src/core/workers/CopyWorker.cpp
@@ -182,9 +187,13 @@ qt_add_executable(test_worker
   src/core/workers/MoveWorker.cpp
   src/ui/ProgressDialog.cpp
   src/utils/Dialogs.cpp
-  # ProgressDialog が Settings に依存するので test_worker でも Settings を含める
+  # ProgressDialog が Settings に依存するので test_worker でも Settings を含める。
+  # Settings.cpp は core/UserCommand.h を include しており、defaults / JSON の
+  # 各シンボルが未定義になるので UserCommand.cpp も同梱する (Manager / Runner は
+  # Settings 自体は使わないので不要)。
   src/settings/Settings.cpp
   src/core/BookmarkManager.cpp
+  src/core/UserCommand.cpp
 )
 
 target_include_directories(test_worker PRIVATE

@@ -17,6 +17,9 @@ QList<CommandCategoryGroup> categoryTemplate() {
     { QStringLiteral("bookmark"),   QCoreApplication::translate("CommandLayout", "Bookmark"),       {} },
     { QStringLiteral("history"),    QCoreApplication::translate("CommandLayout", "History"),        {} },
     { QStringLiteral("app"),        QCoreApplication::translate("CommandLayout", "Application"),    {} },
+    // 外部アプリ連携 (UserCommand) の組み込み + ユーザー定義はすべて "tools"
+    // カテゴリで束ねる。Help より前に置いてメニューバーの並び (Tools → Help) に揃える。
+    { QStringLiteral("tools"),      QCoreApplication::translate("CommandLayout", "Tools"),          {} },
     { QStringLiteral("help"),       QCoreApplication::translate("CommandLayout", "Help"),           {} },
     { QStringLiteral("general"),    QCoreApplication::translate("CommandLayout", "Other"),          {} },
   };

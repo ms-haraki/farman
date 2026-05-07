@@ -136,6 +136,13 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::CTRL | Qt::Key_Comma), "app.settings" },
     { QKeySequence(Qt::CTRL | Qt::Key_Q),     "app.quit"     },
 
+    // Tools (外部アプリ連携の組み込み 2 件)
+    // Total Commander の慣習に揃え、ターミナル = T、エディタ = E をデフォルトに。
+    // ユーザー定義コマンドは ID が動的なので Settings → Keybindings タブで個別に
+    // 割り当てる。
+    { QKeySequence(Qt::Key_T), "user.cmd.terminal" },
+    { QKeySequence(Qt::Key_E), "user.cmd.editor"   },
+
     // Help
     // 「?」キーは Shift+/ なので、Shift 修飾子の扱いがプラットフォームや
     // 配列で揺れる。両方登録しておけば確実に拾える。
@@ -194,7 +201,10 @@ void KeyBindingManager::loadFromSettings() {
   // OS 標準のショートカットに揃えるため。
   // version < 9: view.toggle_log (Ctrl+L) を新規追加。
   // version < 10: pane.sync_browse_toggle (y) を新規追加。
-  if (version < 10) {
+  // version < 11: user.cmd.terminal (T) / user.cmd.editor (E) を新規追加。
+  // 既存バインドは保持されるが、T / E 用のデフォルトは下の merge ロジックで
+  // 自動補完される。
+  if (version < 11) {
     qDebug() << "KeyBindingManager: migrating bindings from version" << version;
     loadDefaults();
     saveToSettings();
@@ -252,7 +262,7 @@ void KeyBindingManager::saveToSettings() const {
 
   QJsonObject root;
   root["bindings"] = bindings;
-  root["version"] = 10;
+  root["version"] = 11;
 
   QJsonDocument doc(root);
   QString jsonData = QString::fromUtf8(doc.toJson(QJsonDocument::Indented));

@@ -4,6 +4,7 @@
 #include "BehaviorTab.h"
 #include "GeneralTab.h"
 #include "ViewersTab.h"
+#include "ExternalAppsTab.h"
 #include "settings/Settings.h"
 #include "keybinding/KeyBindingManager.h"
 #include "utils/Dialogs.h"
@@ -37,6 +38,7 @@ SettingsDialog::SettingsDialog(const QString& leftCurrentPath,
   , m_appearanceTab(nullptr)
   , m_behaviorTab(nullptr)
   , m_viewersTab(nullptr)
+  , m_externalAppsTab(nullptr)
   , m_buttonBox(nullptr)
   , m_leftCurrentPath(leftCurrentPath)
   , m_rightCurrentPath(rightCurrentPath)
@@ -54,25 +56,30 @@ void SettingsDialog::setupUi() {
   // Tab widget
   m_tabWidget = new QTabWidget(this);
 
-  m_keybindingTab = new KeybindingTab(this);
-  m_appearanceTab = new AppearanceTab(this);
-  m_behaviorTab   = new BehaviorTab(this);
-  m_generalTab    = new GeneralTab(m_leftCurrentPath, m_rightCurrentPath,
-                                   m_currentWindowSize, m_currentWindowPosition,
-                                   this);
-  m_viewersTab    = new ViewersTab(this);
+  m_keybindingTab   = new KeybindingTab(this);
+  m_appearanceTab   = new AppearanceTab(this);
+  m_behaviorTab     = new BehaviorTab(this);
+  m_generalTab      = new GeneralTab(m_leftCurrentPath, m_rightCurrentPath,
+                                     m_currentWindowSize, m_currentWindowPosition,
+                                     this);
+  m_viewersTab      = new ViewersTab(this);
+  m_externalAppsTab = new ExternalAppsTab(this);
 
-  m_tabWidget->addTab(m_generalTab,    tr("1. General"));
-  m_tabWidget->addTab(m_behaviorTab,   tr("2. Behavior"));
-  m_tabWidget->addTab(m_appearanceTab, tr("3. Appearance"));
-  m_tabWidget->addTab(m_viewersTab,    tr("4. Viewers"));
-  m_tabWidget->addTab(m_keybindingTab, tr("5. Keybindings"));
+  // 外部アプリの設定はキーバインドと密結合 (T / E などのキーが指す先) なので、
+  // Keybindings の直前に並べる。
+  m_tabWidget->addTab(m_generalTab,      tr("1. General"));
+  m_tabWidget->addTab(m_behaviorTab,     tr("2. Behavior"));
+  m_tabWidget->addTab(m_appearanceTab,   tr("3. Appearance"));
+  m_tabWidget->addTab(m_viewersTab,      tr("4. Viewers"));
+  m_tabWidget->addTab(m_externalAppsTab, tr("5. External Apps"));
+  m_tabWidget->addTab(m_keybindingTab,   tr("6. Keybindings"));
 
   // macOS の System Settings → 「キーボード」→「キーボードナビゲーション」に
   // 依存させたくないので、各タブ内の操作対象ウィジェットに対して明示的に
   // StrongFocus を設定する。Tab キーで全項目を辿れるようにするのが目的。
   const QList<QWidget*> tabRoots = {
-    m_generalTab, m_behaviorTab, m_appearanceTab, m_viewersTab, m_keybindingTab
+    m_generalTab, m_behaviorTab, m_appearanceTab, m_viewersTab,
+    m_externalAppsTab, m_keybindingTab
   };
   for (QWidget* root : tabRoots) {
     const auto widgets = root->findChildren<QWidget*>();
@@ -177,6 +184,7 @@ void SettingsDialog::onApply() {
   m_behaviorTab->save();
   m_generalTab->save();
   m_viewersTab->save();
+  m_externalAppsTab->save();
 
   // Save settings to file
   Settings::instance().save();

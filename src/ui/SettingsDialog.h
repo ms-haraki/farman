@@ -13,6 +13,7 @@ class AppearanceTab;
 class BehaviorTab;
 class GeneralTab;
 class ViewersTab;
+class ExternalAppsTab;
 
 class SettingsDialog : public QDialog {
   Q_OBJECT
@@ -48,12 +49,13 @@ private:
   QSize   m_currentWindowSize;
   QPoint  m_currentWindowPosition;
 
-  QTabWidget*     m_tabWidget;
-  KeybindingTab*  m_keybindingTab;
-  AppearanceTab*  m_appearanceTab;
-  BehaviorTab*    m_behaviorTab;
-  GeneralTab*     m_generalTab;
-  ViewersTab*     m_viewersTab;
+  QTabWidget*       m_tabWidget;
+  KeybindingTab*    m_keybindingTab;
+  AppearanceTab*    m_appearanceTab;
+  BehaviorTab*      m_behaviorTab;
+  GeneralTab*       m_generalTab;
+  ViewersTab*       m_viewersTab;
+  ExternalAppsTab*  m_externalAppsTab;
   QDialogButtonBox* m_buttonBox;
   QShortcut*      m_clearShortcut;
   QShortcut*      m_resetShortcut;

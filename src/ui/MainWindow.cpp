@@ -10,6 +10,9 @@
 #include "SearchDialog.h"
 #include "../core/FileItem.h"
 #include "../core/Logger.h"
+#include "../core/UserCommand.h"
+#include "../core/UserCommandManager.h"
+#include "../core/PlaceholderExpander.h"
 #include "../keybinding/ICommand.h"
 #include "../core/DirectoryHistory.h"
 #include "../model/FileListModel.h"
@@ -55,11 +58,52 @@ MainWindow::MainWindow(QWidget* parent)
   // Register commands
   registerCommands();
 
+  // 外部アプリ (UserCommand) の準備:
+  // - PaneContext は MainWindow が握っている FileManagerPanel から組み立てる。
+  //   ここでラムダだけ仕込み、実際の参照は実行時に毎回拾う (起動時点では
+  //   m_fileManagerPanel は既に setupUi で生成済み)。
+  // - sync() で組み込み terminal / editor が CommandRegistry に入る。
+  //   これにより loadFromSettings 時にバインドされた T / E が解決可能になる。
+  // - Settings 変更を受けて再 sync。
+  UserCommandManager::instance().setContextProvider([this]() -> PaneContext {
+    PaneContext ctx;
+    if (!m_fileManagerPanel) return ctx;
+    ctx.activeDir = m_fileManagerPanel->activePane()->currentPath();
+    // 反対ペイン
+    FileListPane* other = (m_fileManagerPanel->activePane() == m_fileManagerPanel->leftPane())
+                          ? m_fileManagerPanel->rightPane()
+                          : m_fileManagerPanel->leftPane();
+    ctx.otherDir = other ? other->currentPath() : QString();
+
+    // カーソル位置のファイル
+    if (auto* model = m_fileManagerPanel->activePane()->model()) {
+      const QModelIndex cur = m_fileManagerPanel->activePane()->view()->currentIndex();
+      if (cur.isValid()) {
+        if (const FileItem* item = model->itemAt(cur)) {
+          if (!item->isDotDot()) {
+            ctx.cursorPath = item->absolutePath();
+            ctx.cursorName = item->name();
+            ctx.cursorExt  = item->suffix();
+          }
+        }
+      }
+      ctx.selectedPaths = model->selectedFilePaths();
+    }
+    return ctx;
+  });
+  connect(&Settings::instance(), &Settings::settingsChanged,
+          &UserCommandManager::instance(), &UserCommandManager::sync);
+  UserCommandManager::instance().sync();
+
   // Load keybindings
   KeyBindingManager::instance().loadFromSettings();
 
   // メニューバーはキーバインドが確定した後に作る（右端にショートカットを表示するため）
   createMenus();
+
+  // Tools メニューの中身は UserCommand の追加 / 削除に追従する。
+  connect(&UserCommandManager::instance(), &UserCommandManager::userCommandsChanged,
+          this, &MainWindow::rebuildToolsMenu);
 
   // 履歴は永続化が ON の場合のみ、初期パス読み込みの前に復元しておく。
   // loadInitialPath() が navigatePane() を呼び、現在パスが履歴の先頭に自然に入る。
@@ -899,6 +943,13 @@ void MainWindow::createMenus() {
   addCmd(viewMenu, "view.choose", tr("Open With Viewer..."));
   addCmd(viewMenu, "view.toggle_log", tr("Toggle Log Pane"));
 
+  // Tools (外部アプリ連携)
+  // 慣例として Edit と View の間に置きたいが、createMenus は単方向に並べていく
+  // 都合で View の直後に置く。Total Commander / Double Commander でも実質
+  // 「右端の Help より左」に Tools が並んでいれば違和感は少ない。
+  m_toolsMenu = bar->addMenu(tr("&Tools"));
+  rebuildToolsMenu();
+
   // Go
   QMenu* goMenu = bar->addMenu(tr("&Go"));
   addCmd(goMenu, "navigate.parent", tr("Parent Directory"));
@@ -921,6 +972,50 @@ void MainWindow::createMenus() {
   aboutAction->setMenuRole(QAction::AboutRole);
   connect(aboutAction, &QAction::triggered, this, &MainWindow::showAboutDialog);
   helpMenu->addAction(aboutAction);
+}
+
+void MainWindow::rebuildToolsMenu() {
+  if (!m_toolsMenu) return;
+
+  // QAction を全部消して作り直す。Settings 変更で UserCommand のリストが
+  // 入れ替わるたびに呼ばれる前提。
+  // QAction はメニューが parent なので clear() で破棄される。
+  m_toolsMenu->clear();
+
+  // Tools メニュー専用に「ショートカットを最初の 1 件だけ採用」する
+  // ローカル addCmd 相当 (createMenus の lambda と同じ流儀)。
+  // ビュアー表示中は外部アプリを呼ぶ意味が薄いので global=false 相当
+  // (= ファイルマネージャパネル限定で Action 経由のキーが効く) にしておく。
+  const QList<UserCommand>& cmds = UserCommandManager::instance().commands();
+  bool addedAny = false;
+  for (const UserCommand& cmd : cmds) {
+    if (!cmd.showInToolsMenu) continue;
+
+    QAction* action = new QAction(cmd.name, m_toolsMenu);
+    const QList<QKeySequence> keys =
+      KeyBindingManager::instance().keysForCommand(cmd.id);
+    if (!keys.isEmpty()) {
+      action->setShortcut(keys.first());
+      action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+      m_fileManagerPanel->addAction(action);
+    }
+    const QString id = cmd.id;
+    connect(action, &QAction::triggered, this, [id, this]() {
+      QString err;
+      if (!UserCommandManager::instance().run(id, &err)) {
+        QMessageBox::warning(this, tr("External command failed"), err);
+      }
+    });
+    m_toolsMenu->addAction(action);
+    addedAny = true;
+  }
+
+  if (!addedAny) {
+    // Empty menu はメニューバーにも出ない実装が多いので、placeholder を入れる。
+    QAction* placeholder = new QAction(tr("(no external commands configured)"), m_toolsMenu);
+    placeholder->setEnabled(false);
+    m_toolsMenu->addAction(placeholder);
+  }
 }
 
 void MainWindow::showAboutDialog() {

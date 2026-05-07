@@ -33,6 +33,17 @@ void CommandRegistry::registerCommand(std::shared_ptr<ICommand> cmd) {
   qDebug() << "CommandRegistry: registered command" << id << ":" << cmd->label();
 }
 
+bool CommandRegistry::unregisterCommand(const QString& commandId) {
+  auto it = m_commands.find(commandId);
+  if (it == m_commands.end()) {
+    return false;
+  }
+  m_commands.erase(it);
+  m_orderedIds.removeAll(commandId);
+  qDebug() << "CommandRegistry: unregistered command" << commandId;
+  return true;
+}
+
 bool CommandRegistry::execute(const QString& commandId) {
   auto it = m_commands.find(commandId);
   if (it == m_commands.end()) {

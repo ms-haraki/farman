@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.h"
+#include "core/UserCommand.h"
 #include <QObject>
 #include <QFont>
 #include <QColor>
@@ -278,6 +279,13 @@ public:
   QList<Bookmark> bookmarks() const;
   void            setBookmarks(const QList<Bookmark>& list);
 
+  // ── 外部アプリ連携 (UserCommand) ──────────
+  // Tools メニュー / Settings → General タブの External Applications で扱う
+  // 外部アプリ一覧。先頭 2 件は builtin=true の terminal / editor で固定
+  // (UserCommandManager が並び順を保つ前提)。
+  QList<UserCommand> userCommands() const;
+  void               setUserCommands(const QList<UserCommand>& cmds);
+
   // コピー／移動の「自動リネーム」で使うサフィックステンプレート。
   // "{n}" がカウンタのプレースホルダ。未指定なら " ({n})" を補う。
   QString autoRenameTemplate()          const;
@@ -440,6 +448,10 @@ private:
   // 初回起動時のデフォルトブックマーク注入を一度きりに制限するためのフラグ。
   // false のままの設定ファイルを読むと、既存ブックマークにマージしてから true にする。
   bool             m_defaultBookmarksInstalled = false;
+
+  // 外部アプリ (UserCommand) 一覧。デフォルトは applyDefaults() で
+  // defaultBuiltinUserCommands() (terminal + editor) を投入する。
+  QList<UserCommand> m_userCommands;
 
   // Window settings
   WindowSizeMode     m_windowSizeMode     = WindowSizeMode::Default;

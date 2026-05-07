@@ -140,6 +140,9 @@ void Settings::applyDefaults() {
   m_defaultBookmarksInstalled = false;
   m_pathOverrides.clear();
 
+  // 外部アプリ: 組み込み terminal / editor をプラットフォーム別デフォルトで投入。
+  m_userCommands = defaultBuiltinUserCommands();
+
   // ── ペイン (sort/filter) ───────────
   for (int i = 0; i < static_cast<int>(PaneType::Count); ++i) {
     m_paneSettings[i] = PaneSettings{};
@@ -586,6 +589,14 @@ void Settings::setPaneHistory(PaneType pane, const QStringList& entries) {
 
 QList<Bookmark> Settings::bookmarks() const {
   return m_bookmarks;
+}
+
+QList<UserCommand> Settings::userCommands() const {
+  return m_userCommands;
+}
+
+void Settings::setUserCommands(const QList<UserCommand>& cmds) {
+  m_userCommands = cmds;
 }
 
 void Settings::setBookmarks(const QList<Bookmark>& list) {
@@ -1443,6 +1454,21 @@ void Settings::load() {
     m_defaultBookmarksInstalled = true;
   }
 
+  // 外部アプリ (UserCommand) のロード。userCommands キーが無ければ
+  // applyDefaults() で投入された組み込み terminal / editor をそのまま使う。
+  // ある場合は完全に置換する (= ユーザーが builtin を「削除」状態で保存した
+  // ファイルでは、Tools メニューも空になる)。
+  if (root.contains("userCommands")) {
+    m_userCommands.clear();
+    const QJsonArray arr = root.value("userCommands").toArray();
+    for (const QJsonValue& v : arr) {
+      if (!v.isObject()) continue;
+      UserCommand c = userCommandFromJson(v.toObject());
+      if (c.id.isEmpty()) continue;
+      m_userCommands.append(c);
+    }
+  }
+
   qDebug() << "Settings::load: loaded settings from" << filePath;
   emit settingsChanged();
 }
@@ -1714,6 +1740,15 @@ void Settings::save() const {
     bmArr.append(obj);
   }
   root["bookmarks"] = bmArr;
+
+  // Save user commands (外部アプリ連携)
+  {
+    QJsonArray arr;
+    for (const UserCommand& c : m_userCommands) {
+      arr.append(userCommandToJson(c));
+    }
+    root["userCommands"] = arr;
+  }
 
   QJsonDocument doc(root);
   QByteArray data = doc.toJson(QJsonDocument::Indented);

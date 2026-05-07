@@ -15,6 +15,11 @@ public:
 
   void registerCommand(std::shared_ptr<ICommand> cmd);
 
+  // コマンドを ID で解除する。UserCommandManager のように、Settings 変更を
+  // 受けて動的に登録/解除を行うコンポーネント向け。
+  // 該当 ID が無ければ何もしない (== false)。
+  bool unregisterCommand(const QString& commandId);
+
   // コマンドIDから実行
   bool execute(const QString& commandId);
 
