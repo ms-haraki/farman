@@ -31,6 +31,9 @@ private:
   QWidget* buildImageViewerPage();
   QWidget* buildBinaryViewerPage();
 
+  // ViewerMode (Inline / External) の選択コンボ。toolBox の上に置く。
+  QComboBox* m_viewerModeCombo = nullptr;
+
   // Text viewer widgets
   QLineEdit*   m_textExtensionsEdit       = nullptr;
   QLineEdit*   m_textMimePatternsEdit     = nullptr;

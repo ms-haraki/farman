@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QMessageBox>
 #include <QFileInfo>
+#include <QKeyEvent>
 
 namespace Farman {
 
@@ -38,6 +39,16 @@ void TextViewerWindow::loadFile() {
     return;
   }
   m_textView->setFocus();
+}
+
+void TextViewerWindow::keyPressEvent(QKeyEvent* event) {
+  // Esc でウィンドウを閉じる (Inline モード時の Enter / Esc 戻りと挙動を揃える)。
+  // close() は WA_DeleteOnClose 付きで生成されているのでウィンドウは破棄される。
+  if (event->key() == Qt::Key_Escape) {
+    close();
+    return;
+  }
+  QMainWindow::keyPressEvent(event);
 }
 
 } // namespace Farman

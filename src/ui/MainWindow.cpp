@@ -17,6 +17,9 @@
 #include "../core/DirectoryHistory.h"
 #include "../model/FileListModel.h"
 #include "../utils/Dialogs.h"
+#include "../viewer/TextViewerWindow.h"
+#include "../viewer/ImageViewerWindow.h"
+#include "../viewer/BinaryViewerWindow.h"
 #include <QDesktopServices>
 #include <QScreen>
 #include <QStackedWidget>
@@ -255,6 +258,69 @@ void MainWindow::showViewer(const QString& filePath) {
 }
 
 void MainWindow::showViewerWith(const QString& filePath, ViewerPanel::ViewerKind kind) {
+  // ビュアー表示モード (Inline / External) によって振り分ける。
+  // External 時は独立 QMainWindow を起こす。Inline 時は従来通り内蔵パネル。
+  const ViewerMode mode = Settings::instance().viewerMode();
+
+  if (mode == ViewerMode::External) {
+    // 拡張子 / MIME ルーティングは ViewerPanel と共通。Auto を解決して
+    // どの *ViewerWindow を起こすか決める。
+    ViewerPanel::ViewerKind effective = kind;
+    if (effective == ViewerPanel::ViewerKind::Auto) {
+      effective = ViewerPanel::resolveAuto(filePath);
+    }
+
+    // External ビュアーは同時に 1 つしか開かない方針。前のウィンドウが
+    // まだ生きていれば、ジオメトリを引き継いでから破棄する (= ユーザーが
+    // 「別ファイルを開いたら同じ場所・同じサイズで上書き」と感じる挙動)。
+    QRect savedGeom;
+    bool  hasSavedGeom = false;
+    if (m_externalViewerWindow) {
+      savedGeom    = m_externalViewerWindow->geometry();
+      hasSavedGeom = true;
+      // 同期 delete: 後続の new と同フレームに新ウィンドウを出すため、
+      // deleteLater() ではなく即時 delete。QPointer なので m_external...
+      // は自動で nullptr になる。
+      delete m_externalViewerWindow;
+    }
+
+    QMainWindow* w = nullptr;
+    switch (effective) {
+      case ViewerPanel::ViewerKind::Text:
+        w = new TextViewerWindow(filePath, this);
+        break;
+      case ViewerPanel::ViewerKind::Image:
+        w = new ImageViewerWindow(filePath, this);
+        break;
+      case ViewerPanel::ViewerKind::Binary:
+        w = new BinaryViewerWindow(filePath, this);
+        break;
+      case ViewerPanel::ViewerKind::Auto:
+        /* unreachable */ break;
+    }
+    if (w) {
+      // 閉じたら自前で破棄。MainWindow を親にしておくのは、明示的に閉じずに
+      // farman 全体が終了する場合に Qt の親子関係でクリーンアップさせるため。
+      w->setAttribute(Qt::WA_DeleteOnClose);
+      // 独立ウィンドウとして表示。アプリのメインから切り離して別ディスプレイ
+      // へドラッグできるよう、Qt::Window フラグでトップレベルを保証。
+      w->setWindowFlag(Qt::Window, true);
+      // 前回のジオメトリを引き継ぎ。初回は *ViewerWindow の setupUi 側で
+      // resize(800, 600) してくれる。
+      if (hasSavedGeom) {
+        w->setGeometry(savedGeom);
+      }
+      w->show();
+      w->raise();
+      w->activateWindow();
+      m_externalViewerWindow = w;
+    }
+    // External モードではメインウィンドウのレイアウトは触らない (= ファイル
+    // マネージャパネルのまま)。ビュアーパネルへの切替は行わない。
+    return;
+  }
+
+  // Inline (現状の挙動): メインウィンドウ内 ViewerPanel に切り替えて表示。
   // 先にビュアーパネルへ切り替えてからロードする。これで ViewerPanel
   // 内部で表示する「読み込み中…」プレースホルダがユーザーから見える
   // 状態になる (順序を逆にすると、ロード中は依然としてファイルリストが
@@ -776,6 +842,33 @@ void MainWindow::registerCommands() {
     tr("Toggle the quick filter bar to filter the current list by name (substring).")
   ));
 
+  // ビュアー表示モードのトグル (Inline ⇔ External)。Settings に書き込むので
+  // 設定ダイアログを開かなくても切り替え可能。現状ビュアーパネル表示中なら
+  // 一旦ファイルマネージャに戻す (Inline 経由で使われていた m_viewerPanel が
+  // 不整合のまま残らないように)。
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "view.toggle_viewer_mode",
+    tr("External Viewer Window"),
+    [this]() {
+      auto& s = Settings::instance();
+      const ViewerMode next = (s.viewerMode() == ViewerMode::External)
+                                ? ViewerMode::Inline
+                                : ViewerMode::External;
+      s.setViewerMode(next);
+      s.save();
+      // External に切り替えた瞬間、ビュアーパネル表示中だったら戻す。
+      if (m_stack && m_stack->currentWidget() == m_viewerPanel) {
+        showFileManager();
+      }
+      Logger::instance().info(
+        next == ViewerMode::External
+          ? tr("Viewer mode: External (separate windows)")
+          : tr("Viewer mode: Inline (panel)"));
+    },
+    "view",
+    tr("Toggle between in-window viewer panel and separate viewer windows.")
+  ));
+
   // ショートカット一覧の表示トグル (`?` キー)
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "help.shortcuts",
@@ -960,6 +1053,16 @@ void MainWindow::createMenus() {
   addCmd(viewMenu, "view.choose", tr("Open With Viewer..."));
   addCmd(viewMenu, "view.toggle_log", tr("Toggle Log Pane"));
   addCmd(viewMenu, "view.quick_filter", tr("Quick Filter"));
+  // ビュアー表示モード (Inline / External) のトグル。チェック付きでメニューに
+  // 表示し、aboutToShow で Settings の現状を反映する。
+  QAction* viewerModeAction = addCmd(viewMenu, "view.toggle_viewer_mode",
+                                     tr("External Viewer Window"));
+  viewerModeAction->setCheckable(true);
+  viewerModeAction->setChecked(Settings::instance().viewerMode() == ViewerMode::External);
+  connect(viewMenu, &QMenu::aboutToShow, this, [viewerModeAction]() {
+    QSignalBlocker blocker(viewerModeAction);
+    viewerModeAction->setChecked(Settings::instance().viewerMode() == ViewerMode::External);
+  });
 
   // Tools (外部アプリ連携)
   // 慣例として Edit と View の間に置きたいが、createMenus は単方向に並べていく

@@ -943,26 +943,41 @@ BinaryView では `setPlainText` 前後で `AddressHighlighter` を一時的に
   - 文字列のエンコード種別
     - 初期設定はUTF-8
 
-### 表示モードの切替 *（未実装）*
+### 表示モードの切替
 
 ビュアーを **アプリ内パネルとして表示** するか、**独立した外部ウィンドウで
-表示** するかをユーザーが切り替えられるようにする。
+表示** するかをユーザーが切り替えられる。
 
-- **インライン (現状)**: `MainWindow::m_stack` 内の `ViewerPanel` に切り替えて
-  表示。Enter / Esc でファイルマネージャパネルに戻る。複数ファイルを同時に
-  開けない代わりにキーボードで完結する。
-- **外部ウィンドウ**: 独立した `QMainWindow` (例: `TextViewerWindow` 等)
-  をファイル毎に開く。複数ファイルを並べて見られる、別ディスプレイへ飛ばせる
-  といった利点がある。
-- 切替は Settings (例: `viewerMode`: `Inline` / `External`) で全体に効くものと、
-  起動時にキーバインドや View メニューから一時的に切り替えられるものの両方を
-  提供する。
-- 現状 `TextViewerWindow` / `ImageViewerWindow` / `BinaryViewerWindow` は
-  外部ウィンドウとして既に存在するが、メイン経路 (`v` / `Enter`) からは
-  使われていない。これらを表示モード設定経由で利用するよう繋ぎ込む。
-- ViewerPanel と ViewerWindow で重複している UI ロジックは共通化して
-  どちらのホストにも `TextView` / `ImageView` / `BinaryView` を配置できる
-  ようにする (現状そうなっているはず)。
+- **Inline (デフォルト)**: `MainWindow::m_stack` 内の `ViewerPanel` に切り替え
+  て表示。Enter / Esc でファイルマネージャパネルに戻る。同時に 1 ファイル
+  しか開けない代わりにキーボードで完結する。
+- **External**: 独立した `QMainWindow` (`TextViewerWindow` /
+  `ImageViewerWindow` / `BinaryViewerWindow`) をファイル毎に新規生成して
+  表示。複数ファイルを並べたり、別ディスプレイへドラッグしたりできる。
+  ウィンドウは `Qt::WA_DeleteOnClose` 付きで作るので、閉じれば自動的に破棄
+  される (親は MainWindow)。
+
+切替経路:
+
+- **Settings → Viewers タブ → Viewer Display グループ → Display mode**
+  (永続設定。`settings.json` の `behavior.viewerMode` に `inline` /
+  `external` で保存)。
+- **View メニュー → External Viewer Window** (チェック付きトグル項目)。
+  選択する都度 Settings に書き込み、即時反映される。`Settings::save()` まで
+  含めて完結するので、再起動後も状態が残る。
+- **コマンド `view.toggle_viewer_mode`**。Keybindings タブで任意のキーを
+  割り当て可能。デフォルトキーバインドは付けていない。
+
+実装ポイント:
+
+- 拡張子 / MIME による「Text / Image / Binary」のルーティングは
+  `ViewerPanel::resolveAuto()` (静的ヘルパ) に切り出してあるので、Inline /
+  External どちらの経路でも同一判定を使う。
+- External モードのとき `MainWindow::showViewerWith()` は内部 `m_viewerPanel`
+  を **触らない**。ファイルマネージャパネルが見えたまま、別ウィンドウとして
+  ビュアーが立ち上がる。`v` / `Enter` どちらの経路もこのルートに乗る。
+- View メニューから Inline → External に切り替えた瞬間、もし `m_viewerPanel`
+  が前面表示中だったら `showFileManager()` で戻す (古い表示が残らないよう)。
 
 ### 追加ビュアー *（未実装）*
 

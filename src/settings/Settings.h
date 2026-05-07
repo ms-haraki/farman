@@ -160,6 +160,11 @@ public:
   bool singleInstance()                 const;
   void setSingleInstance(bool enabled);
 
+  // ビュアーの表示モード (Inline / External)。Inline はメインウィンドウ内の
+  // ViewerPanel を使う現状の挙動、External はファイル毎に独立ウィンドウ。
+  ViewerMode viewerMode()               const;
+  void       setViewerMode(ViewerMode mode);
+
   // 同期ブラウズが「追従先が存在しないため自動 OFF」した瞬間に通知
   // ダイアログを出すかどうか。ダイアログ側の「次回以降表示しない」
   // チェックを ON にした時にもこのフラグが false になる。デフォは true。
@@ -376,6 +381,8 @@ private:
   bool             m_confirmOnExit   = false;
   bool             m_singleInstance  = true;
   bool             m_syncBrowseShowDisabledDialog = true;
+  // ビュアー表示モード。デフォルトは Inline (ビュアーパネルでの表示)。
+  ViewerMode       m_viewerMode      = ViewerMode::Inline;
   LanguageMode     m_language         = LanguageMode::Auto;
   bool             m_logVisible       = true;
   int              m_logPaneHeight    = 120;  // px

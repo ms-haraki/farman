@@ -107,6 +107,17 @@ enum class CursorShape {
   RowBackground // 行全体の背景色を変える
 };
 
+// ビュアーの表示方法。
+// - Inline:   メインウィンドウ内の ViewerPanel で表示 (現状の動作)。Enter / Esc
+//             でファイルマネージャパネルに戻る。同時に 1 ファイルしか開けないが
+//             キーボードで完結する。
+// - External: ファイルごとに独立した *ViewerWindow を生成して表示する。複数
+//             ファイルを並べたり別ディスプレイへ飛ばせる。
+enum class ViewerMode {
+  Inline,
+  External
+};
+
 // 画像ビュアーの透明部分の表示方法
 enum class ImageTransparencyMode {
   SolidColor, // 指定した背景色で塗りつぶす

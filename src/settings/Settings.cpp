@@ -72,6 +72,7 @@ void Settings::applyDefaults() {
   m_customInitialPath[static_cast<int>(PaneType::Right)].clear();
   m_confirmOnExit = false;
   m_singleInstance = true;
+  m_viewerMode    = ViewerMode::Inline;
   m_language      = LanguageMode::Auto;
 
   // ── ログ ─────────────────────────
@@ -415,6 +416,14 @@ bool Settings::confirmOnExit() const {
 
 bool Settings::singleInstance() const {
   return m_singleInstance;
+}
+
+ViewerMode Settings::viewerMode() const {
+  return m_viewerMode;
+}
+
+void Settings::setViewerMode(ViewerMode mode) {
+  m_viewerMode = mode;
 }
 
 void Settings::setSingleInstance(bool enabled) {
@@ -1175,6 +1184,12 @@ void Settings::load() {
   m_singleInstance = behavior.value("singleInstance").toBool(true);
   m_syncBrowseShowDisabledDialog = behavior.value("syncBrowseShowDisabledDialog").toBool(true);
   {
+    const QString modeStr = behavior.value("viewerMode").toString("inline");
+    m_viewerMode = (modeStr == QLatin1String("external"))
+                     ? ViewerMode::External
+                     : ViewerMode::Inline;
+  }
+  {
     const QString langStr = behavior.value("language").toString("auto");
     if      (langStr == "en") m_language = LanguageMode::English;
     else if (langStr == "ja") m_language = LanguageMode::Japanese;
@@ -1568,6 +1583,9 @@ void Settings::save() const {
   behavior["confirmOnExit"] = m_confirmOnExit;
   behavior["singleInstance"] = m_singleInstance;
   behavior["syncBrowseShowDisabledDialog"] = m_syncBrowseShowDisabledDialog;
+  behavior["viewerMode"] = (m_viewerMode == ViewerMode::External)
+                             ? QStringLiteral("external")
+                             : QStringLiteral("inline");
   switch (m_language) {
     case LanguageMode::English:  behavior["language"] = "en";   break;
     case LanguageMode::Japanese: behavior["language"] = "ja";   break;

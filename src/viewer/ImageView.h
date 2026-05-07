@@ -4,11 +4,13 @@
 #include <QImage>
 #include <QPixmap>
 #include <QPointer>
+#include <QSize>
 #include <QString>
 #include <QWidget>
 
 class QCheckBox;
 class QComboBox;
+class QHBoxLayout;
 class QMovie;
 class QPushButton;
 class QScrollArea;
@@ -53,8 +55,29 @@ public:
   // ステータスバー表示用の要約 ("PNG · 800x600 · 24 KB" 等、アニメ時はフレーム数も)
   QString statusInfo() const;
 
+  // 読み込み済みの画像の自然サイズ (px)。アニメ画像でも 1 フレーム目の画像
+  // サイズを返す。未ロード or ロード失敗時は QSize() (= invalid)。
+  // ImageViewerWindow の「ウィンドウサイズを画像にあわせる」ボタン用。
+  QSize naturalImageSize() const { return m_naturalImageSize; }
+
+  // 現在の **実効ズーム率** (%)。マニュアルズーム時は m_zoomPercent、
+  // Fit-to-Window モード時はビューポートに収めるための自動倍率を返す。
+  // 「ウィンドウサイズを画像にあわせる」処理で「画像 × 実効ズーム」 を
+  // 計算するために使う。
+  int effectiveZoomPercent() const;
+
+  // 画像が描画されるエリア (= スクロールエリアのビューポート) の現在サイズ。
+  // これと window 全体サイズの差が「ツールバー + ウィンドウ枠」分の chrome。
+  QSize imageAreaSize() const;
+
   // ImageDisplay から参照される実効透明モード (ローカル上書き)。
   ImageTransparencyMode transparencyMode() const { return m_transparencyMode; }
+
+  // 既存のツールバー (Zoom / Fit / Anim / Transparency が並んでいる行) の
+  // 末尾の `addStretch()` の手前に追加 widget を挿入する。
+  // ImageViewerWindow が「ウィンドウサイズを画像にあわせる」ボタンなど、
+  // External モード固有の要素を同じ列に並べるために使う。
+  void addToolbarWidget(QWidget* widget);
 
 protected:
   bool eventFilter(QObject* watched, QEvent* event) override;
@@ -67,6 +90,9 @@ private:
   static bool detectAnimated(const QString& filePath);
 
   // ツールバー
+  // ツールバー本体のレイアウト。末尾に addStretch() が入っており、
+  // addToolbarWidget() で stretch の手前に新規 widget を挿し込む。
+  QHBoxLayout* m_toolbarLayout     = nullptr;
   QComboBox*   m_zoomCombo         = nullptr;
   QCheckBox*   m_fitCheck          = nullptr;
   QPushButton* m_animButton        = nullptr;  // checkable: ▶ Play / ⏸ Stop トグル
@@ -75,6 +101,11 @@ private:
   // 表示部
   QScrollArea*  m_scrollArea = nullptr;
   ImageDisplay* m_display    = nullptr;
+
+  // 既存ツールバー末尾のウィジェット (= 直前の addToolbarWidget で追加された
+  // もの、初期は m_transparencyCombo)。新たに addToolbarWidget で追加する
+  // ときに setTabOrder のアンカーとして使う。
+  QPointer<QWidget> m_lastToolbarWidget;
 
   QString             m_filePath;
   QPointer<QMovie>    m_movie;        // アニメ再生用 (m_display の親で破棄)
@@ -85,6 +116,9 @@ private:
   bool                  m_fitToWindow     = false;
   bool                  m_animation       = false;
   ImageTransparencyMode m_transparencyMode = ImageTransparencyMode::Checker;
+
+  // 読み込み済みの画像の自然サイズ。loadFile / applyPreparedLoad で更新する。
+  QSize                 m_naturalImageSize;
 };
 
 } // namespace Farman

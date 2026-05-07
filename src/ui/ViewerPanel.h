@@ -27,6 +27,12 @@ public:
   // ファイルを開く（kind=Auto のとき Settings の対応表に従って自動判定）
   bool openFile(const QString& filePath, ViewerKind kind = ViewerKind::Auto);
 
+  // 拡張子 / MIME のルーティングだけを抜き出した静的ヘルパ。Auto を渡すと
+  // 内部の判定で Text / Image / Binary のいずれかに解決して返す。
+  // External モード (独立ウィンドウ) でも同じ振り分けを使うので、Inline
+  // 専用にせず公開する。
+  static ViewerKind resolveAuto(const QString& filePath);
+
   // 現在のファイルパス
   QString currentFilePath() const { return m_currentFilePath; }
 

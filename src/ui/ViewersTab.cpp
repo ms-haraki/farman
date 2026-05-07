@@ -31,6 +31,29 @@ void ViewersTab::setupUi() {
   // 他タブと同じデフォルトマージンを使う (周囲に余白を入れる)
   QVBoxLayout* outer = new QVBoxLayout(this);
 
+  // ── 表示モード (Inline / External) ─────────────────
+  // ビュアー全体に効く設定。Settings::viewerMode() に保存される。
+  // Inline = メインウィンドウ内のビュアーパネル (現状)、
+  // External = ファイル毎に独立したビュアーウィンドウを開く。
+  {
+    QGroupBox* modeGroup = new QGroupBox(tr("Viewer Display"), this);
+    QFormLayout* form = new QFormLayout(modeGroup);
+    form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+
+    m_viewerModeCombo = new QComboBox(modeGroup);
+    m_viewerModeCombo->addItem(tr("Inline (in main window)"),
+                               static_cast<int>(ViewerMode::Inline));
+    m_viewerModeCombo->addItem(tr("External (separate windows)"),
+                               static_cast<int>(ViewerMode::External));
+    m_viewerModeCombo->setToolTip(tr(
+      "Inline: show the viewer inside the main window (Enter / Esc returns to "
+      "the file list).\n"
+      "External: open a separate window per file (multiple files can be open "
+      "side by side, can be moved to another display)."));
+    form->addRow(tr("Display mode:"), m_viewerModeCombo);
+    outer->addWidget(modeGroup);
+  }
+
   // QToolBox で 3 ビュアー分の設定を排他的なアコーディオンとして表示。
   // 一度に開けるのは 1 セクションのみ、ヘッダーをクリックで切り替わる。
   QToolBox* toolBox = new QToolBox(this);
@@ -396,6 +419,16 @@ QWidget* ViewersTab::buildBinaryViewerPage() {
 void ViewersTab::loadSettings() {
   const Settings& settings = Settings::instance();
 
+  // Viewer mode (top of tab)
+  if (m_viewerModeCombo) {
+    for (int i = 0; i < m_viewerModeCombo->count(); ++i) {
+      if (m_viewerModeCombo->itemData(i).toInt() == static_cast<int>(settings.viewerMode())) {
+        m_viewerModeCombo->setCurrentIndex(i);
+        break;
+      }
+    }
+  }
+
   // Text viewer
   m_textExtensionsEdit->setText(settings.textViewerExtensions().join(QLatin1Char(' ')));
   m_textMimePatternsEdit->setText(settings.textViewerMimePatterns().join(QLatin1Char(' ')));
@@ -490,6 +523,12 @@ void ViewersTab::save() {
   auto splitList = [](const QString& text) {
     return text.split(QRegularExpression(QStringLiteral("\\s+")), Qt::SkipEmptyParts);
   };
+
+  // Viewer mode (top of tab)
+  if (m_viewerModeCombo) {
+    settings.setViewerMode(
+      static_cast<ViewerMode>(m_viewerModeCombo->currentData().toInt()));
+  }
 
   // Text viewer
   settings.setTextViewerExtensions(splitList(m_textExtensionsEdit->text()));

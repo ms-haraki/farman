@@ -143,6 +143,26 @@ bool mimeMatches(const QStringList& patterns, const QMimeType& mime) {
 
 } // anonymous namespace
 
+ViewerPanel::ViewerKind ViewerPanel::resolveAuto(const QString& filePath) {
+  // ViewerPanel::openFile() の Auto 分岐と同じルーティング。
+  // External モード (独立ウィンドウ) からも同じ判定を使えるよう静的に切り出した。
+  const QFileInfo fileInfo(filePath);
+  const QString extension = fileInfo.suffix().toLower();
+  QMimeDatabase mimeDb;
+  const QMimeType mime = mimeDb.mimeTypeForFile(filePath);
+  const Settings& s = Settings::instance();
+
+  if (extensionMatches(s.imageViewerExtensions(), extension)
+      || mimeMatches(s.imageViewerMimePatterns(), mime)) {
+    return ViewerKind::Image;
+  }
+  if (extensionMatches(s.textViewerExtensions(), extension)
+      || mimeMatches(s.textViewerMimePatterns(), mime)) {
+    return ViewerKind::Text;
+  }
+  return ViewerKind::Binary;
+}
+
 bool ViewerPanel::openFile(const QString& filePath, ViewerKind kind) {
   if (filePath.isEmpty()) {
     return false;
@@ -159,35 +179,17 @@ bool ViewerPanel::openFile(const QString& filePath, ViewerKind kind) {
   showLoadingState(filePath);
   QApplication::setOverrideCursor(Qt::WaitCursor);
 
-  bool ok = false;
+  // Auto は resolveAuto() に委譲してから個別の openXxxFile に振る。
+  if (kind == ViewerKind::Auto) {
+    kind = resolveAuto(filePath);
+  }
 
-  // 呼び出し側がビュアーを強制している場合はルーティングをスキップ
+  bool ok = false;
   switch (kind) {
     case ViewerKind::Text:   ok = openTextFile(filePath);   break;
     case ViewerKind::Image:  ok = openImageFile(filePath);  break;
     case ViewerKind::Binary: ok = openBinaryFile(filePath); break;
-    case ViewerKind::Auto: {
-      const QString extension = fileInfo.suffix().toLower();
-      QMimeDatabase mimeDb;
-      const QMimeType mime = mimeDb.mimeTypeForFile(filePath);
-      const Settings& s = Settings::instance();
-
-      // 画像ビュアー: 拡張子 (グロブ可) または MIME パターンマッチ
-      if (extensionMatches(s.imageViewerExtensions(), extension)
-          || mimeMatches(s.imageViewerMimePatterns(), mime)) {
-        ok = openImageFile(filePath);
-      }
-      // テキストビュアー: 拡張子 (グロブ可) または MIME パターンマッチ
-      else if (extensionMatches(s.textViewerExtensions(), extension)
-               || mimeMatches(s.textViewerMimePatterns(), mime)) {
-        ok = openTextFile(filePath);
-      }
-      // それ以外はバイナリビュアーへフォールバック
-      else {
-        ok = openBinaryFile(filePath);
-      }
-      break;
-    }
+    case ViewerKind::Auto:   /* unreachable */ break;
   }
 
   QApplication::restoreOverrideCursor();

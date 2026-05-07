@@ -2,6 +2,7 @@
 #include "BinaryView.h"
 
 #include <QFileInfo>
+#include <QKeyEvent>
 #include <QMessageBox>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -30,6 +31,15 @@ BinaryViewerWindow::BinaryViewerWindow(const QString& filePath, QWidget* parent)
     QMessageBox::critical(this, QStringLiteral("Error"),
       QStringLiteral("Failed to open file: %1").arg(filePath));
   }
+}
+
+void BinaryViewerWindow::keyPressEvent(QKeyEvent* event) {
+  // Esc でウィンドウを閉じる。WA_DeleteOnClose 付きで生成されているので破棄される。
+  if (event->key() == Qt::Key_Escape) {
+    close();
+    return;
+  }
+  QMainWindow::keyPressEvent(event);
 }
 
 } // namespace Farman

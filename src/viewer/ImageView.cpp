@@ -178,6 +178,7 @@ void ImageView::setupUi() {
   // ツールバー
   QWidget* toolbar = new QWidget(this);
   QHBoxLayout* tb = new QHBoxLayout(toolbar);
+  m_toolbarLayout = tb;
   tb->setContentsMargins(4, 2, 4, 2);
   tb->setSpacing(8);
 
@@ -222,6 +223,19 @@ void ImageView::setupUi() {
   root->addWidget(m_scrollArea, /*stretch*/ 1);
 
   setFocusProxy(m_scrollArea);
+
+  // ── Tab 順を明示的に設定 ─────────────────────────
+  // デフォルト (= ウィジェット作成順) では、Tab がツールバーのいくつかの
+  // コントロールを飛ばしたり、scrollArea の子で停まったりすることがあるので、
+  // setTabOrder() で明示的にチェーンを組む。
+  // 順序: zoomCombo → fitCheck → animButton → transparencyCombo → scrollArea。
+  // addToolbarWidget で追加された widget は m_lastToolbarWidget の後に
+  // 順次差し込まれる。
+  setTabOrder(m_zoomCombo,         m_fitCheck);
+  setTabOrder(m_fitCheck,          m_animButton);
+  setTabOrder(m_animButton,        m_transparencyCombo);
+  setTabOrder(m_transparencyCombo, m_scrollArea);
+  m_lastToolbarWidget = m_transparencyCombo;
 
   // ローカル変更
   connect(m_zoomCombo, &QComboBox::currentTextChanged, this, [this](const QString& text) {
@@ -371,6 +385,13 @@ void ImageView::applyPreparedLoad(const PreparedLoad& r) {
       m_display->setMovie(movie);
       // 初期 1 フレーム描画
       movie->jumpToFrame(0);
+      // QMovie 経由のアニメ画像でも自然サイズが取れる場合がある。
+      // ダメなら frame 0 の pixmap から拾う。
+      m_naturalImageSize = movie->frameRect().size();
+      if (!m_naturalImageSize.isValid() || m_naturalImageSize.isEmpty()) {
+        const QPixmap fp = movie->currentPixmap();
+        if (!fp.isNull()) m_naturalImageSize = fp.size();
+      }
     }
   }
 
@@ -379,10 +400,44 @@ void ImageView::applyPreparedLoad(const PreparedLoad& r) {
     const QPixmap pm = QPixmap::fromImage(r.image);
     if (!pm.isNull()) {
       m_display->setStaticPixmap(pm);
+      m_naturalImageSize = pm.size();
+    } else {
+      m_naturalImageSize = QSize();
     }
   }
 
   applyDisplayState();
+}
+
+int ImageView::effectiveZoomPercent() const {
+  // Fit-to-Window モードのときは ImageDisplay が viewport サイズから算出した
+  // 自動倍率を返してくれる。マニュアルズーム時は素直に m_zoomPercent。
+  return m_display ? m_display->effectiveZoomPercent() : m_zoomPercent;
+}
+
+QSize ImageView::imageAreaSize() const {
+  if (m_scrollArea && m_scrollArea->viewport()) {
+    return m_scrollArea->viewport()->size();
+  }
+  return QSize();
+}
+
+void ImageView::addToolbarWidget(QWidget* widget) {
+  if (!m_toolbarLayout || !widget) return;
+  // 末尾に addStretch() が入っているので、最後の 1 個 (= stretch) の手前に挿入。
+  // 万が一 stretch が無くても insertWidget(0) には fall-back させない (UX の
+  // 一貫性のため)。layout->count() は stretch を含むカウントを返す。
+  const int idx = qMax(0, m_toolbarLayout->count() - 1);
+  m_toolbarLayout->insertWidget(idx, widget);
+
+  // Tab 順: 既存ツールバー末尾 → 新 widget → scrollArea。
+  // これをやらないと、デフォルトのウィジェット作成順では新 widget が
+  // scrollArea の後ろに回ってしまい、Tab で巡回しづらくなる。
+  if (m_lastToolbarWidget && m_scrollArea) {
+    setTabOrder(m_lastToolbarWidget, widget);
+    setTabOrder(widget,              m_scrollArea);
+    m_lastToolbarWidget = widget;
+  }
 }
 
 void ImageView::clearContent() {
@@ -392,6 +447,7 @@ void ImageView::clearContent() {
   }
   m_filePath.clear();
   m_fileIsAnimated = false;
+  m_naturalImageSize = QSize();
   m_display->clearImage();
 }
 
