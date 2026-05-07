@@ -53,6 +53,12 @@ public:
   // ★ ブックマークラベルへフォーカス。Tab 連鎖の起点として使う。
   void focusBookmarkLabel();
 
+  // 即時フィルタ (Quick Filter Bar) のトグル表示。
+  //   - 非表示 → 表示 + フォーカス + テキスト全選択
+  //   - 表示中 → 非表示 + フィルタクリア + ファイルリストへフォーカス戻す
+  // FileManagerPanel から `view.quick_filter` コマンド経由で呼ばれる。
+  void toggleQuickFilter();
+
 signals:
   void folderButtonClicked();
   void currentChanged(const QModelIndex& current, const QModelIndex& previous);
@@ -84,9 +90,15 @@ private slots:
   void cancelAddressEdit();   // 編集を破棄して表示モードへ戻す
   void commitAddressEdit();   // Enter: 入力されたパスへ移動
 
+  // 即時フィルタ
+  void onQuickFilterTextEdited(const QString& text);
+
 private:
   void setupUi();
   void leaveAddressEdit(bool restoreText);
+
+  // 即時フィルタ用ヘルパ
+  void hideQuickFilter();   // バーを閉じてフィルタを解除、フォーカスを view へ
 
   QLineEdit*       m_addressEdit = nullptr;
   bool             m_addressEditing = false;  // 現在編集モードか
@@ -94,6 +106,8 @@ private:
   QToolButton*     m_folderButton;
   FileListView* m_view;
   QLabel* m_sortFilterStatusLabel;
+  // 即時フィルタの 1 行入力欄。デフォルトは非表示。
+  QLineEdit*       m_quickFilterEdit = nullptr;
   FileListModel* m_model;
   FileListDelegate* m_delegate;
   // Settings の "Auto" を復元するために、構築時の Qt 既定行高を覚えておく

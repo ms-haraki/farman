@@ -52,7 +52,12 @@ bool FileListModel::setPath(const QString& path) {
   beginResetModel();
 
   m_currentPath = dir.absolutePath();
+  m_allEntries.clear();
   m_entries.clear();
+  // 即時フィルタはディレクトリを切り替えたタイミングで自動的にクリアする。
+  // 「フィルタが残ったまま別ディレクトリに移ると勝手に絞り込まれる」のを避ける。
+  // FileListPane 側のフィルタバーも liveFilterChanged シグナルで同期する。
+  m_liveFilter.clear();
 
   // ディレクトリエントリを読み込む。
   // 隠し・システムファイルも一旦全て取得し、表示可否は applyFilterAndSort で制御する。
@@ -61,16 +66,16 @@ bool FileListModel::setPath(const QString& path) {
     QDir::NoSort  // 自前でソート
   );
 
-  // FileItem に変換
+  // FileItem に変換 (m_allEntries にだけ入れる。m_entries は applyFilterAndSort で構築)
   for (const QFileInfo& info : infoList) {
-    m_entries.append(std::make_shared<FileItem>(info));
+    m_allEntries.append(std::make_shared<FileItem>(info));
   }
 
   // ".." エントリを追加（親ディレクトリがある場合）
   if (dir.cdUp()) {
     QFileInfo parentInfo(dir.absolutePath());
     parentInfo = QFileInfo(m_currentPath + "/..");
-    m_entries.prepend(std::make_shared<FileItem>(parentInfo));
+    m_allEntries.prepend(std::make_shared<FileItem>(parentInfo));
   }
 
   applyFilterAndSort();
@@ -111,7 +116,9 @@ void FileListModel::setSortSettings(
 
 void FileListModel::setNameFilters(const QStringList& patterns) {
   m_nameFilters = patterns;
-  if (!m_entries.isEmpty()) {
+  // m_allEntries が空のときは setPath 待ち。m_allEntries が入っていれば
+  // フィルタを適用し直す (m_entries が一時的に空でも OK)。
+  if (!m_allEntries.isEmpty()) {
     beginResetModel();
     applyFilterAndSort();
     endResetModel();
@@ -120,7 +127,7 @@ void FileListModel::setNameFilters(const QStringList& patterns) {
 
 void FileListModel::setAttrFilter(AttrFilterFlags flags) {
   m_attrFilter = flags;
-  if (!m_entries.isEmpty()) {
+  if (!m_allEntries.isEmpty()) {
     beginResetModel();
     applyFilterAndSort();
     endResetModel();
@@ -134,7 +141,17 @@ void FileListModel::toggleHiddenFiles() {
     m_attrFilter.setFlag(AttrFilter::ShowHidden, true);
   }
 
-  if (!m_entries.isEmpty()) {
+  if (!m_allEntries.isEmpty()) {
+    beginResetModel();
+    applyFilterAndSort();
+    endResetModel();
+  }
+}
+
+void FileListModel::setLiveFilter(const QString& text) {
+  if (m_liveFilter == text) return;
+  m_liveFilter = text;
+  if (!m_allEntries.isEmpty()) {
     beginResetModel();
     applyFilterAndSort();
     endResetModel();
@@ -491,55 +508,57 @@ QVariant FileListModel::headerData(int section, Qt::Orientation orientation, int
   }
 }
 
-void FileListModel::applyFilterAndSort() {
-  if (m_entries.isEmpty()) {
-    return;
+bool FileListModel::passesFilters(const FileItem* item) const {
+  if (!item) return false;
+  // ".." は常に保持 (絞り込み中でも親ディレクトリへ戻れるよう)
+  if (item->isDotDot()) return true;
+
+  // 隠しファイルフィルタ
+  if (!m_attrFilter.testFlag(AttrFilter::ShowHidden) && item->isHidden()) {
+    return false;
   }
 
-  // フィルタリング: 条件に合わないアイテムを削除
-  auto it = m_entries.begin();
-  while (it != m_entries.end()) {
-    const FileItem* item = it->get();
-    bool shouldRemove = false;
+  // ディレクトリ/ファイルのみフィルタ
+  if (m_attrFilter.testFlag(AttrFilter::DirsOnly)  && !item->isDir()) return false;
+  if (m_attrFilter.testFlag(AttrFilter::FilesOnly) &&  item->isDir()) return false;
 
-    // ".." は常に保持
-    if (item->isDotDot()) {
-      ++it;
-      continue;
+  // 名前フィルタ (glob)。ディレクトリには適用しない (Sort & Filter ダイアログの
+  // 既存挙動に揃える)。
+  if (!m_nameFilters.isEmpty() && !item->isDir()) {
+    bool matches = false;
+    for (const QString& pattern : m_nameFilters) {
+      if (QDir::match(pattern, item->name())) { matches = true; break; }
     }
+    if (!matches) return false;
+  }
 
-    // 隠しファイルフィルタ
-    if (!m_attrFilter.testFlag(AttrFilter::ShowHidden) && item->isHidden()) {
-      shouldRemove = true;
+  // 即時フィルタ (Quick Filter Bar): 部分一致 (case-insensitive)。
+  // ディレクトリにも適用する (フォルダ名で絞りたい場面が多いため)。
+  // m_nameFilters と違ってこちらは「その場の表示絞り込み」なので、
+  // 「親ディレクトリ (..) を残しつつ、それ以外をテキストで絞る」のが意図。
+  if (!m_liveFilter.isEmpty()) {
+    if (!item->name().contains(m_liveFilter, Qt::CaseInsensitive)) {
+      return false;
     }
+  }
 
-    // ディレクトリ/ファイルのみフィルタ
-    if (m_attrFilter.testFlag(AttrFilter::DirsOnly) && !item->isDir()) {
-      shouldRemove = true;
-    }
-    if (m_attrFilter.testFlag(AttrFilter::FilesOnly) && item->isDir()) {
-      shouldRemove = true;
-    }
+  return true;
+}
 
-    // 名前フィルタ（拡張子パターン）
-    if (!m_nameFilters.isEmpty() && !item->isDir()) {
-      bool matches = false;
-      for (const QString& pattern : m_nameFilters) {
-        if (QDir::match(pattern, item->name())) {
-          matches = true;
-          break;
-        }
-      }
-      if (!matches) {
-        shouldRemove = true;
-      }
+void FileListModel::applyFilterAndSort() {
+  // m_allEntries (全件) から passesFilters を通過した shared_ptr だけを
+  // m_entries に詰め直す。shared_ptr の参照カウントが上がるだけなので
+  // 選択状態などはフィルタ切替で消えない。
+  m_entries.clear();
+  m_entries.reserve(m_allEntries.size());
+  for (const auto& item : m_allEntries) {
+    if (passesFilters(item.get())) {
+      m_entries.append(item);
     }
+  }
 
-    if (shouldRemove) {
-      it = m_entries.erase(it);
-    } else {
-      ++it;
-    }
+  if (m_entries.isEmpty()) {
+    return;
   }
 
   // ソート

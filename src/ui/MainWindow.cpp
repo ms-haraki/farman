@@ -759,6 +759,23 @@ void MainWindow::registerCommands() {
     "view"
   ));
 
+  // 即時フィルタ (Quick Filter Bar) のトグル。アクティブペインの
+  // FileListPane が QLineEdit を出して live filter を model に反映する。
+  // QLineEdit にフォーカスがあるとき (= バー入力中) に "/" を押された場合は、
+  // トグルに横取りせずスラッシュ文字をそのまま入力させる (filename に "/" が
+  // 含まれることは稀だが、ユーザーの直感に合わせる)。
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "view.quick_filter",
+    tr("Quick Filter"),
+    [this]() {
+      if (auto* pane = m_fileManagerPanel ? m_fileManagerPanel->activePane() : nullptr) {
+        pane->toggleQuickFilter();
+      }
+    },
+    "view",
+    tr("Toggle the quick filter bar to filter the current list by name (substring).")
+  ));
+
   // ショートカット一覧の表示トグル (`?` キー)
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "help.shortcuts",
@@ -942,6 +959,7 @@ void MainWindow::createMenus() {
   addCmd(viewMenu, "view.file", tr("View File"));
   addCmd(viewMenu, "view.choose", tr("Open With Viewer..."));
   addCmd(viewMenu, "view.toggle_log", tr("Toggle Log Pane"));
+  addCmd(viewMenu, "view.quick_filter", tr("Quick Filter"));
 
   // Tools (外部アプリ連携)
   // 慣例として Edit と View の間に置きたいが、createMenus は単方向に並べていく

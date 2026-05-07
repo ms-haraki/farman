@@ -124,6 +124,10 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::CTRL | Qt::Key_Return),  "view.choose"  },
     { QKeySequence(Qt::CTRL | Qt::Key_Enter),   "view.choose"  },
     { QKeySequence(Qt::CTRL | Qt::Key_L),       "view.toggle_log" },
+    // 即時フィルタ。vim / less / Total Commander 系ツールの慣習に揃えて
+    // bare `/` をデフォルトに採用。"?" (Shift+/) は help.shortcuts に既に
+    // 割当があるが、修飾子無しの `/` 自体は他とぶつからない。
+    { QKeySequence(Qt::Key_Slash),              "view.quick_filter" },
 
     // Bookmark
     { QKeySequence(Qt::Key_B),            "bookmark.toggle" },
@@ -204,7 +208,10 @@ void KeyBindingManager::loadFromSettings() {
   // version < 11: user.cmd.terminal (T) / user.cmd.editor (E) を新規追加。
   // 既存バインドは保持されるが、T / E 用のデフォルトは下の merge ロジックで
   // 自動補完される。
-  if (version < 11) {
+  // version < 12: view.quick_filter (Ctrl+I) を新規追加。同上。
+  // version < 13: view.quick_filter のデフォルトを Ctrl+I → bare `/` に変更
+  // (vim 流に揃えるため)。同上、強制リセット。
+  if (version < 13) {
     qDebug() << "KeyBindingManager: migrating bindings from version" << version;
     loadDefaults();
     saveToSettings();
@@ -262,7 +269,7 @@ void KeyBindingManager::saveToSettings() const {
 
   QJsonObject root;
   root["bindings"] = bindings;
-  root["version"] = 11;
+  root["version"] = 13;
 
   QJsonDocument doc(root);
   QString jsonData = QString::fromUtf8(doc.toJson(QJsonDocument::Indented));

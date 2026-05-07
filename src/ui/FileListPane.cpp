@@ -201,6 +201,19 @@ void FileListPane::setupUi() {
 
   mainLayout->addWidget(m_view);
 
+  // 即時フィルタ (Quick Filter Bar): デフォルト非表示。`Ctrl+I`
+  // (= view.quick_filter コマンド) で toggleQuickFilter() が呼ばれて表示される。
+  // 入力中の textEdited で model->setLiveFilter を呼んでリアルタイム絞り込み、
+  // Esc / Enter は eventFilter で捕まえて閉じる / フォーカス戻しに振る。
+  m_quickFilterEdit = new QLineEdit(this);
+  m_quickFilterEdit->setPlaceholderText(tr("Quick filter (substring, case-insensitive)"));
+  m_quickFilterEdit->setClearButtonEnabled(true);
+  m_quickFilterEdit->hide();
+  m_quickFilterEdit->installEventFilter(this);
+  connect(m_quickFilterEdit, &QLineEdit::textEdited,
+          this, &FileListPane::onQuickFilterTextEdited);
+  mainLayout->addWidget(m_quickFilterEdit);
+
   // ソート・フィルタ条件の現在値をリスト下部に表示
   m_sortFilterStatusLabel = new QLabel(this);
   m_sortFilterStatusLabel->setStyleSheet(
@@ -332,6 +345,43 @@ void FileListPane::focusBookmarkLabel() {
   }
 }
 
+void FileListPane::toggleQuickFilter() {
+  if (!m_quickFilterEdit) return;
+  if (m_quickFilterEdit->isVisible()) {
+    // 表示中 → 非表示にするだけ。フィルタとバーの入力内容は保持する
+    // (= Enter と同じ動作)。完全に解除したいときは Esc を使う。
+    m_quickFilterEdit->hide();
+    if (m_view) m_view->setFocus(Qt::OtherFocusReason);
+    refreshSortFilterStatus();
+    return;
+  }
+
+  // 非表示 → 開く。直前のフィルタが残っていれば、その文字列を復元して
+  // 全選択する (そのまま打ち直し / 部分編集 / Enter で確定 / Esc で消去 /
+  // すべて選択した状態から好きに進められる)。
+  const QString existing = m_model ? m_model->liveFilter() : QString();
+  m_quickFilterEdit->setText(existing);
+  m_quickFilterEdit->show();
+  m_quickFilterEdit->setFocus(Qt::OtherFocusReason);
+  if (!existing.isEmpty()) {
+    m_quickFilterEdit->selectAll();
+  }
+  refreshSortFilterStatus();
+}
+
+void FileListPane::hideQuickFilter() {
+  if (!m_quickFilterEdit) return;
+  m_quickFilterEdit->hide();
+  if (m_view) m_view->setFocus(Qt::OtherFocusReason);
+  refreshSortFilterStatus();
+}
+
+void FileListPane::onQuickFilterTextEdited(const QString& text) {
+  if (!m_model) return;
+  m_model->setLiveFilter(text);
+  refreshSortFilterStatus();
+}
+
 void FileListPane::commitAddressEdit() {
   if (!m_addressEdit) return;
   QString text = m_addressEdit->text().trimmed();
@@ -421,6 +471,41 @@ bool FileListPane::eventFilter(QObject* watched, QEvent* event) {
       }
       if (watched == m_folderButton) {
         if (isKeyPress && m_folderButton) m_folderButton->click();
+        event->accept();
+        return true;
+      }
+    }
+
+    // ── Quick Filter Bar ─────────────────────────────
+    // フィルタバー入力欄の Esc / Enter を eventFilter で吸収する。
+    // - Esc: 入力をクリアしてバーを閉じ、フォーカスを view に戻す。
+    //   (フィルタも空に戻る = 全件表示)
+    // - Enter / Return: 現在のフィルタを保ったままバーを閉じ、フォーカスを
+    //   view に戻す (絞り込み結果上で矢印キー操作したい用)。
+    // - `/` の ShortcutOverride を accept しておくと、view.quick_filter の
+    //   グローバルショートカットが横取りせずに QLineEdit に普通に "/" 文字が
+    //   入力される。バーを閉じたいときは Esc を使う流儀に揃える。
+    if (watched == m_quickFilterEdit) {
+      if (isShortcutOverride && key == Qt::Key_Slash) {
+        event->accept();
+        return true;
+      }
+      if (key == Qt::Key_Escape) {
+        if (isKeyPress) {
+          m_quickFilterEdit->clear();
+          if (m_model) m_model->setLiveFilter(QString());
+          hideQuickFilter();
+        }
+        event->accept();
+        return true;
+      }
+      if (key == Qt::Key_Return || key == Qt::Key_Enter) {
+        if (isKeyPress) {
+          // フィルタは保ったまま閉じる
+          m_quickFilterEdit->hide();
+          if (m_view) m_view->setFocus(Qt::OtherFocusReason);
+          refreshSortFilterStatus();
+        }
         event->accept();
         return true;
       }
@@ -613,6 +698,43 @@ void FileListPane::refreshSortFilterStatus() {
   const QStringList names = m_model->nameFilters();
   if (!names.isEmpty()) {
     filterParts << names.join(' ');
+  }
+
+  // 即時フィルタ (Quick Filter Bar): 文字列があれば、その内容と「N / M items」を
+  // フィルタ部の末尾に追加する。N は表示件数 (".." 除く)、M は全件 (".." 除く)。
+  const QString liveText = m_model->liveFilter();
+  if (!liveText.isEmpty()) {
+    int visible = 0;
+    for (int i = 0; i < m_model->rowCount(); ++i) {
+      const FileItem* it = m_model->itemAt(i);
+      if (it && !it->isDotDot()) ++visible;
+    }
+    int total = 0;
+    const int totalAll = m_model->totalCount();
+    // 全件側にも ".." が含まれているので 1 件引く (".." がある場合のみ)。
+    // 親ディレクトリの判定は totalAll > 0 で簡略化: setPath で必ず先頭に
+    // ".." を入れるので、ルート以外なら totalAll の最初の要素は ".."。
+    // 簡単のため m_model->itemAt(0) を見る。
+    if (totalAll > 0) {
+      const FileItem* first = m_model->itemAt(0);
+      // m_entries 側でフィルタされた場合 itemAt(0) が ".." とは限らないので、
+      // 全件総数は totalCount() ベースで判断する。
+      Q_UNUSED(first);
+    }
+    // 全件のうち ".." 1 件を引く。setPath 直後で ".." が必ず入る前提。
+    // ルート (".." 無し) では引かない。簡単のため "親ディレクトリがあるか" は
+    // m_currentPath の親の有無で判断。
+    {
+      const QString path = m_model->currentPath();
+      if (!path.isEmpty() && QDir(path).cdUp()) {
+        total = qMax(0, totalAll - 1);
+      } else {
+        total = totalAll;
+      }
+    }
+    filterParts << tr("Quick: \"%1\" (%2 / %3 items)").arg(liveText)
+                                                       .arg(visible)
+                                                       .arg(total);
   }
 
   const QString filterStr = filterParts.isEmpty() ? tr("(none)") : filterParts.join(" · ");

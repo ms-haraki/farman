@@ -72,6 +72,13 @@ public:
   void setAttrFilter(AttrFilterFlags flags);
   void toggleHiddenFiles();  // 隠しファイルの表示/非表示をトグル
 
+  // 即時フィルタ (Quick Filter Bar): 部分一致 (case-insensitive)。
+  // 既存の nameFilters / attrFilter とは独立した「その場限り」のフィルタで、
+  // setPath() (= ディレクトリ移動) で自動的にクリアされる。
+  // 空文字なら無効。先頭・末尾の空白は呼び出し側で trim 済みにすること。
+  void    setLiveFilter(const QString& text);
+  QString liveFilter() const { return m_liveFilter; }
+
   // ── 状態取得 ──────────────────────────────
   SortKey       sortKey() const { return m_sortKey; }
   Qt::SortOrder sortOrder() const { return m_sortOrder; }
@@ -81,6 +88,10 @@ public:
   Qt::CaseSensitivity sortCS() const { return m_cs; }
   AttrFilterFlags attrFilter() const { return m_attrFilter; }
   QStringList   nameFilters() const { return m_nameFilters; }
+
+  // 全件 (フィルタを適用する前) のエントリ数 ("..", 隠しファイル含む)。
+  // フッタに「N / M items」のような表示をするときの母数として使う。
+  int totalCount() const { return m_allEntries.size(); }
 
   // ── アイテムアクセス ──────────────────────
   const FileItem* itemAt(const QModelIndex& index) const;
@@ -112,10 +123,19 @@ signals:
   void loadFailed(const QString& path, const QString& reason);
 
 private:
+  // m_allEntries (setPath で読み込んだ全件) から m_entries (フィルタ後の表示用) を
+  // 構築してソートする。シェアド ptr で参照を持つため、選択状態はフィルタ
+  // 切替で消えない (FileItem 自体を共有)。
   void applyFilterAndSort();
+  // 1 件が現在の attr / name / live フィルタを通るか判定。".." は常に true。
+  bool passesFilters(const FileItem* item) const;
   int compareItems(const FileItem* a, const FileItem* b, SortKey key) const;
 
   QString                          m_currentPath;
+  // m_allEntries: setPath で読み込んだディレクトリの全件 (隠し含む、".." も先頭に)。
+  // m_entries:    現在のフィルタを通過したサブセット。表示はこちらを基準にする。
+  // 両者は shared_ptr<FileItem> を共有するので選択状態などは一致する。
+  QList<std::shared_ptr<FileItem>> m_allEntries;
   QList<std::shared_ptr<FileItem>> m_entries;
   QFileSystemWatcher               m_watcher;
   QFileIconProvider                m_iconProvider;
@@ -131,6 +151,9 @@ private:
   // フィルタ設定
   QStringList     m_nameFilters;
   AttrFilterFlags m_attrFilter = AttrFilter::None;
+  // 即時フィルタ (Quick Filter Bar) の文字列。空 = 無効。
+  // 部分一致 (case-insensitive) でファイル名にマッチさせる。
+  QString         m_liveFilter;
 
   // ペインのアクティブ状態（表示カラーの切替用）
   bool            m_active = true;
