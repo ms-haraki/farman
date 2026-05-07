@@ -1159,87 +1159,102 @@ Used as the initial value in the Search dialog&apos;s Exclude dirs field.</sourc
 <context>
     <name>Farman::ExternalAppsTab</name>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="50"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="52"/>
+        <source>Pick a detected installed application to fill Program / Arguments automatically. Editing any field below switches back to (Custom).</source>
+        <translation>検出されたインストール済アプリを選ぶと Program / Arguments が自動入力される。下のフィールドを手動で編集すると (Custom) に戻る。</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="55"/>
+        <source>Preset:</source>
+        <translation>プリセット:</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="62"/>
         <source>/path/to/executable</source>
         <translation>/path/to/executable</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="53"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="65"/>
         <source>Browse for executable...</source>
         <translation>実行ファイルを参照...</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="56"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="68"/>
         <source>Program:</source>
         <translation>プログラム:</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="61"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="73"/>
         <source>Space-separated arguments. Use double quotes for arguments with spaces. Placeholders: {dir} {otherDir} {file} {files} {name} {ext}</source>
         <translation>空白区切りの引数。空白を含む場合はダブルクォートで囲む。プレースホルダ: {dir} {otherDir} {file} {files} {name} {ext}</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="64"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="76"/>
         <source>Arguments:</source>
         <translation>引数:</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="68"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="80"/>
         <source>(active pane)</source>
         <translation>(アクティブペイン)</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="69"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="81"/>
         <source>Working directory of the launched process. Empty = the active pane&apos;s current directory.</source>
         <translation>起動プロセスの作業ディレクトリ。空欄の場合はアクティブペインのカレントディレクトリ。</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="72"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="84"/>
         <source>Working Dir:</source>
         <translation>作業ディレクトリ:</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="75"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="87"/>
         <source>Test launch</source>
         <translation>テスト起動</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="86"/>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="171"/>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="221"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="98"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="250"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="300"/>
         <source>Terminal</source>
         <translation>ターミナル</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="89"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="102"/>
         <source>e.g. --working-directory={dir}</source>
         <translation>例: --working-directory={dir}</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="92"/>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="174"/>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="231"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="105"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="253"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="310"/>
         <source>Text Editor</source>
         <translation>テキストエディタ</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="95"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="109"/>
         <source>e.g. {file}</source>
         <translation>例: {file}</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="212"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="156"/>
+        <source>(Custom)</source>
+        <translation>(カスタム)</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="291"/>
         <source>Choose terminal executable</source>
         <translation>ターミナルの実行ファイルを選択</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="216"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="295"/>
         <source>Choose editor executable</source>
         <translation>エディタの実行ファイルを選択</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="225"/>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="235"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="304"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="314"/>
         <source>Test launch failed</source>
         <translation>テスト起動に失敗しました</translation>
     </message>

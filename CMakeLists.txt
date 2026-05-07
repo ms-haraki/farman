@@ -88,6 +88,7 @@ qt_add_executable(farman
   src/core/PlaceholderExpander.cpp
   src/core/UserCommandRunner.cpp
   src/core/UserCommandManager.cpp
+  src/core/AppPresets.cpp
   src/utils/Dialogs.cpp
   src/core/workers/WorkerBase.cpp
   src/core/workers/CopyWorker.cpp

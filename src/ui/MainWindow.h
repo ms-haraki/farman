@@ -77,6 +77,11 @@ private:
   // rebuildToolsMenu() が呼ばれ、addCmd() ベースで再構築する。
   QMenu* m_toolsMenu = nullptr;
   void   rebuildToolsMenu();
+  // rebuildToolsMenu() で生成した QAction を保持する。再構築時は古いものを
+  // FileManagerPanel から removeAction してから deleteLater する。これをやらないと
+  // 同一ショートカット (例: T) が複数の QAction に紐付いて
+  // "Ambiguous shortcut overload" エラーで発火しなくなる。
+  QList<QAction*> m_userCmdActions;
 };
 
 } // namespace Farman

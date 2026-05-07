@@ -977,9 +977,18 @@ void MainWindow::createMenus() {
 void MainWindow::rebuildToolsMenu() {
   if (!m_toolsMenu) return;
 
-  // QAction を全部消して作り直す。Settings 変更で UserCommand のリストが
-  // 入れ替わるたびに呼ばれる前提。
-  // QAction はメニューが parent なので clear() で破棄される。
+  // 前回 rebuild で FileManagerPanel に追加したショートカット用 QAction を
+  // 取り除いてから破棄する。これをやらないと、同一ショートカット (例: T) が
+  // 複数の QAction に紐付いて "Ambiguous shortcut overload" になる。
+  // (m_toolsMenu->clear() は menu からは外すが、FileManagerPanel の addAction()
+  // 経由で生きている action は破棄されない。)
+  for (QAction* a : m_userCmdActions) {
+    if (m_fileManagerPanel) m_fileManagerPanel->removeAction(a);
+    a->deleteLater();
+  }
+  m_userCmdActions.clear();
+
+  // メニュー側の placeholder 等は menu が parent なので clear() で破棄される。
   m_toolsMenu->clear();
 
   // Tools メニュー専用に「ショートカットを最初の 1 件だけ採用」する
@@ -998,6 +1007,7 @@ void MainWindow::rebuildToolsMenu() {
       action->setShortcut(keys.first());
       action->setShortcutContext(Qt::WidgetWithChildrenShortcut);
       m_fileManagerPanel->addAction(action);
+      m_userCmdActions.append(action);
     }
     const QString id = cmd.id;
     connect(action, &QAction::triggered, this, [id, this]() {
