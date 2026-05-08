@@ -1038,15 +1038,24 @@ BinaryView では `setPlainText` 前後で `AddressHighlighter` を一時的に
   設定 (PDF のページ表示モード、CSV の区切り文字、Office のレンダリング
   バックエンド等) を Settings に持たせる。
 
-### プラグインシステム *（未実装）*
+### プラグインシステム *（未配線）*
 
 - 動的ライブラリ（.dylib / .dll / .so）として実装
 - インターフェース: `IViewerPlugin`
-  - `supportedExtensions()` で対応拡張子を宣言
-  - `createViewer()` でビュアーウィジェットを生成
-- 所定のディレクトリに置くだけで自動ロード
-- 現在はインターフェース定義のみ。動的ロードは未実装で、
-  組み込みビュアーも `ViewerDispatcher` で直接分岐している。
+  - `supportedExtensions()` / `supportedMimeTypes()` で対応拡張子・MIME を宣言
+  - `canHandle(filePath)` でカスタム判定
+  - `createViewer(filePath, parent)` でビュアーウィジェットを生成
+  - `priority()` で複数プラグインが重複したときの優先度
+- **コード上の現状**: `ViewerDispatcher::loadPlugins(QDir)` は QPluginLoader で
+  指定ディレクトリ配下の `.so` / `.dylib` / `.dll` を読み込んで
+  `IViewerPlugin` を `registerPlugin()` する実装が既にある (= 動的ロード経路は
+  動く)。しかし **どこからも呼び出していない**ので、実質的に組み込み 3 種
+  (TextViewer / ImageViewer / BinaryViewer) しかロードされない。
+- **未実装の作業**:
+  - プラグインディレクトリ (例: `~/Library/Application Support/farman/plugins`、
+    Linux なら `~/.config/farman/plugins`) を Settings 等で指定できるようにし、
+    起動時に `loadPlugins()` を呼ぶ配線。
+  - サンプルプラグインの作成 (CMake から別ターゲットとしてビルド)。
 - 上記「追加ビュアー」を組み込みで実装するか、プラグインとして外出しに
   するかは、ライブラリ依存の重さで判断する (PDF は組み込み寄り、Office
   は外部依存が大きいのでプラグイン寄りが妥当)。
@@ -1082,16 +1091,34 @@ BinaryView では `setPlainText` 前後で `AddressHighlighter` を一時的に
     を表示し、選択された位置へ移動。
   - `Tab` で到達したことが視認できるよう、フォーカス時にハイライト枠を出す。
 
-### 計画中の機能 *（未実装）*
+### パス補完 (アドレスバー)
 
-- パスのインライン補完（候補一覧をドロップダウン表示）。
-- 将来的に **URI スキーム** による拡張を想定。
-  - `file://` (現状のローカルパス相当)
-  - `smb://` (Samba 共有)
-  - `ftp://` / `sftp://` / `ftps://`
-  - 各スキームの認証・キャッシュは別途設計。
-- これらの拡張は「ファイルシステム抽象化レイヤ」と組で導入する。
-  ローカルファイルのみ動く現状の実装はその特殊ケース扱い。
+編集モードで途中までパスを打つと、続くディレクトリ候補がドロップダウンで
+表示される (Total Commander / Explorer のアドレスバー補完と同様)。
+
+- 実装: `QFileSystemModel` + `QCompleter`。`m_addressEdit->setCompleter()`
+  で取り付け、編集モードに入ると Qt が自動でポップアップを出す。
+- フィルタ: `QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden | QDir::Drives`
+  (ディレクトリのみ + 隠しディレクトリ + Windows の Drives 表示)
+- 大小文字: `Qt::CaseInsensitive` (macOS / Windows の FS 慣習に合わせる)
+- **先頭 `~` の展開**: `PathCompleter` (= `QCompleter` サブクラス) で
+  `splitPath()` をオーバーライドし、入力が `~` / `~/...` のときは
+  `QDir::homePath()` に展開してから親の `splitPath` に渡す。これにより
+  ホームディレクトリ以下の候補が出る。
+- 表示中 (読取専用) ではポップアップは出ない (Qt 標準挙動)。
+- ポップアップの最大表示行数は 15 行。
+
+### URI スキーム拡張 *（未実装）*
+
+将来的に **URI スキーム** によるリモート FS 対応を想定。
+
+- `file://` (現状のローカルパス相当)
+- `smb://` (Samba 共有)
+- `ftp://` / `sftp://` / `ftps://`
+- 各スキームの認証・キャッシュは別途設計。
+
+これらの拡張は「ファイルシステム抽象化レイヤ」と組で導入する。
+ローカルファイルのみ動く現状の実装はその特殊ケース扱い。
 
 ---
 

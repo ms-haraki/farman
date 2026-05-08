@@ -10,8 +10,10 @@
 #include "utils/Dialogs.h"
 #include "types.h"
 #include <QApplication>
+#include <QCompleter>
 #include <QDir>
 #include <QFileInfo>
+#include <QFileSystemModel>
 #include <QFileSystemWatcher>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -27,6 +29,25 @@
 #include <QVBoxLayout>
 
 namespace Farman {
+
+// アドレスバー入力欄のパス補完で使う QCompleter サブクラス。
+// QFileSystemModel と組み合わせる。先頭の `~` / `~/` は QDir::homePath() に
+// 展開してから親クラスの splitPath に渡し、ホームディレクトリ以下の候補が
+// 出るようにする。
+class PathCompleter : public QCompleter {
+public:
+  using QCompleter::QCompleter;
+
+  QStringList splitPath(const QString& path) const override {
+    QString p = path;
+    if (p == QStringLiteral("~")) {
+      p = QDir::homePath();
+    } else if (p.startsWith(QStringLiteral("~/"))) {
+      p.replace(0, 1, QDir::homePath());
+    }
+    return QCompleter::splitPath(p);
+  }
+};
 
 FileListPane::FileListPane(QWidget* parent)
   : QWidget(parent)
@@ -99,6 +120,25 @@ void FileListPane::setupUi() {
   connect(m_addressEdit, &QLineEdit::returnPressed,
           this, &FileListPane::commitAddressEdit);
   pathLayout->addWidget(m_addressEdit, 1);
+
+  // パス補完: 編集モードで途中まで打つと、続くディレクトリ候補が
+  // ドロップダウン (QCompleter::PopupCompletion) に出る。
+  // - QDir::Dirs だけ通すのでファイル名は候補に出ない (ナビゲーション専用)
+  // - macOS / Windows は大小文字を区別しない FS なので CaseInsensitive
+  // - 隠しディレクトリも候補に含める ("~/.config" 等を打鍵省略するため)
+  // - Drives も含めて Windows の C:/ 等にも対応
+  // - 先頭 ~ は PathCompleter::splitPath で $HOME に展開
+  // 読取専用 (= 通常の表示モード) では QLineEdit が補完を発火しないので
+  // 編集モードのときだけ自動的にポップアップが出る。
+  auto* fsModel = new QFileSystemModel(this);
+  fsModel->setRootPath(QString());
+  fsModel->setFilter(QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden | QDir::Drives);
+  auto* completer = new PathCompleter(this);
+  completer->setModel(fsModel);
+  completer->setCaseSensitivity(Qt::CaseInsensitive);
+  completer->setCompletionMode(QCompleter::PopupCompletion);
+  completer->setMaxVisibleItems(15);
+  m_addressEdit->setCompleter(completer);
 
   m_folderButton = new QToolButton(this);
   m_folderButton->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
