@@ -122,6 +122,7 @@ qt_add_executable(farman
   src/keybinding/commands/ApplicationCommands.cpp
   src/settings/Settings.cpp
   src/settings/ColorScheme.cpp
+  src/settings/PresetIO.cpp
 )
 
 # macOS の場合のみ .icns をバンドルに同梱
