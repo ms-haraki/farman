@@ -12,7 +12,6 @@ class QGroupBox;
 class QCheckBox;
 class QGridLayout;
 class QSpinBox;
-class QRadioButton;
 class QLabel;
 
 namespace Farman {
@@ -43,7 +42,7 @@ private:
   void         loadFromScheme(const ColorScheme& s);
   void         saveToScheme(ColorScheme& s) const;
   // テーマモードラジオの状態を m_dialogMode に反映 + 編集対象を再計算 + 再ロード
-  void         applyThemeModeFromRadios();
+  void         applyThemeModeChange();
   // 編集対象 (Light/Dark) を示すラベルを更新
   void         updateEditingTargetLabel();
 
@@ -97,9 +96,7 @@ private:
   QSpinBox*    m_cursorThicknessSpin  = nullptr;
 
   // ── テーマ (Light / Dark) ─────────────────────
-  QRadioButton* m_themeAutoRadio  = nullptr;
-  QRadioButton* m_themeLightRadio = nullptr;
-  QRadioButton* m_themeDarkRadio  = nullptr;
+  QComboBox*    m_themeModeCombo     = nullptr;
   QLabel*       m_editingTargetLabel = nullptr;
   // ダイアログ内でのモード設定 (OK で確定)
   ThemeMode     m_dialogMode        = ThemeMode::Auto;

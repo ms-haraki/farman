@@ -11,8 +11,6 @@
 #include <QSpinBox>
 #include <QFontDialog>
 #include <QColorDialog>
-#include <QRadioButton>
-#include <QButtonGroup>
 
 namespace Farman {
 
@@ -33,21 +31,14 @@ void AppearanceTab::setupUi() {
   QGroupBox* themeGroup = new QGroupBox(tr("Theme"), this);
   QHBoxLayout* themeRow = new QHBoxLayout(themeGroup);
   themeRow->addWidget(new QLabel(tr("Mode:"), this));
-  m_themeAutoRadio  = new QRadioButton(tr("Auto (follow OS)"), this);
-  m_themeLightRadio = new QRadioButton(tr("Light"), this);
-  m_themeDarkRadio  = new QRadioButton(tr("Dark"),  this);
-  m_themeAutoRadio->setToolTip(
-    tr("Follow the operating system's appearance setting. "
+  m_themeModeCombo = new QComboBox(this);
+  m_themeModeCombo->addItem(tr("Auto (follow OS)"), static_cast<int>(ThemeMode::Auto));
+  m_themeModeCombo->addItem(tr("Light"),            static_cast<int>(ThemeMode::Light));
+  m_themeModeCombo->addItem(tr("Dark"),             static_cast<int>(ThemeMode::Dark));
+  m_themeModeCombo->setToolTip(
+    tr("Auto follows the operating system's appearance setting. "
        "Editing automatically targets the currently active side."));
-  // QButtonGroup で排他的に管理 (RadioButton は同一 parent でも自動グルーピング
-  // されるが、明示しておくと意図が読みやすい)。
-  auto* group = new QButtonGroup(this);
-  group->addButton(m_themeAutoRadio);
-  group->addButton(m_themeLightRadio);
-  group->addButton(m_themeDarkRadio);
-  themeRow->addWidget(m_themeAutoRadio);
-  themeRow->addWidget(m_themeLightRadio);
-  themeRow->addWidget(m_themeDarkRadio);
+  themeRow->addWidget(m_themeModeCombo);
   themeRow->addSpacing(16);
 
   m_editingTargetLabel = new QLabel(this);
@@ -56,13 +47,8 @@ void AppearanceTab::setupUi() {
   themeRow->addStretch();
   mainLayout->addWidget(themeGroup);
 
-  auto onModeChanged = [this](bool checked) {
-    if (!checked) return;  // off side のシグナルは無視
-    applyThemeModeFromRadios();
-  };
-  connect(m_themeAutoRadio,  &QRadioButton::toggled, this, onModeChanged);
-  connect(m_themeLightRadio, &QRadioButton::toggled, this, onModeChanged);
-  connect(m_themeDarkRadio,  &QRadioButton::toggled, this, onModeChanged);
+  connect(m_themeModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, [this](int) { applyThemeModeChange(); });
 
   // 色ボタン生成のヘルパー
   auto makeColorButton = [this](QColor& storedValue, const QString& dialogTitle) -> QPushButton* {
@@ -229,15 +215,14 @@ void AppearanceTab::loadSettings() {
                           ? settings.effectiveTheme()
                           : m_dialogMode;
 
-  // モードラジオを反映 (ハンドラを抑止して再ロードを防ぐ)
+  // モードコンボを反映 (ハンドラを抑止して再ロードを防ぐ)
   {
-    QSignalBlocker b1(m_themeAutoRadio);
-    QSignalBlocker b2(m_themeLightRadio);
-    QSignalBlocker b3(m_themeDarkRadio);
-    switch (m_dialogMode) {
-      case ThemeMode::Auto:  m_themeAutoRadio->setChecked(true);  break;
-      case ThemeMode::Light: m_themeLightRadio->setChecked(true); break;
-      case ThemeMode::Dark:  m_themeDarkRadio->setChecked(true);  break;
+    QSignalBlocker b(m_themeModeCombo);
+    for (int i = 0; i < m_themeModeCombo->count(); ++i) {
+      if (m_themeModeCombo->itemData(i).toInt() == static_cast<int>(m_dialogMode)) {
+        m_themeModeCombo->setCurrentIndex(i);
+        break;
+      }
     }
   }
 
@@ -321,14 +306,12 @@ void AppearanceTab::saveToScheme(ColorScheme& s) const {
   // そのまま温存される)。ViewersTab 側で編集する viewer フォントや色は別系統。
 }
 
-void AppearanceTab::applyThemeModeFromRadios() {
+void AppearanceTab::applyThemeModeChange() {
   // 1. いまウィジェットに表示されている値を、現在編集中の側へ書き戻す
   saveToScheme(currentScheme());
 
-  // 2. ラジオの新しい状態から m_dialogMode を更新
-  if      (m_themeLightRadio->isChecked()) m_dialogMode = ThemeMode::Light;
-  else if (m_themeDarkRadio->isChecked())  m_dialogMode = ThemeMode::Dark;
-  else                                     m_dialogMode = ThemeMode::Auto;
+  // 2. コンボから新しい m_dialogMode を取得
+  m_dialogMode = static_cast<ThemeMode>(m_themeModeCombo->currentData().toInt());
 
   // 3. 編集対象側を再決定
   m_dialogEditingSide = (m_dialogMode == ThemeMode::Auto)
