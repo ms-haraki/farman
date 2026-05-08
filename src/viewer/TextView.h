@@ -5,7 +5,7 @@
 #include <QWidget>
 
 class QComboBox;
-class QCheckBox;
+class QToolButton;
 class QLineEdit;
 class QLabel;
 
@@ -82,13 +82,15 @@ private:
 
   TextEditArea* m_editArea  = nullptr;
   QComboBox*    m_encodingCombo     = nullptr;
-  QCheckBox*    m_lineNumbersCheck  = nullptr;
-  QCheckBox*    m_wordWrapCheck     = nullptr;
+  // 行番号 / ワードラップは ON/OFF の二値なのでアイコンのチェック付きトグル。
+  QToolButton*  m_lineNumbersButton = nullptr;
+  QToolButton*  m_wordWrapButton    = nullptr;
 
   // 検索コントロール群 (ヘッダ常設)
-  QLineEdit*  m_findEdit    = nullptr;
-  QCheckBox*  m_findCsCheck = nullptr;
-  QLabel*     m_findStatus  = nullptr;
+  QLineEdit*    m_findEdit     = nullptr;
+  // 「Aa」アイコンの大文字小文字区別トグル。
+  QToolButton*  m_findCsButton = nullptr;
+  QLabel*       m_findStatus   = nullptr;
 
   QString    m_filePath;
   QByteArray m_data;

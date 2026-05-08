@@ -1,7 +1,8 @@
 #include "TextView.h"
 #include "settings/Settings.h"
 
-#include <QCheckBox>
+#include <QToolButton>
+#include "utils/EnterClickFilter.h"
 #include <QComboBox>
 #include <QFile>
 #include <QFontMetrics>
@@ -168,6 +169,10 @@ void TextView::setupUi() {
   QHBoxLayout* tb = new QHBoxLayout(toolbar);
   tb->setContentsMargins(4, 2, 4, 2);
   tb->setSpacing(8);
+  // フォーカス枠の可視化 (メインツールバー / 画像ビュアーと同じ流儀)。
+  toolbar->setStyleSheet(QStringLiteral(
+    "QToolButton:focus { border: 2px solid palette(highlight); border-radius: 3px; padding: 1px; }"
+  ));
 
   tb->addWidget(new QLabel(tr("Encoding:"), toolbar));
   m_encodingCombo = new QComboBox(toolbar);
@@ -182,13 +187,23 @@ void TextView::setupUi() {
   m_encodingCombo->setFocusPolicy(Qt::StrongFocus);
   tb->addWidget(m_encodingCombo);
 
-  m_lineNumbersCheck = new QCheckBox(tr("Line Numbers"), toolbar);
-  m_lineNumbersCheck->setFocusPolicy(Qt::StrongFocus);
-  tb->addWidget(m_lineNumbersCheck);
+  // 行番号 / ワードラップは ON/OFF のトグル。アイコン QToolButton に変更
+  // (メインツールバー / 画像ビュアーの統一感のため)。
+  m_lineNumbersButton = new QToolButton(toolbar);
+  m_lineNumbersButton->setCheckable(true);
+  m_lineNumbersButton->setIcon(QIcon(QStringLiteral(":/icons/toolbar/line-numbers.svg")));
+  m_lineNumbersButton->setIconSize(QSize(20, 20));
+  m_lineNumbersButton->setToolTip(tr("Show line numbers"));
+  m_lineNumbersButton->setFocusPolicy(Qt::StrongFocus);
+  tb->addWidget(m_lineNumbersButton);
 
-  m_wordWrapCheck = new QCheckBox(tr("Word Wrap"), toolbar);
-  m_wordWrapCheck->setFocusPolicy(Qt::StrongFocus);
-  tb->addWidget(m_wordWrapCheck);
+  m_wordWrapButton = new QToolButton(toolbar);
+  m_wordWrapButton->setCheckable(true);
+  m_wordWrapButton->setIcon(QIcon(QStringLiteral(":/icons/toolbar/word-wrap.svg")));
+  m_wordWrapButton->setIconSize(QSize(20, 20));
+  m_wordWrapButton->setToolTip(tr("Word wrap"));
+  m_wordWrapButton->setFocusPolicy(Qt::StrongFocus);
+  tb->addWidget(m_wordWrapButton);
 
   // 検索コントロール群 (常設)。Tab で順に辿れる位置に置く。
   tb->addSpacing(12);
@@ -207,15 +222,26 @@ void TextView::setupUi() {
   m_findEdit->installEventFilter(this);
   tb->addWidget(m_findEdit, /*stretch*/ 1);
 
-  m_findCsCheck = new QCheckBox(tr("Case sensitive"), toolbar);
-  m_findCsCheck->setFocusPolicy(Qt::StrongFocus);
-  tb->addWidget(m_findCsCheck);
+  // 大文字小文字区別もアイコンのトグル化 (Aa)。
+  m_findCsButton = new QToolButton(toolbar);
+  m_findCsButton->setCheckable(true);
+  m_findCsButton->setIcon(QIcon(QStringLiteral(":/icons/toolbar/case-sensitive.svg")));
+  m_findCsButton->setIconSize(QSize(20, 20));
+  m_findCsButton->setToolTip(tr("Case sensitive search"));
+  m_findCsButton->setFocusPolicy(Qt::StrongFocus);
+  tb->addWidget(m_findCsButton);
 
   m_findStatus = new QLabel(toolbar);
   m_findStatus->setMinimumWidth(80);
   tb->addWidget(m_findStatus);
 
   root->addWidget(toolbar);
+
+  // フォーカス中ボタンで Enter を押されたら、そのボタンを click 扱いにする。
+  // 検索 QLineEdit には別途 eventFilter が install されているのでこちらの
+  // フィルタは届かない (= 検索の Enter 動作は壊さない)。
+  auto* clickFilter = new EnterClickFilter(this);
+  clickFilter->installOnButtonsIn(toolbar);
 
   // 本体
   m_editArea = new TextEditArea(this);
@@ -232,7 +258,7 @@ void TextView::setupUi() {
     if (m_editArea) m_editArea->setExtraSelections({});
     if (m_findStatus) m_findStatus->clear();
   });
-  connect(m_findCsCheck, &QCheckBox::toggled, this, [this](bool) {
+  connect(m_findCsButton, &QToolButton::toggled, this, [this](bool) {
     if (!m_findEdit || m_findEdit->text().isEmpty()) return;
     refreshMatchHighlights();
   });
@@ -250,11 +276,11 @@ void TextView::setupUi() {
     m_encoding = trimmed;
     if (!m_data.isEmpty()) reloadFromBuffer();
   });
-  connect(m_lineNumbersCheck, &QCheckBox::toggled, this, [this](bool on) {
+  connect(m_lineNumbersButton, &QToolButton::toggled, this, [this](bool on) {
     m_showLineNumbers = on;
     applyEditAreaSettings();
   });
-  connect(m_wordWrapCheck, &QCheckBox::toggled, this, [this](bool on) {
+  connect(m_wordWrapButton, &QToolButton::toggled, this, [this](bool on) {
     m_wordWrap = on;
     applyEditAreaSettings();
   });
@@ -271,12 +297,12 @@ void TextView::syncFromSettings() {
     m_encodingCombo->setCurrentText(m_encoding);
   }
   {
-    QSignalBlocker b(m_lineNumbersCheck);
-    m_lineNumbersCheck->setChecked(m_showLineNumbers);
+    QSignalBlocker b(m_lineNumbersButton);
+    m_lineNumbersButton->setChecked(m_showLineNumbers);
   }
   {
-    QSignalBlocker b(m_wordWrapCheck);
-    m_wordWrapCheck->setChecked(m_wordWrap);
+    QSignalBlocker b(m_wordWrapButton);
+    m_wordWrapButton->setChecked(m_wordWrap);
   }
 }
 
@@ -424,7 +450,7 @@ void TextView::findInDirection(bool backward) {
 
   QTextDocument::FindFlags flags;
   if (backward) flags |= QTextDocument::FindBackward;
-  if (m_findCsCheck && m_findCsCheck->isChecked()) {
+  if (m_findCsButton && m_findCsButton->isChecked()) {
     flags |= QTextDocument::FindCaseSensitively;
   }
 
@@ -451,7 +477,7 @@ void TextView::refreshMatchHighlights() {
   }
 
   QTextDocument::FindFlags flags;
-  if (m_findCsCheck && m_findCsCheck->isChecked()) {
+  if (m_findCsButton && m_findCsButton->isChecked()) {
     flags |= QTextDocument::FindCaseSensitively;
   }
 

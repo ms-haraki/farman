@@ -1,5 +1,6 @@
 #include "BinaryView.h"
 #include "settings/Settings.h"
+#include "utils/EnterClickFilter.h"
 
 #include <QComboBox>
 #include <QFile>
@@ -172,6 +173,12 @@ void BinaryView::setupUi() {
   QHBoxLayout* tb = new QHBoxLayout(toolbar);
   tb->setContentsMargins(4, 2, 4, 2);
   tb->setSpacing(8);
+  // フォーカス枠の可視化 (メインツールバー / 他ビュアーと同じ流儀)。
+  // 現状 BinaryView のヘッダは QComboBox のみだが、将来トグルボタンが
+  // 追加される可能性も見越して同じスタイルを適用しておく。
+  toolbar->setStyleSheet(QStringLiteral(
+    "QToolButton:focus { border: 2px solid palette(highlight); border-radius: 3px; padding: 1px; }"
+  ));
 
   tb->addWidget(new QLabel(tr("Unit:"), toolbar));
   m_unitCombo = new QComboBox(toolbar);
@@ -200,6 +207,12 @@ void BinaryView::setupUi() {
   tb->addStretch();
   root->addWidget(toolbar);
 
+  // ヘッダにボタンが増えたとき用に、QAbstractButton 子孫で Enter 押下を
+  // クリック扱いにするフィルタを install しておく (現状 QComboBox のみなので
+  // 実質 no-op だが、UI を増やしたときに毎回書き直さないよう先に配線する)。
+  auto* clickFilter = new EnterClickFilter(this);
+  clickFilter->installOnButtonsIn(toolbar);
+
   // 16 進ダンプ本体 (フォントは syncFromSettings で適用)
   m_textArea = new QPlainTextEdit(this);
   m_textArea->setReadOnly(true);
@@ -207,6 +220,12 @@ void BinaryView::setupUi() {
   // 行頭 8 桁のアドレスを別色で塗るシンタックスハイライタ
   m_addressHighlighter = new AddressHighlighter(m_textArea->document());
   root->addWidget(m_textArea, /*stretch*/ 1);
+
+  // ViewerPanel / BinaryViewerWindow からは BinaryView 全体に setFocus される。
+  // それを本体のテキストエリアに転送する。これがないと、子ウィジェット作成順
+  // 通りに最初のコンボ (Unit) にフォーカスが入ってしまう。
+  // (TextView / ImageView も同様に setFocusProxy で本体ウィジェットへ委譲)
+  setFocusProxy(m_textArea);
 
   // ローカルでの変更は Settings に保存しない (render のみ)
   connect(m_unitCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
