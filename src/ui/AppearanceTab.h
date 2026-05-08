@@ -34,17 +34,15 @@ private:
 
   // ── Light / Dark スキーム編集 ─────────────────
   // ダイアログ内では Light/Dark 双方の ColorScheme をシャドーで保持する。
-  // ウィジェットには「現在編集中の側」だけが表示され、Mode ラジオを
-  // 切替えると現状値を該当スキームへ書き戻してから反対側を読み直す。
+  // ウィジェットには「現在編集中の側」だけが表示され、Mode を切替える
+  // と現状値を該当スキームへ書き戻してから反対側を読み直す。
   // OK 押下時に setScheme(Light, ...) / setScheme(Dark, ...) で両側を
   // Settings に流し込み、最後に setThemeMode で適用。
   ColorScheme& currentScheme();
   void         loadFromScheme(const ColorScheme& s);
   void         saveToScheme(ColorScheme& s) const;
-  // テーマモードラジオの状態を m_dialogMode に反映 + 編集対象を再計算 + 再ロード
+  // テーマモードコンボの状態を m_dialogMode に反映 + 編集対象を再計算 + 再ロード
   void         applyThemeModeChange();
-  // 編集対象 (Light/Dark) を示すラベルを更新
-  void         updateEditingTargetLabel();
 
   // カテゴリ×状態（通常／選択）1 組のウィジェットをまとめた構造
   struct CategoryStateRow {
@@ -97,7 +95,6 @@ private:
 
   // ── テーマ (Light / Dark) ─────────────────────
   QComboBox*    m_themeModeCombo     = nullptr;
-  QLabel*       m_editingTargetLabel = nullptr;
   // ダイアログ内でのモード設定 (OK で確定)
   ThemeMode     m_dialogMode        = ThemeMode::Auto;
   // 現在ウィジェットが表示しているのが Light か Dark か

@@ -39,11 +39,6 @@ void AppearanceTab::setupUi() {
     tr("Auto follows the operating system's appearance setting. "
        "Editing automatically targets the currently active side."));
   themeRow->addWidget(m_themeModeCombo);
-  themeRow->addSpacing(16);
-
-  m_editingTargetLabel = new QLabel(this);
-  m_editingTargetLabel->setStyleSheet("QLabel { color: palette(mid); font-style: italic; }");
-  themeRow->addWidget(m_editingTargetLabel);
   themeRow->addStretch();
   mainLayout->addWidget(themeGroup);
 
@@ -228,7 +223,6 @@ void AppearanceTab::loadSettings() {
 
   // 編集対象側のスキームをウィジェットに流し込む
   loadFromScheme(currentScheme());
-  updateEditingTargetLabel();
 
   // 非アクティブペイン設定 (テーマ非依存; グローバル設定)
   m_inactivePaneGroup->setChecked(settings.useInactivePaneColors());
@@ -320,15 +314,6 @@ void AppearanceTab::applyThemeModeChange() {
 
   // 4. 新しい編集対象のスキームをウィジェットへロード
   loadFromScheme(currentScheme());
-  updateEditingTargetLabel();
-}
-
-void AppearanceTab::updateEditingTargetLabel() {
-  if (!m_editingTargetLabel) return;
-  m_editingTargetLabel->setText(
-    m_dialogEditingSide == ThemeMode::Dark
-      ? tr("Editing: Dark scheme")
-      : tr("Editing: Light scheme"));
 }
 
 void AppearanceTab::onSelectFont() {

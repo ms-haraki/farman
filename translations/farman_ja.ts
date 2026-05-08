@@ -82,16 +82,8 @@
         <translation>ダーク</translation>
     </message>
     <message>
-        <source>Follow the operating system's appearance setting. Editing automatically targets the currently active side.</source>
-        <translation>OS の外観設定に追従する。編集対象は現在アクティブな側に自動で切り替わる。</translation>
-    </message>
-    <message>
-        <source>Editing: Light scheme</source>
-        <translation>編集中: Light スキーム</translation>
-    </message>
-    <message>
-        <source>Editing: Dark scheme</source>
-        <translation>編集中: Dark スキーム</translation>
+        <source>Auto follows the operating system's appearance setting. Editing automatically targets the currently active side.</source>
+        <translation>Auto は OS の外観設定に追従する。編集対象は現在アクティブな側に自動で切り替わる。</translation>
     </message>
     <message>
         <location filename="../src/ui/AppearanceTab.cpp" line="55"/>
