@@ -73,6 +73,7 @@ void Settings::applyDefaults() {
   m_confirmOnExit = false;
   m_singleInstance = true;
   m_viewerMode    = ViewerMode::Inline;
+  m_showToolbar   = true;
   m_language      = LanguageMode::Auto;
 
   // ── ログ ─────────────────────────
@@ -424,6 +425,14 @@ ViewerMode Settings::viewerMode() const {
 
 void Settings::setViewerMode(ViewerMode mode) {
   m_viewerMode = mode;
+}
+
+bool Settings::showToolbar() const {
+  return m_showToolbar;
+}
+
+void Settings::setShowToolbar(bool show) {
+  m_showToolbar = show;
 }
 
 void Settings::setSingleInstance(bool enabled) {
@@ -1189,6 +1198,7 @@ void Settings::load() {
                      ? ViewerMode::External
                      : ViewerMode::Inline;
   }
+  m_showToolbar = behavior.value("showToolbar").toBool(true);
   {
     const QString langStr = behavior.value("language").toString("auto");
     if      (langStr == "en") m_language = LanguageMode::English;
@@ -1586,6 +1596,7 @@ void Settings::save() const {
   behavior["viewerMode"] = (m_viewerMode == ViewerMode::External)
                              ? QStringLiteral("external")
                              : QStringLiteral("inline");
+  behavior["showToolbar"] = m_showToolbar;
   switch (m_language) {
     case LanguageMode::English:  behavior["language"] = "en";   break;
     case LanguageMode::Japanese: behavior["language"] = "ja";   break;

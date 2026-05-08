@@ -165,6 +165,11 @@ public:
   ViewerMode viewerMode()               const;
   void       setViewerMode(ViewerMode mode);
 
+  // メニューバーの下に表示するツールバー (頻出操作のボタン群) の表示/非表示。
+  // View メニューの "Toolbar" 項目および Settings → General からトグルできる。
+  bool showToolbar()                    const;
+  void setShowToolbar(bool show);
+
   // 同期ブラウズが「追従先が存在しないため自動 OFF」した瞬間に通知
   // ダイアログを出すかどうか。ダイアログ側の「次回以降表示しない」
   // チェックを ON にした時にもこのフラグが false になる。デフォは true。
@@ -383,6 +388,9 @@ private:
   bool             m_syncBrowseShowDisabledDialog = true;
   // ビュアー表示モード。デフォルトは Inline (ビュアーパネルでの表示)。
   ViewerMode       m_viewerMode      = ViewerMode::Inline;
+  // メニュー下のツールバーの表示。デフォルトは ON (新機能を見つけてもらう)。
+  // 不要なら View → Toolbar / Settings → General からオフにできる。
+  bool             m_showToolbar     = true;
   LanguageMode     m_language         = LanguageMode::Auto;
   bool             m_logVisible       = true;
   int              m_logPaneHeight    = 120;  // px

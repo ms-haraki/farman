@@ -69,6 +69,8 @@ private:
   QToolButton* m_rightBrowseButton         = nullptr;
   QCheckBox*   m_confirmOnExitCheck        = nullptr;
   QCheckBox*   m_singleInstanceCheck       = nullptr;
+  // メインツールバーの表示。View メニューからもトグル可能。
+  QCheckBox*   m_showToolbarCheck          = nullptr;
 
   // Application language
   QComboBox*   m_languageCombo             = nullptr;

@@ -106,6 +106,10 @@ signals:
   void activeSummaryChanged(const QString& summary);
   // 同期ブラウズの ON/OFF が切り替わったとき (UI 更新トリガ)。
   void syncBrowseChanged(bool enabled);
+  // 1 / 2 ペインモードが切り替わったとき (ツールバーのトグル状態同期に使う)。
+  void singlePaneModeChanged(bool single);
+  // ログペインの表示が切り替わったとき (同上)。
+  void logPaneVisibleChanged(bool visible);
 
 private slots:
   void onLeftPaneCurrentChanged(const QModelIndex& current, const QModelIndex& previous);

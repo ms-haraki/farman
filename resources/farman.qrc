@@ -12,4 +12,30 @@
   <qresource prefix="/icons">
     <file alias="farman.png">../images/icon-512.png</file>
   </qresource>
+  <!--
+    メインツールバー用のアイコン (Lucide スタイル / monochrome 24x24 SVG)。
+    ストロークは #555 固定。ライトテーマでもダークテーマでも視認可能な中間色を採用。
+    QToolBar からは ":/icons/toolbar/<name>.svg" で参照する。
+  -->
+  <qresource prefix="/icons/toolbar">
+    <file alias="new-file.svg">icons/toolbar/new-file.svg</file>
+    <file alias="new-dir.svg">icons/toolbar/new-dir.svg</file>
+    <file alias="copy.svg">icons/toolbar/copy.svg</file>
+    <file alias="move.svg">icons/toolbar/move.svg</file>
+    <file alias="delete.svg">icons/toolbar/delete.svg</file>
+    <file alias="rename.svg">icons/toolbar/rename.svg</file>
+    <file alias="search.svg">icons/toolbar/search.svg</file>
+    <file alias="bookmarks.svg">icons/toolbar/bookmarks.svg</file>
+    <file alias="history.svg">icons/toolbar/history.svg</file>
+    <file alias="single-pane.svg">icons/toolbar/single-pane.svg</file>
+    <file alias="sync-browse.svg">icons/toolbar/sync-browse.svg</file>
+    <file alias="log.svg">icons/toolbar/log.svg</file>
+    <file alias="settings.svg">icons/toolbar/settings.svg</file>
+    <file alias="close.svg">icons/toolbar/close.svg</file>
+    <file alias="sort-filter.svg">icons/toolbar/sort-filter.svg</file>
+    <file alias="view-file.svg">icons/toolbar/view-file.svg</file>
+    <file alias="shortcuts.svg">icons/toolbar/shortcuts.svg</file>
+    <file alias="terminal.svg">icons/toolbar/terminal.svg</file>
+    <file alias="editor.svg">icons/toolbar/editor.svg</file>
+  </qresource>
 </RCC>

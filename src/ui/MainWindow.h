@@ -11,6 +11,7 @@
 class QAction;
 class QStackedWidget;
 class QLabel;
+class QToolBar;
 
 namespace Farman {
 
@@ -73,6 +74,17 @@ private:
 
   // ショートカット一覧ウィンドウ (遅延生成)。
   ShortcutListDialog* m_shortcutListDialog = nullptr;
+
+  // メインツールバー (View → Toolbar / Settings からトグル可能)。
+  // CommandRegistry の既存コマンドを呼び出すボタンを並べる。表示/非表示は
+  // Settings::showToolbar() に同期する。
+  QToolBar* m_toolbar = nullptr;
+  // ツールバー上の "Toolbar" メニュー項目をチェック付きで追跡する。
+  // Settings 側からトグルが入ったときも aboutToShow / 直接呼び出し経由で
+  // 同期させる。
+  QAction*  m_toolbarMenuAction = nullptr;
+  void      createMainToolBar();
+  void      applyToolbarVisibility();
 
   // External モードのビュアーウィンドウ。同時に開けるのは 1 つだけ。
   // 別ファイルを開く要求が来たら、前のものを閉じてジオメトリを引き継いだ

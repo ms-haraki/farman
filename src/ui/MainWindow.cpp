@@ -37,6 +37,7 @@
 #include <QMenuBar>
 #include <QMenu>
 #include <QAction>
+#include <QToolBar>
 
 namespace Farman {
 
@@ -103,6 +104,11 @@ MainWindow::MainWindow(QWidget* parent)
 
   // メニューバーはキーバインドが確定した後に作る（右端にショートカットを表示するため）
   createMenus();
+
+  // ツールバーも同様に、addCmd と同じ要領で QAction を生成するため
+  // メニュー構築の後に作る (m_toolbar はトグル時の表示制御用に保持)。
+  createMainToolBar();
+  applyToolbarVisibility();
 
   // Tools メニューの中身は UserCommand の追加 / 削除に追従する。
   connect(&UserCommandManager::instance(), &UserCommandManager::userCommandsChanged,
@@ -825,6 +831,21 @@ void MainWindow::registerCommands() {
     "view"
   ));
 
+  // ツールバーの表示トグル。Settings の値を反転して即座にウィンドウへ反映。
+  // メニュー / Settings / コマンド経由のいずれからでも同じ経路で同期する。
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "view.toggle_toolbar",
+    tr("Toolbar"),
+    [this]() {
+      auto& s = Settings::instance();
+      s.setShowToolbar(!s.showToolbar());
+      s.save();
+      applyToolbarVisibility();
+    },
+    "view",
+    tr("Show or hide the main toolbar.")
+  ));
+
   // 即時フィルタ (Quick Filter Bar) のトグル。アクティブペインの
   // FileListPane が QLineEdit を出して live filter を model に反映する。
   // QLineEdit にフォーカスがあるとき (= バー入力中) に "/" を押された場合は、
@@ -1053,6 +1074,16 @@ void MainWindow::createMenus() {
   addCmd(viewMenu, "view.choose", tr("Open With Viewer..."));
   addCmd(viewMenu, "view.toggle_log", tr("Toggle Log Pane"));
   addCmd(viewMenu, "view.quick_filter", tr("Quick Filter"));
+  // ツールバー表示のトグル。aboutToShow で Settings の現状を反映させる。
+  m_toolbarMenuAction = addCmd(viewMenu, "view.toggle_toolbar", tr("Toolbar"));
+  m_toolbarMenuAction->setCheckable(true);
+  m_toolbarMenuAction->setChecked(Settings::instance().showToolbar());
+  connect(viewMenu, &QMenu::aboutToShow, this, [this]() {
+    if (m_toolbarMenuAction) {
+      QSignalBlocker blocker(m_toolbarMenuAction);
+      m_toolbarMenuAction->setChecked(Settings::instance().showToolbar());
+    }
+  });
   // ビュアー表示モード (Inline / External) のトグル。チェック付きでメニューに
   // 表示し、aboutToShow で Settings の現状を反映する。
   QAction* viewerModeAction = addCmd(viewMenu, "view.toggle_viewer_mode",
@@ -1149,6 +1180,152 @@ void MainWindow::rebuildToolsMenu() {
   }
 }
 
+void MainWindow::createMainToolBar() {
+  // 既に作成済みなら何もしない (構築フローで一度だけ呼ぶ前提)。
+  if (m_toolbar) return;
+
+  m_toolbar = new QToolBar(tr("Main Toolbar"), this);
+  m_toolbar->setObjectName(QStringLiteral("mainToolBar"));
+  m_toolbar->setMovable(false);
+  // アイコンのみ表示。アイコンの意味は tooltip (ラベル + ショートカット) で
+  // 補足する。アイコン素材は :/icons/toolbar/<name>.svg (Lucide スタイル
+  // / monochrome 24x24)。表示スタイルの切替 (Icon / Text / IconBesideText)
+  // は将来 Settings 経由で提供する余地あり。
+  m_toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+  m_toolbar->setIconSize(QSize(20, 20));
+
+  // 1 ボタン分の生成ヘルパ。CommandRegistry::execute(id) を呼ぶだけの
+  // QAction を作って toolbar に追加。tooltip にはラベル + キーバインドを
+  // 表示する。menu の addCmd と異なり、ショートカットは setShortcut せず
+  // メニュー側 / eventFilter 側の登録を流用する (重複登録 = "Ambiguous
+  // shortcut overload" を避けるため)。
+  auto addBtn = [this](const QString& id, const QString& label,
+                       const QString& iconName) -> QAction* {
+    QAction* a = new QAction(label, m_toolbar);
+    if (!iconName.isEmpty()) {
+      a->setIcon(QIcon(QStringLiteral(":/icons/toolbar/") + iconName));
+    }
+    const QList<QKeySequence> keys =
+      KeyBindingManager::instance().keysForCommand(id);
+    if (!keys.isEmpty()) {
+      a->setToolTip(QStringLiteral("%1 (%2)")
+                      .arg(label, keys.first().toString(QKeySequence::NativeText)));
+    } else {
+      a->setToolTip(label);
+    }
+    connect(a, &QAction::triggered, this, [id]() {
+      CommandRegistry::instance().execute(id);
+    });
+    m_toolbar->addAction(a);
+    return a;
+  };
+
+  // 配置: 機能の近いものを 7 グループにセパレータで区切る。
+  //   1. 作成系 (新規ファイル / 新規ディレクトリ)
+  //   2. 操作系 (Copy / Move / Delete / Rename)
+  //   3. 表示・絞り込み系 (View ファイル / Sort & Filter / Search)
+  //   4. ナビゲーション (Bookmarks / History)
+  //   5. 外部アプリ (Terminal / Editor — UserCommand 経由)
+  //   6. 表示モードトグル (Single Pane / Sync Browse / Log) ← checkable
+  //   7. ヘルプ・設定 (Shortcuts / Settings)
+  addBtn("file.newfile",            tr("New File"),     QStringLiteral("new-file.svg"));
+  addBtn("file.mkdir",              tr("New Dir"),      QStringLiteral("new-dir.svg"));
+  m_toolbar->addSeparator();
+  addBtn("file.copy",               tr("Copy"),         QStringLiteral("copy.svg"));
+  addBtn("file.move",               tr("Move"),         QStringLiteral("move.svg"));
+  addBtn("file.delete",             tr("Delete"),       QStringLiteral("delete.svg"));
+  addBtn("file.rename",             tr("Rename"),       QStringLiteral("rename.svg"));
+  m_toolbar->addSeparator();
+  addBtn("view.file",               tr("View"),         QStringLiteral("view-file.svg"));
+  addBtn("pane.sort_filter",        tr("Sort && Filter"), QStringLiteral("sort-filter.svg"));
+  addBtn("file.search",             tr("Search"),       QStringLiteral("search.svg"));
+  m_toolbar->addSeparator();
+  addBtn("bookmark.list",           tr("Bookmarks"),    QStringLiteral("bookmarks.svg"));
+  addBtn("history.show",            tr("History"),      QStringLiteral("history.svg"));
+  m_toolbar->addSeparator();
+  // 外部アプリは UserCommand 経由 (terminal / editor の組み込みエントリ)。
+  // ユーザーが Settings → External Apps で program を変更すれば、ここから
+  // 起動するアプリも自動で切り替わる (ユーザー定義コマンドはまだツールバー
+  // からは出さない方針)。
+  addBtn("user.cmd.terminal",       tr("Terminal"),     QStringLiteral("terminal.svg"));
+  addBtn("user.cmd.editor",         tr("Editor"),       QStringLiteral("editor.svg"));
+  m_toolbar->addSeparator();
+  // ── トグル系 (押下状態を保持) ────────────────────────────
+  // Single Pane / Sync Browse / Log は機能の ON/OFF を反映するため checkable に
+  // する。triggered で命令が走るのは他と同じだが、状態は FileManagerPanel の
+  // シグナル経由で反映する (toolbar から押した場合 / メニューから押した場合 /
+  // キーバインドから押した場合 のいずれでも同じ経路で更新される)。
+  // QAction::setChecked は changed シグナルを発火しないように QSignalBlocker で
+  // 包み、triggered ループを断ち切る。
+  QAction* singlePaneAct = addBtn("pane.toggle_single", tr("Single Pane"),
+                                  QStringLiteral("single-pane.svg"));
+  singlePaneAct->setCheckable(true);
+  singlePaneAct->setChecked(m_fileManagerPanel->isSinglePaneMode());
+  connect(m_fileManagerPanel, &FileManagerPanel::singlePaneModeChanged,
+          this, [singlePaneAct](bool single) {
+    QSignalBlocker b(singlePaneAct);
+    singlePaneAct->setChecked(single);
+  });
+
+  QAction* syncBrowseAct = addBtn("pane.sync_browse_toggle", tr("Sync Browse"),
+                                  QStringLiteral("sync-browse.svg"));
+  syncBrowseAct->setCheckable(true);
+  syncBrowseAct->setChecked(m_fileManagerPanel->isSyncBrowseEnabled());
+  connect(m_fileManagerPanel, &FileManagerPanel::syncBrowseChanged,
+          this, [syncBrowseAct](bool on) {
+    QSignalBlocker b(syncBrowseAct);
+    syncBrowseAct->setChecked(on);
+  });
+
+  QAction* logAct = addBtn("view.toggle_log", tr("Log"),
+                           QStringLiteral("log.svg"));
+  logAct->setCheckable(true);
+  logAct->setChecked(m_fileManagerPanel->isLogPaneVisible());
+  connect(m_fileManagerPanel, &FileManagerPanel::logPaneVisibleChanged,
+          this, [logAct](bool visible) {
+    QSignalBlocker b(logAct);
+    logAct->setChecked(visible);
+  });
+
+  m_toolbar->addSeparator();
+  addBtn("help.shortcuts",          tr("Shortcuts"),    QStringLiteral("shortcuts.svg"));
+  addBtn("app.settings",            tr("Settings"),     QStringLiteral("settings.svg"));
+
+  // 右端に「ツールバーを閉じる (×)」ボタン。残りスペースを expanding な
+  // QWidget で埋めて、その後ろに追加することで右寄せを実現する。
+  // クリックで Settings::showToolbar を false にして即時非表示。再表示は
+  // View → Toolbar / Settings → Show toolbar / view.toggle_toolbar コマンド
+  // のいずれからでも可能。
+  {
+    auto* spacer = new QWidget(m_toolbar);
+    spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    m_toolbar->addWidget(spacer);
+
+    QAction* closeAct = new QAction(tr("Hide toolbar"), m_toolbar);
+    closeAct->setIcon(QIcon(QStringLiteral(":/icons/toolbar/close.svg")));
+    closeAct->setToolTip(tr(
+      "Hide the toolbar. Re-show it from View → Toolbar or Settings → General."));
+    connect(closeAct, &QAction::triggered, this, [this]() {
+      auto& s = Settings::instance();
+      s.setShowToolbar(false);
+      s.save();
+      applyToolbarVisibility();
+    });
+    m_toolbar->addAction(closeAct);
+  }
+
+  addToolBar(Qt::TopToolBarArea, m_toolbar);
+}
+
+void MainWindow::applyToolbarVisibility() {
+  if (!m_toolbar) return;
+  m_toolbar->setVisible(Settings::instance().showToolbar());
+  if (m_toolbarMenuAction) {
+    QSignalBlocker blocker(m_toolbarMenuAction);
+    m_toolbarMenuAction->setChecked(Settings::instance().showToolbar());
+  }
+}
+
 void MainWindow::showAboutDialog() {
   const QString version = QStringLiteral(QT_STRINGIFY(FARMAN_VERSION));
   QMessageBox::about(this, tr("About farman"),
@@ -1212,6 +1389,9 @@ void MainWindow::onSettingsChanged() {
   m_fileManagerPanel->setLogPaneVisible(s.logVisible());
   m_fileManagerPanel->setLogPaneHeight(s.logPaneHeight());
   Logger::instance().setFileOutput(s.logToFile(), s.logDirectory(), s.logRetentionDays());
+
+  // ツールバーの表示も Settings 側からのトグルに追従させる。
+  applyToolbarVisibility();
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {

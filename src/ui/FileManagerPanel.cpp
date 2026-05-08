@@ -138,7 +138,12 @@ void FileManagerPanel::setupUi() {
 }
 
 void FileManagerPanel::setLogPaneVisible(bool visible) {
-  if (m_logPane) m_logPane->setVisible(visible);
+  if (!m_logPane) return;
+  const bool was = m_logPane->isVisible();
+  m_logPane->setVisible(visible);
+  if (was != visible) {
+    emit logPaneVisibleChanged(visible);
+  }
 }
 
 bool FileManagerPanel::isLogPaneVisible() const {
@@ -845,6 +850,7 @@ void FileManagerPanel::togglePaneMode() {
 }
 
 void FileManagerPanel::setSinglePaneMode(bool single) {
+  const bool prev = m_singlePaneMode;
   m_singlePaneMode = single;
 
   // シングルペインに入ったら同期ブラウズを強制 OFF にする
@@ -879,6 +885,10 @@ void FileManagerPanel::setSinglePaneMode(bool single) {
   // 列表示も Single / Dual で切替え。
   if (m_leftPane)  m_leftPane->applyColumnVisibility(single);
   if (m_rightPane) m_rightPane->applyColumnVisibility(single);
+
+  if (prev != single) {
+    emit singlePaneModeChanged(single);
+  }
 }
 
 FileListPane* FileManagerPanel::activePane() const {

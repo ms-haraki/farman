@@ -1135,27 +1135,35 @@ BinaryView では `setPlainText` 前後で `AddressHighlighter` を一時的に
 
 ---
 
-## ツールバー *（未実装）*
+## ツールバー
 
-メニューバーの下に、頻出操作をアイコンで並べた **ツールバー** を置く。
+メニューバーの下に、頻出操作のボタンを並べた **ツールバー** を置く。
 キーボード操作派には不要だが、初見ユーザーが視覚的にコマンドへ到達できる
 ようにするのが目的。
 
-- 配置候補: Copy / Move / Delete / New File / New Directory / Rename /
-  Search / Bookmark / Settings / Toggle Single Pane / Toggle Log Pane /
-  **Sync Browse トグル (🔗)** など。
-- 各ボタンは `CommandRegistry` の既存コマンドを呼び出すだけ
-  (`addCmd` ヘルパと同様)。実体ロジックの重複は無し。
-- ボタンに割り当てたキーバインドはツールチップに表記する
-  (Settings → Keybindings の値を参照)。
-- **表示 ON/OFF** トグル (View メニュー / 設定) を提供。デフォルトは
-  ON か OFF か要検討 (キーボード派が多そうなら OFF にして「明示的に
-  出す」運用が良いかも)。
-- カスタマイズ: 表示するボタンの集合・並び順をユーザーが変更できると
-  便利。ただし最小実装では固定セットで開始してよい。
-- macOS のネイティブツールバー (`QMainWindow` + `QToolBar` で
-  `setUnifiedTitleAndToolBarOnMac(true)`) を使うかどうかも検討する
-  (一体感が出るが他プラットフォームと挙動が変わる)。
+- **配置 (固定セット)**: 6 グループにセパレータで区切る:
+  1. New File / New Dir
+  2. Copy / Move / Delete / Rename
+  3. Search
+  4. Bookmarks / History
+  5. Single Pane / Sync Browse / Log
+  6. Settings
+- 各ボタンは `CommandRegistry::execute(id)` を呼び出すだけ
+  (`addBtn` ヘルパが `addCmd` 相当を担当)。実体ロジックの重複は無し。
+- ボタンに割り当てたキーバインドは **ツールチップに表記** する
+  (`KeyBindingManager::keysForCommand()` の最初の 1 件をネイティブ表記で末尾に追加)。
+- **表示 ON/OFF** トグル: View メニュー → "Toolbar" (チェック付き)、もしくは
+  Settings → General → "Show toolbar" チェックボックスから切替可能。
+  コマンド ID は `view.toggle_toolbar`。Settings の `behavior.showToolbar`
+  に保存され、デフォルトは **ON** (新機能を発見してもらう狙い)。
+- 表示スタイル: `Qt::ToolButtonTextOnly` (Qt 標準アイコンセットでは Copy /
+  Move / Rename 等にしっくりくるアイコンが無いため、現時点ではテキストラベル
+  だけのシンプル表示)。アイコンの追加と表示スタイル切替 (Icon / Text /
+  IconBesideText) は将来の polish 項目。
+- カスタマイズ (ボタン集合・並び順をユーザーが変更可能にする) は将来課題。
+  最小実装では上記の固定セットで開始する。
+- macOS のネイティブ「Unified Title and Toolbar」(`setUnifiedTitleAndToolBarOnMac`)
+  は採用していない (他プラットフォームとの挙動差を避けるため)。
 
 ---
 
