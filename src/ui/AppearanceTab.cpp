@@ -1,5 +1,10 @@
 #include "AppearanceTab.h"
+#include "settings/PresetIO.h"
+#include "utils/Dialogs.h"
 #include <QVBoxLayout>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QStandardPaths>
 #include <QHBoxLayout>
 #include <QFormLayout>
 #include <QGridLayout>
@@ -24,13 +29,19 @@ AppearanceTab::AppearanceTab(QWidget* parent)
 void AppearanceTab::setupUi() {
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
-  // ─── Theme グループ: Light / Dark / Auto モード切替 ───
+  // ─── Theme グループ: Light / Dark / Auto モード切替 + プリセット / I/O ──
   // モードを切替えると、その瞬間のウィジェット値が「直前まで編集していた側」
   // のシャドースキームへ書き戻され、反対側の値が読み込まれる。
   // OK ボタン押下で両側のスキームと themeMode が一括コミットされる。
+  // プリセット適用 / Import は「現在編集中の側」だけを上書きする
+  // (Light タブ表示中は light、Dark タブ表示中は dark へ)。両側を持つ
+  // プリセット (Solarized 等) は両方を一括上書きする。
   QGroupBox* themeGroup = new QGroupBox(tr("Theme"), this);
-  QHBoxLayout* themeRow = new QHBoxLayout(themeGroup);
-  themeRow->addWidget(new QLabel(tr("Mode:"), this));
+  QVBoxLayout* themeOuter = new QVBoxLayout(themeGroup);
+
+  // 行 1: Mode + (currently applying: ...)
+  QHBoxLayout* modeRow = new QHBoxLayout();
+  modeRow->addWidget(new QLabel(tr("Mode:"), this));
   m_themeModeCombo = new QComboBox(this);
   m_themeModeCombo->addItem(tr("Auto (follow OS)"), static_cast<int>(ThemeMode::Auto));
   m_themeModeCombo->addItem(tr("Light"),            static_cast<int>(ThemeMode::Light));
@@ -38,19 +49,52 @@ void AppearanceTab::setupUi() {
   m_themeModeCombo->setToolTip(
     tr("Auto follows the operating system's appearance setting. "
        "Editing automatically targets the currently active side."));
-  themeRow->addWidget(m_themeModeCombo);
-  themeRow->addSpacing(12);
+  modeRow->addWidget(m_themeModeCombo);
+  modeRow->addSpacing(12);
 
-  // Auto のときだけ「いま OS が Light / Dark どちらを要求しているか」を
-  // 灰色で控えめに表示する。Light/Dark を明示選択中は自明なので非表示。
   m_autoEffectiveLabel = new QLabel(this);
   m_autoEffectiveLabel->setStyleSheet("QLabel { color: palette(mid); font-style: italic; }");
-  themeRow->addWidget(m_autoEffectiveLabel);
-  themeRow->addStretch();
-  mainLayout->addWidget(themeGroup);
+  modeRow->addWidget(m_autoEffectiveLabel);
+  modeRow->addStretch();
+  themeOuter->addLayout(modeRow);
 
   connect(m_themeModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, [this](int) { applyThemeModeChange(); });
+
+  // 行 2: Preset + Apply + Export + Import
+  QHBoxLayout* presetRow = new QHBoxLayout();
+  presetRow->addWidget(new QLabel(tr("Preset:"), this));
+  m_themePresetCombo = new QComboBox(this);
+  m_themePresetCombo->setMinimumWidth(200);
+  for (const auto& p : PresetIO::listBundledThemePresets()) {
+    m_themePresetCombo->addItem(p.displayName, p.resourcePath);
+  }
+  presetRow->addWidget(m_themePresetCombo);
+
+  m_themeApplyButton = new QPushButton(tr("Apply"), this);
+  m_themeApplyButton->setToolTip(
+    tr("Replace the current side's colors with the selected preset. "
+       "Presets that include both Light and Dark blocks update both."));
+  m_themeApplyButton->setEnabled(m_themePresetCombo->count() > 0);
+  connect(m_themeApplyButton, &QPushButton::clicked, this, &AppearanceTab::onApplyThemePreset);
+  presetRow->addWidget(m_themeApplyButton);
+
+  presetRow->addSpacing(16);
+  m_themeExportButton = new QPushButton(tr("Export..."), this);
+  m_themeExportButton->setToolTip(tr("Save both Light and Dark schemes to a JSON file"));
+  connect(m_themeExportButton, &QPushButton::clicked, this, &AppearanceTab::onExportTheme);
+  presetRow->addWidget(m_themeExportButton);
+
+  m_themeImportButton = new QPushButton(tr("Import..."), this);
+  m_themeImportButton->setToolTip(
+    tr("Load a theme JSON file. Single-side files update only the matching side."));
+  connect(m_themeImportButton, &QPushButton::clicked, this, &AppearanceTab::onImportTheme);
+  presetRow->addWidget(m_themeImportButton);
+
+  presetRow->addStretch();
+  themeOuter->addLayout(presetRow);
+
+  mainLayout->addWidget(themeGroup);
 
   // 色ボタン生成のヘルパー
   auto makeColorButton = [this](QColor& storedValue, const QString& dialogTitle) -> QPushButton* {
@@ -428,6 +472,75 @@ void AppearanceTab::updateColorButton(QPushButton* btn, const QColor& color) {
                     "border-radius: 3px; padding: 2px 6px; }"
       "QPushButton:focus { border: 2px solid palette(highlight); padding: 1px 5px; }")
                        .arg(color.name(), textColor));
+}
+
+void AppearanceTab::onApplyThemePreset() {
+  if (!m_themePresetCombo || m_themePresetCombo->currentIndex() < 0) return;
+  const QString name         = m_themePresetCombo->currentText();
+  const QString resourcePath = m_themePresetCombo->currentData().toString();
+  if (resourcePath.isEmpty()) return;
+
+  QJsonObject obj;
+  if (auto r = PresetIO::loadJsonFromResource(resourcePath, obj); !r.ok) {
+    QMessageBox::warning(this, tr("Apply Theme Preset"), r.error);
+    return;
+  }
+  PresetIO::ThemeData data;
+  if (auto r = PresetIO::themeFromJson(obj, data); !r.ok) {
+    QMessageBox::warning(this, tr("Apply Theme Preset"), r.error);
+    return;
+  }
+
+  if (!confirm(this, tr("Apply Theme Preset"),
+               tr("Replace the current theme colors with the '%1' preset?").arg(name))) {
+    return;
+  }
+
+  // ダイアログ内のシャドースキームを書き戻し → プリセット側を上書き →
+  // 現在表示中の側を再ロード。両側持ちプリセットは両方を更新する。
+  saveToScheme(currentScheme());
+  if (data.light) m_dialogLight = *data.light;
+  if (data.dark)  m_dialogDark  = *data.dark;
+  loadFromScheme(currentScheme());
+}
+
+void AppearanceTab::onExportTheme() {
+  // 現在ウィジェットに乗っている値を最新スナップショットに反映してから出力
+  saveToScheme(currentScheme());
+
+  PresetIO::ThemeData data;
+  data.light = m_dialogLight;
+  data.dark  = m_dialogDark;
+
+  const QString defaultDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+  const QString path = QFileDialog::getSaveFileName(
+    this, tr("Export Theme"),
+    defaultDir + QStringLiteral("/farman-theme.json"),
+    tr("JSON Files (*.json)"));
+  if (path.isEmpty()) return;
+
+  if (auto r = PresetIO::exportThemeToFile(path, data); !r.ok) {
+    QMessageBox::warning(this, tr("Export Theme"), r.error);
+  }
+}
+
+void AppearanceTab::onImportTheme() {
+  const QString defaultDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+  const QString path = QFileDialog::getOpenFileName(
+    this, tr("Import Theme"), defaultDir,
+    tr("JSON Files (*.json)"));
+  if (path.isEmpty()) return;
+
+  PresetIO::ThemeData data;
+  if (auto r = PresetIO::importThemeFromFile(path, data); !r.ok) {
+    QMessageBox::warning(this, tr("Import Theme"), r.error);
+    return;
+  }
+
+  saveToScheme(currentScheme());
+  if (data.light) m_dialogLight = *data.light;
+  if (data.dark)  m_dialogDark  = *data.dark;
+  loadFromScheme(currentScheme());
 }
 
 void AppearanceTab::save() {

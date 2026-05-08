@@ -94,6 +94,34 @@
         <translation>(現在の適用先: Dark)</translation>
     </message>
     <message>
+        <source>Replace the current side&apos;s colors with the selected preset. Presets that include both Light and Dark blocks update both.</source>
+        <translation>選択したプリセットで現在編集中の側の色を全置換する。Light / Dark 両方のブロックを持つプリセットは両側を更新する。</translation>
+    </message>
+    <message>
+        <source>Save both Light and Dark schemes to a JSON file</source>
+        <translation>Light / Dark 両方のスキームを JSON ファイルに保存する</translation>
+    </message>
+    <message>
+        <source>Load a theme JSON file. Single-side files update only the matching side.</source>
+        <translation>テーマ JSON ファイルを読み込む。片側だけのファイルは該当側のみ更新する。</translation>
+    </message>
+    <message>
+        <source>Apply Theme Preset</source>
+        <translation>テーマプリセット適用</translation>
+    </message>
+    <message>
+        <source>Replace the current theme colors with the &apos;%1&apos; preset?</source>
+        <translation>現在のテーマ色を「%1」プリセットで全置換しますか?</translation>
+    </message>
+    <message>
+        <source>Export Theme</source>
+        <translation>テーマをエクスポート</translation>
+    </message>
+    <message>
+        <source>Import Theme</source>
+        <translation>テーマをインポート</translation>
+    </message>
+    <message>
         <location filename="../src/ui/AppearanceTab.cpp" line="55"/>
         <location filename="../src/ui/AppearanceTab.cpp" line="116"/>
         <source>Select Font...</source>

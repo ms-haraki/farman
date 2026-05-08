@@ -56,4 +56,10 @@
     <file alias="default.json">presets/keybindings/default.json</file>
     <file alias="total-commander.json">presets/keybindings/total-commander.json</file>
   </qresource>
+  <qresource prefix="/presets/themes">
+    <file alias="light-default.json">presets/themes/light-default.json</file>
+    <file alias="dark-default.json">presets/themes/dark-default.json</file>
+    <file alias="solarized.json">presets/themes/solarized.json</file>
+    <file alias="monokai.json">presets/themes/monokai.json</file>
+  </qresource>
 </RCC>

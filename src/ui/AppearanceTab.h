@@ -27,6 +27,12 @@ public:
 
 private slots:
   void onSelectFont();
+  // テーマプリセット適用 / インポート / エクスポート (確認ダイアログ → 反映)。
+  // 反映先は「現在編集中の側」(Auto なら effectiveTheme)。両側を持つプリセット
+  // は両側を更新する。アクティブ側は m_ にも適用 → 即時プレビュー。
+  void onApplyThemePreset();
+  void onExportTheme();
+  void onImportTheme();
 
 private:
   void setupUi();
@@ -101,6 +107,11 @@ private:
   // Mode = Auto のときだけ「現在 OS 側がどちらを要求しているか」を表示する。
   // Light / Dark を明示選択しているときは自明なので空文字 + 非表示にする。
   QLabel*       m_autoEffectiveLabel = nullptr;
+  // テーマプリセット / インポート / エクスポート
+  QComboBox*    m_themePresetCombo   = nullptr;
+  QPushButton*  m_themeApplyButton   = nullptr;
+  QPushButton*  m_themeExportButton  = nullptr;
+  QPushButton*  m_themeImportButton  = nullptr;
   // ダイアログ内でのモード設定 (OK で確定)
   ThemeMode     m_dialogMode        = ThemeMode::Auto;
   // 現在ウィジェットが表示しているのが Light か Dark か
