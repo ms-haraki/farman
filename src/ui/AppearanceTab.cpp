@@ -39,6 +39,13 @@ void AppearanceTab::setupUi() {
     tr("Auto follows the operating system's appearance setting. "
        "Editing automatically targets the currently active side."));
   themeRow->addWidget(m_themeModeCombo);
+  themeRow->addSpacing(12);
+
+  // Auto のときだけ「いま OS が Light / Dark どちらを要求しているか」を
+  // 灰色で控えめに表示する。Light/Dark を明示選択中は自明なので非表示。
+  m_autoEffectiveLabel = new QLabel(this);
+  m_autoEffectiveLabel->setStyleSheet("QLabel { color: palette(mid); font-style: italic; }");
+  themeRow->addWidget(m_autoEffectiveLabel);
   themeRow->addStretch();
   mainLayout->addWidget(themeGroup);
 
@@ -223,6 +230,7 @@ void AppearanceTab::loadSettings() {
 
   // 編集対象側のスキームをウィジェットに流し込む
   loadFromScheme(currentScheme());
+  updateAutoEffectiveLabel();
 
   // 非アクティブペイン設定 (テーマ非依存; グローバル設定)
   m_inactivePaneGroup->setChecked(settings.useInactivePaneColors());
@@ -314,6 +322,22 @@ void AppearanceTab::applyThemeModeChange() {
 
   // 4. 新しい編集対象のスキームをウィジェットへロード
   loadFromScheme(currentScheme());
+
+  // 5. Auto のときだけ "currently: Light/Dark" 表示を更新
+  updateAutoEffectiveLabel();
+}
+
+void AppearanceTab::updateAutoEffectiveLabel() {
+  if (!m_autoEffectiveLabel) return;
+  if (m_dialogMode == ThemeMode::Auto) {
+    m_autoEffectiveLabel->setText(
+      m_dialogEditingSide == ThemeMode::Dark
+        ? tr("(currently applying: Dark)")
+        : tr("(currently applying: Light)"));
+    m_autoEffectiveLabel->setVisible(true);
+  } else {
+    m_autoEffectiveLabel->setVisible(false);
+  }
 }
 
 void AppearanceTab::onSelectFont() {

@@ -43,6 +43,9 @@ private:
   void         saveToScheme(ColorScheme& s) const;
   // テーマモードコンボの状態を m_dialogMode に反映 + 編集対象を再計算 + 再ロード
   void         applyThemeModeChange();
+  // Auto モード時のみ「現在 OS 側がどちらを要求しているか」を表示するラベルを
+  // 表示/非表示 + 文言更新する。Light / Dark を明示選択中は隠す。
+  void         updateAutoEffectiveLabel();
 
   // カテゴリ×状態（通常／選択）1 組のウィジェットをまとめた構造
   struct CategoryStateRow {
@@ -95,6 +98,9 @@ private:
 
   // ── テーマ (Light / Dark) ─────────────────────
   QComboBox*    m_themeModeCombo     = nullptr;
+  // Mode = Auto のときだけ「現在 OS 側がどちらを要求しているか」を表示する。
+  // Light / Dark を明示選択しているときは自明なので空文字 + 非表示にする。
+  QLabel*       m_autoEffectiveLabel = nullptr;
   // ダイアログ内でのモード設定 (OK で確定)
   ThemeMode     m_dialogMode        = ThemeMode::Auto;
   // 現在ウィジェットが表示しているのが Light か Dark か

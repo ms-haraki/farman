@@ -86,6 +86,14 @@
         <translation>Auto は OS の外観設定に追従する。編集対象は現在アクティブな側に自動で切り替わる。</translation>
     </message>
     <message>
+        <source>(currently applying: Light)</source>
+        <translation>(現在の適用先: Light)</translation>
+    </message>
+    <message>
+        <source>(currently applying: Dark)</source>
+        <translation>(現在の適用先: Dark)</translation>
+    </message>
+    <message>
         <location filename="../src/ui/AppearanceTab.cpp" line="55"/>
         <location filename="../src/ui/AppearanceTab.cpp" line="116"/>
         <source>Select Font...</source>
