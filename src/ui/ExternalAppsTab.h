@@ -32,6 +32,11 @@ private slots:
   // Working Dir フィールドを上書きする。"(Custom)" を選んだときは何もしない。
   void onTerminalPresetChanged(int index);
   void onEditorPresetChanged(int index);
+  // ユーザー定義コマンド (= builtin terminal / editor 以外) の Export / Import。
+  // SPEC.md L1564 の「ユーザー定義コマンドのインポート / エクスポート」を実装。
+  // 組み込み 2 件は OS 依存なので対象外 (Import の Replace モードでも保持)。
+  void onExportCommands();
+  void onImportCommands();
 
 private:
   void setupUi();

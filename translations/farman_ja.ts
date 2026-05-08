@@ -1219,6 +1219,54 @@ Used as the initial value in the Search dialog&apos;s Exclude dirs field.</sourc
 <context>
     <name>Farman::ExternalAppsTab</name>
     <message>
+        <source>Custom Commands</source>
+        <translation>ユーザー定義コマンド</translation>
+    </message>
+    <message>
+        <source>Custom user commands beyond Terminal / Editor live in settings.json. Use Import / Export to share them between machines.</source>
+        <translation>ターミナル / エディタ以外のユーザー定義コマンドは settings.json に保存される。Import / Export でマシン間で共有できる。</translation>
+    </message>
+    <message>
+        <source>Save all custom (non-builtin) user commands to a JSON file</source>
+        <translation>組み込みでないすべてのユーザー定義コマンドを JSON ファイルに保存する</translation>
+    </message>
+    <message>
+        <source>Load custom user commands from a JSON file</source>
+        <translation>JSON ファイルからユーザー定義コマンドを読み込む</translation>
+    </message>
+    <message>
+        <source>Export Commands</source>
+        <translation>コマンドをエクスポート</translation>
+    </message>
+    <message>
+        <source>Import Commands</source>
+        <translation>コマンドをインポート</translation>
+    </message>
+    <message>
+        <source>No custom commands to export. (The built-in Terminal and Editor entries are not included.)</source>
+        <translation>エクスポートできるユーザー定義コマンドがありません。(組み込みのターミナル / エディタは含まれません。)</translation>
+    </message>
+    <message>
+        <source>The file contains no custom (non-builtin) commands.</source>
+        <translation>このファイルには組み込みでないユーザー定義コマンドが含まれていません。</translation>
+    </message>
+    <message>
+        <source>Imported %1 command(s). How should they be applied?</source>
+        <translation>%1 件のコマンドを読み込みました。どのように適用しますか?</translation>
+    </message>
+    <message>
+        <source>Replace</source>
+        <translation>置換</translation>
+    </message>
+    <message>
+        <source>Append</source>
+        <translation>追記</translation>
+    </message>
+    <message>
+        <source>Imported %1 custom command(s). They will be saved when you close Settings with OK.</source>
+        <translation>%1 件のユーザー定義コマンドを取り込みました。Settings を OK で閉じると保存されます。</translation>
+    </message>
+    <message>
         <location filename="../src/ui/ExternalAppsTab.cpp" line="52"/>
         <source>Pick a detected installed application to fill Program / Arguments automatically. Editing any field below switches back to (Custom).</source>
         <translation>検出されたインストール済アプリを選ぶと Program / Arguments が自動入力される。下のフィールドを手動で編集すると (Custom) に戻る。</translation>

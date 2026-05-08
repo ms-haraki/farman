@@ -1,5 +1,6 @@
 #include "ExternalAppsTab.h"
 #include "settings/Settings.h"
+#include "settings/PresetIO.h"
 #include "core/UserCommand.h"
 #include "core/UserCommandManager.h"
 #include "core/AppPresets.h"
@@ -9,6 +10,7 @@
 #include <QHBoxLayout>
 #include <QFormLayout>
 #include <QGroupBox>
+#include <QLabel>
 #include <QLineEdit>
 #include <QToolButton>
 #include <QPushButton>
@@ -17,6 +19,7 @@
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QDir>
+#include <QStandardPaths>
 #include <QStyle>
 
 namespace Farman {
@@ -145,6 +148,33 @@ void ExternalAppsTab::setupUi() {
           this, &ExternalAppsTab::switchEditorToCustom);
   connect(m_editorWorkingDirEdit,   &QLineEdit::textEdited,
           this, &ExternalAppsTab::switchEditorToCustom);
+
+  // ─── ユーザー定義コマンドの Import / Export ───
+  // 現状この UI からは「コマンドを追加 / 編集 / 削除」する手段がないが、
+  // (SPEC.md L763 に「フェーズ 2 以降」と記載) Import / Export なら
+  // settings.json を直接編集することなく取り回しできる。組み込み 2 件
+  // (terminal / editor) は OS 依存なので対象外: Export では除外され、
+  // Import の Replace モードでも上書きされない。
+  QGroupBox* ioGroup = new QGroupBox(tr("Custom Commands"), this);
+  QHBoxLayout* ioRow = new QHBoxLayout(ioGroup);
+  QLabel* ioInfoLabel = new QLabel(
+    tr("Custom user commands beyond Terminal / Editor live in settings.json. "
+       "Use Import / Export to share them between machines."),
+    this);
+  ioInfoLabel->setWordWrap(true);
+  ioRow->addWidget(ioInfoLabel, /*stretch*/ 1);
+
+  QPushButton* exportButton = new QPushButton(tr("Export..."), this);
+  exportButton->setToolTip(tr("Save all custom (non-builtin) user commands to a JSON file"));
+  connect(exportButton, &QPushButton::clicked, this, &ExternalAppsTab::onExportCommands);
+  ioRow->addWidget(exportButton);
+
+  QPushButton* importButton = new QPushButton(tr("Import..."), this);
+  importButton->setToolTip(tr("Load custom user commands from a JSON file"));
+  connect(importButton, &QPushButton::clicked, this, &ExternalAppsTab::onImportCommands);
+  ioRow->addWidget(importButton);
+
+  mainLayout->addWidget(ioGroup);
 
   mainLayout->addStretch();
 }
@@ -361,6 +391,89 @@ void ExternalAppsTab::switchEditorToCustom() {
   if (m_editorPresetCombo->currentIndex() == 0) return;
   QSignalBlocker blocker(m_editorPresetCombo);
   m_editorPresetCombo->setCurrentIndex(0);
+}
+
+void ExternalAppsTab::onExportCommands() {
+  if (m_nonBuiltinUserCommands.isEmpty()) {
+    QMessageBox::information(this, tr("Export Commands"),
+                             tr("No custom commands to export. "
+                                "(The built-in Terminal and Editor entries are not included.)"));
+    return;
+  }
+
+  const QString defaultDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+  const QString path = QFileDialog::getSaveFileName(
+    this, tr("Export Commands"),
+    defaultDir + QStringLiteral("/farman-commands.json"),
+    tr("JSON Files (*.json)"));
+  if (path.isEmpty()) return;
+
+  if (auto r = PresetIO::exportUserCommandsToFile(path, m_nonBuiltinUserCommands); !r.ok) {
+    QMessageBox::warning(this, tr("Export Commands"), r.error);
+  }
+}
+
+void ExternalAppsTab::onImportCommands() {
+  const QString defaultDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+  const QString path = QFileDialog::getOpenFileName(
+    this, tr("Import Commands"), defaultDir,
+    tr("JSON Files (*.json)"));
+  if (path.isEmpty()) return;
+
+  // ファイルを読み出す
+  QList<UserCommand> imported;
+  if (auto r = PresetIO::importUserCommandsFromFile(path, imported); !r.ok) {
+    QMessageBox::warning(this, tr("Import Commands"), r.error);
+    return;
+  }
+
+  // builtin が紛れていたら除外 (組み込み terminal/editor は別 UI 管理)。
+  QList<UserCommand> filtered;
+  for (const UserCommand& c : imported) {
+    if (!c.builtin) filtered.append(c);
+  }
+  if (filtered.isEmpty()) {
+    QMessageBox::information(this, tr("Import Commands"),
+                             tr("The file contains no custom (non-builtin) commands."));
+    return;
+  }
+
+  // Replace / Append を選択させる
+  QMessageBox box(this);
+  box.setIcon(QMessageBox::Question);
+  box.setWindowTitle(tr("Import Commands"));
+  box.setText(tr("Imported %1 command(s). How should they be applied?").arg(filtered.size()));
+  QPushButton* replaceBtn = box.addButton(tr("Replace"), QMessageBox::AcceptRole);
+  QPushButton* appendBtn  = box.addButton(tr("Append"),  QMessageBox::AcceptRole);
+  box.addButton(QMessageBox::Cancel);
+  box.setDefaultButton(appendBtn);
+  box.exec();
+  QAbstractButton* clicked = box.clickedButton();
+  if (clicked != replaceBtn && clicked != appendBtn) return;
+
+  if (clicked == replaceBtn) {
+    m_nonBuiltinUserCommands = filtered;
+  } else {
+    // Append: 既存の id と衝突したら数字接尾辞でリネーム (id 衝突防止)
+    QSet<QString> usedIds;
+    for (const UserCommand& c : m_nonBuiltinUserCommands) usedIds.insert(c.id);
+    for (UserCommand c : filtered) {
+      QString base = c.id;
+      QString id   = base;
+      int    n     = 2;
+      while (usedIds.contains(id)) {
+        id = QStringLiteral("%1-%2").arg(base).arg(n++);
+      }
+      c.id = id;
+      usedIds.insert(id);
+      m_nonBuiltinUserCommands.append(c);
+    }
+  }
+
+  QMessageBox::information(this, tr("Import Commands"),
+                           tr("Imported %1 custom command(s). "
+                              "They will be saved when you close Settings with OK.")
+                             .arg(filtered.size()));
 }
 
 } // namespace Farman
