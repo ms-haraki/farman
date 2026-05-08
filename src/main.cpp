@@ -6,6 +6,7 @@
 #include <QLocalSocket>
 #include <QLocale>
 #include <QStandardPaths>
+#include <QStyleHints>
 #include <QTranslator>
 #include "ui/MainWindow.h"
 #include "viewer/ViewerDispatcher.h"
@@ -29,6 +30,13 @@ int main(int argc, char *argv[]) {
 
   app.setOrganizationName("Farman");
   app.setApplicationName("farman");
+
+  // macOS では既定で Tab がテキスト系ウィジェットしかフォーカスしない
+  // (TabFocusTextControls)。farman ではツールバーのトグルボタン / コンボなど
+  // 全コントロールを Tab で巡れるように、StyleHints レベルで TabFocusAllControls
+  // を強制する。各ウィジェットの setFocusPolicy(Qt::StrongFocus) と組み合わせて
+  // 初めて Tab が機能するため、両方が必要。
+  QGuiApplication::styleHints()->setTabFocusBehavior(Qt::TabFocusAllControls);
 
   // ランタイム用アイコン (タスクバー / ウィンドウタイトル / Linux WM など)。
   // macOS の Dock とバンドル本体のアイコンは Info.plist + Contents/Resources の

@@ -17,6 +17,7 @@
 #include "../core/DirectoryHistory.h"
 #include "../model/FileListModel.h"
 #include "../utils/Dialogs.h"
+#include "../utils/EnterClickFilter.h"
 #include "../viewer/TextViewerWindow.h"
 #include "../viewer/ImageViewerWindow.h"
 #include "../viewer/BinaryViewerWindow.h"
@@ -253,6 +254,10 @@ void MainWindow::showFileManager() {
     m_stack->setCurrentWidget(m_fileManagerPanel);
     m_viewerPanel->clear();
 
+    // ファイルマネージャに戻ったので、Settings に従ってツールバーを再表示。
+    // (Inline ビュアーで強制非表示にしたものを復元)
+    applyToolbarVisibility();
+
     // フォーカスをアクティブペインに戻す
     m_fileManagerPanel->activePane()->view()->setFocus();
     updateStatusBar();
@@ -333,6 +338,10 @@ void MainWindow::showViewerWith(const QString& filePath, ViewerPanel::ViewerKind
   // 見えており、ロードが終わってからスタックが切り替わるため、
   // 「ロード中の表示」が無いように見えてしまう)。
   m_stack->setCurrentWidget(m_viewerPanel);
+  // ビュアー表示中はツールバーの操作対象が無い (= ファイラ用のボタン群が
+  // 並んでいる) ので、表示領域を画面いっぱい使えるよう一時的に非表示にする。
+  // ファイラに戻る showFileManager() で Settings::showToolbar() に従って復元。
+  if (m_toolbar) m_toolbar->setVisible(false);
   m_viewerPanel->setFocus();
   updateStatusBar();
 
@@ -1193,6 +1202,12 @@ void MainWindow::createMainToolBar() {
   // は将来 Settings 経由で提供する余地あり。
   m_toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
   m_toolbar->setIconSize(QSize(20, 20));
+  // フォーカス枠の可視化。macOS 既定の QToolButton は focus indicator が
+  // 弱いので、palette の highlight 色で明示的に枠を描く。border 分が
+  // ボタンのサイズに足されないよう padding で調整。
+  m_toolbar->setStyleSheet(QStringLiteral(
+    "QToolButton:focus { border: 2px solid palette(highlight); border-radius: 3px; padding: 1px; }"
+  ));
 
   // 1 ボタン分の生成ヘルパ。CommandRegistry::execute(id) を呼ぶだけの
   // QAction を作って toolbar に追加。tooltip にはラベル + キーバインドを
@@ -1315,6 +1330,13 @@ void MainWindow::createMainToolBar() {
   }
 
   addToolBar(Qt::TopToolBarArea, m_toolbar);
+
+  // Tab フォーカス中のボタンで Enter / Return を押されたら、そのボタンの
+  // クリックとして扱う。QToolBar が QAction から内部生成した QToolButton も
+  // findChildren で拾える。後で動的に widget が増えるケースは無いので
+  // 1 回だけ install すれば十分。
+  auto* clickFilter = new EnterClickFilter(this);
+  clickFilter->installOnButtonsIn(m_toolbar);
 }
 
 void MainWindow::applyToolbarVisibility() {

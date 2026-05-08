@@ -1,8 +1,9 @@
 #include "ImageView.h"
 #include "settings/Settings.h"
 
-#include <QCheckBox>
 #include <QComboBox>
+#include <QToolButton>
+#include "utils/EnterClickFilter.h"
 #include <QEvent>
 #include <QFileInfo>
 #include <QHBoxLayout>
@@ -12,7 +13,6 @@
 #include <QMovie>
 #include <QPainter>
 #include <QPaintEvent>
-#include <QPushButton>
 #include <QResizeEvent>
 #include <QScrollArea>
 #include <QSignalBlocker>
@@ -181,6 +181,11 @@ void ImageView::setupUi() {
   m_toolbarLayout = tb;
   tb->setContentsMargins(4, 2, 4, 2);
   tb->setSpacing(8);
+  // フォーカス枠の可視化 (メインツールバーと同じ流儀)。QToolButton にだけ
+  // 適用するので、Zoom コンボや他のラベルには影響しない。
+  toolbar->setStyleSheet(QStringLiteral(
+    "QToolButton:focus { border: 2px solid palette(highlight); border-radius: 3px; padding: 1px; }"
+  ));
 
   tb->addWidget(new QLabel(tr("Zoom:"), toolbar));
   m_zoomCombo = new QComboBox(toolbar);
@@ -191,22 +196,33 @@ void ImageView::setupUi() {
   m_zoomCombo->setFocusPolicy(Qt::StrongFocus);
   tb->addWidget(m_zoomCombo);
 
-  m_fitCheck = new QCheckBox(tr("Fit to Window"), toolbar);
-  m_fitCheck->setFocusPolicy(Qt::StrongFocus);
-  tb->addWidget(m_fitCheck);
+  // 「ウィンドウに合わせる」(checkable + アイコン)。チェック ON で fitToWindow。
+  m_fitButton = new QToolButton(toolbar);
+  m_fitButton->setCheckable(true);
+  m_fitButton->setIcon(QIcon(QStringLiteral(":/icons/toolbar/fit-to-window.svg")));
+  m_fitButton->setIconSize(QSize(20, 20));
+  m_fitButton->setToolTip(tr("Fit to Window"));
+  m_fitButton->setFocusPolicy(Qt::StrongFocus);
+  tb->addWidget(m_fitButton);
 
-  m_animButton = new QPushButton(toolbar);
+  // 再生 / 停止 (アニメ画像のみ)。OFF なら ▶、ON なら ⏸ アイコン。
+  m_animButton = new QToolButton(toolbar);
   m_animButton->setCheckable(true);
+  m_animButton->setIcon(QIcon(QStringLiteral(":/icons/toolbar/play.svg")));
+  m_animButton->setIconSize(QSize(20, 20));
+  m_animButton->setToolTip(tr("Play / Pause animation (GIF / WebP)"));
   m_animButton->setFocusPolicy(Qt::StrongFocus);
-  m_animButton->setToolTip(tr("Play / stop animation (GIF / WebP)"));
   tb->addWidget(m_animButton);
 
-  tb->addWidget(new QLabel(tr("Transparency:"), toolbar));
-  m_transparencyCombo = new QComboBox(toolbar);
-  m_transparencyCombo->addItem(tr("Checker"),     static_cast<int>(ImageTransparencyMode::Checker));
-  m_transparencyCombo->addItem(tr("Solid Color"), static_cast<int>(ImageTransparencyMode::SolidColor));
-  m_transparencyCombo->setFocusPolicy(Qt::StrongFocus);
-  tb->addWidget(m_transparencyCombo);
+  // 透明部分のモード (checkable トグル)。OFF = Checker、ON = SolidColor。
+  m_transparencyButton = new QToolButton(toolbar);
+  m_transparencyButton->setCheckable(true);
+  m_transparencyButton->setIcon(QIcon(QStringLiteral(":/icons/toolbar/transparency.svg")));
+  m_transparencyButton->setIconSize(QSize(20, 20));
+  m_transparencyButton->setToolTip(tr(
+    "Transparency background: off = checker, on = solid color"));
+  m_transparencyButton->setFocusPolicy(Qt::StrongFocus);
+  tb->addWidget(m_transparencyButton);
 
   tb->addStretch();
   root->addWidget(toolbar);
@@ -231,11 +247,19 @@ void ImageView::setupUi() {
   // 順序: zoomCombo → fitCheck → animButton → transparencyCombo → scrollArea。
   // addToolbarWidget で追加された widget は m_lastToolbarWidget の後に
   // 順次差し込まれる。
-  setTabOrder(m_zoomCombo,         m_fitCheck);
-  setTabOrder(m_fitCheck,          m_animButton);
-  setTabOrder(m_animButton,        m_transparencyCombo);
-  setTabOrder(m_transparencyCombo, m_scrollArea);
-  m_lastToolbarWidget = m_transparencyCombo;
+  setTabOrder(m_zoomCombo,          m_fitButton);
+  setTabOrder(m_fitButton,          m_animButton);
+  setTabOrder(m_animButton,         m_transparencyButton);
+  setTabOrder(m_transparencyButton, m_scrollArea);
+  m_lastToolbarWidget = m_transparencyButton;
+
+  // ツールバー内のボタンで Tab フォーカス中に Enter を押したらそのボタンを
+  // クリック扱いにする (= 親ウィジェットの "Enter で戻る" 等が誤発火しない)。
+  // toolbar 配下の QAbstractButton 子孫すべてに一括 install。
+  // 後から addToolbarWidget で追加された widget にも install するため、
+  // メンバ m_clickFilter で保持しておく。
+  m_clickFilter = new EnterClickFilter(this);
+  m_clickFilter->installOnButtonsIn(toolbar);
 
   // ローカル変更
   connect(m_zoomCombo, &QComboBox::currentTextChanged, this, [this](const QString& text) {
@@ -251,7 +275,7 @@ void ImageView::setupUi() {
       m_display->setZoomPercent(m_zoomPercent);
     }
   });
-  connect(m_fitCheck, &QCheckBox::toggled, this, [this](bool on) {
+  connect(m_fitButton, &QToolButton::toggled, this, [this](bool on) {
     if (on) {
       m_fitToWindow = true;
       updateZoomEnabled();
@@ -271,14 +295,19 @@ void ImageView::setupUi() {
       m_zoomCombo->setCurrentText(QString::number(m_zoomPercent) + QLatin1Char('%'));
     }
   });
-  connect(m_animButton, &QPushButton::toggled, this, [this](bool on) {
+  connect(m_animButton, &QToolButton::toggled, this, [this](bool on) {
     m_animation = on;
-    m_animButton->setText(on ? tr("⏸ Stop") : tr("▶ Play"));
+    // 再生中は ⏸、停止中は ▶ に差し替える。
+    m_animButton->setIcon(QIcon(on
+      ? QStringLiteral(":/icons/toolbar/pause.svg")
+      : QStringLiteral(":/icons/toolbar/play.svg")));
     applyDisplayState();
   });
-  connect(m_transparencyCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) {
-    m_transparencyMode = static_cast<ImageTransparencyMode>(
-      m_transparencyCombo->currentData().toInt());
+  connect(m_transparencyButton, &QToolButton::toggled, this, [this](bool on) {
+    // OFF = Checker、ON = SolidColor。
+    m_transparencyMode = on
+      ? ImageTransparencyMode::SolidColor
+      : ImageTransparencyMode::Checker;
     if (m_display) m_display->update();
   });
 }
@@ -295,22 +324,20 @@ void ImageView::syncFromSettings() {
     m_zoomCombo->setCurrentText(QString::number(m_zoomPercent) + QLatin1Char('%'));
   }
   {
-    QSignalBlocker b(m_fitCheck);
-    m_fitCheck->setChecked(m_fitToWindow);
+    QSignalBlocker b(m_fitButton);
+    m_fitButton->setChecked(m_fitToWindow);
   }
   {
     QSignalBlocker b(m_animButton);
     m_animButton->setChecked(m_animation);
-    m_animButton->setText(m_animation ? tr("⏸ Stop") : tr("▶ Play"));
+    m_animButton->setIcon(QIcon(m_animation
+      ? QStringLiteral(":/icons/toolbar/pause.svg")
+      : QStringLiteral(":/icons/toolbar/play.svg")));
   }
   {
-    QSignalBlocker b(m_transparencyCombo);
-    for (int i = 0; i < m_transparencyCombo->count(); ++i) {
-      if (m_transparencyCombo->itemData(i).toInt() == static_cast<int>(m_transparencyMode)) {
-        m_transparencyCombo->setCurrentIndex(i);
-        break;
-      }
-    }
+    QSignalBlocker b(m_transparencyButton);
+    m_transparencyButton->setChecked(
+      m_transparencyMode == ImageTransparencyMode::SolidColor);
   }
   updateZoomEnabled();
 }
@@ -437,6 +464,11 @@ void ImageView::addToolbarWidget(QWidget* widget) {
     setTabOrder(m_lastToolbarWidget, widget);
     setTabOrder(widget,              m_scrollArea);
     m_lastToolbarWidget = widget;
+  }
+
+  // Enter→クリック化のフィルタを新 widget (とその子孫ボタン) に拡張する。
+  if (m_clickFilter) {
+    m_clickFilter->installOnButtonsIn(widget);
   }
 }
 

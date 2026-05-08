@@ -37,5 +37,9 @@
     <file alias="shortcuts.svg">icons/toolbar/shortcuts.svg</file>
     <file alias="terminal.svg">icons/toolbar/terminal.svg</file>
     <file alias="editor.svg">icons/toolbar/editor.svg</file>
+    <file alias="fit-to-window.svg">icons/toolbar/fit-to-window.svg</file>
+    <file alias="play.svg">icons/toolbar/play.svg</file>
+    <file alias="pause.svg">icons/toolbar/pause.svg</file>
+    <file alias="transparency.svg">icons/toolbar/transparency.svg</file>
   </qresource>
 </RCC>

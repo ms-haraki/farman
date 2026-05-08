@@ -90,6 +90,7 @@ qt_add_executable(farman
   src/core/UserCommandManager.cpp
   src/core/AppPresets.cpp
   src/utils/Dialogs.cpp
+  src/utils/EnterClickFilter.cpp
   src/core/workers/WorkerBase.cpp
   src/core/workers/CopyWorker.cpp
   src/core/workers/MoveWorker.cpp

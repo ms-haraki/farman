@@ -8,16 +8,16 @@
 #include <QString>
 #include <QWidget>
 
-class QCheckBox;
 class QComboBox;
 class QHBoxLayout;
 class QMovie;
-class QPushButton;
 class QScrollArea;
+class QToolButton;
 
 namespace Farman {
 
 class ImageDisplay;
+class EnterClickFilter;
 
 // 画像ファイル表示用ウィジェット。
 //   - 上部のツールバーで Zoom (%) / Fit / Animation をその場で上書き可能
@@ -94,9 +94,14 @@ private:
   // addToolbarWidget() で stretch の手前に新規 widget を挿し込む。
   QHBoxLayout* m_toolbarLayout     = nullptr;
   QComboBox*   m_zoomCombo         = nullptr;
-  QCheckBox*   m_fitCheck          = nullptr;
-  QPushButton* m_animButton        = nullptr;  // checkable: ▶ Play / ⏸ Stop トグル
-  QComboBox*   m_transparencyCombo = nullptr;
+  // 「ウィンドウに合わせる」のチェック付きトグルボタン (アイコンのみ)。
+  QToolButton* m_fitButton         = nullptr;
+  // アニメ再生 / 停止のトグル。OFF (停止中) は ▶、ON (再生中) は ⏸ アイコンを
+  // 都度切替える。GIF / WebP 等のアニメ画像でのみ有効化される。
+  QToolButton* m_animButton        = nullptr;
+  // 透明部分の表示モード (Checker / SolidColor) のトグル。OFF = Checker、
+  // ON = SolidColor。
+  QToolButton* m_transparencyButton = nullptr;
 
   // 表示部
   QScrollArea*  m_scrollArea = nullptr;
@@ -106,6 +111,11 @@ private:
   // もの、初期は m_transparencyCombo)。新たに addToolbarWidget で追加する
   // ときに setTabOrder のアンカーとして使う。
   QPointer<QWidget> m_lastToolbarWidget;
+
+  // ツールバー内ボタンの Enter→クリック化に使うフィルタ。setupUi で生成 +
+  // 既存ボタンに install。後から addToolbarWidget で追加された widget にも
+  // インストールするためにメンバとして保持。
+  EnterClickFilter* m_clickFilter = nullptr;
 
   QString             m_filePath;
   QPointer<QMovie>    m_movie;        // アニメ再生用 (m_display の親で破棄)
