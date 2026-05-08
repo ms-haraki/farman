@@ -30,7 +30,11 @@ public:
     qint64     totalSize   = 0;
     qint64     loadedSize  = 0;
     QByteArray data;
-    QString    text;       // 完成済みの hex ダンプ + truncated 注記
+    QString    text;            // 完成済みの hex ダンプ + truncated 注記
+    // 実際にデコードに使ったエンコード名。"Auto" の場合は uchardet が判定
+    // した結果、それ以外は呼び出し側のユーザー指定がそのまま入る。
+    // ステータスバー表示や applyPreparedLoad での反映に使う。
+    QString    actualEncoding;
   };
 
   explicit BinaryView(QWidget* parent = nullptr);
@@ -81,7 +85,11 @@ private:
   // 表示に使う実効設定 (ローカル上書き)。Settings 変更時に再同期される。
   BinaryViewerUnit   m_unit     = BinaryViewerUnit::Byte1;
   BinaryViewerEndian m_endian   = BinaryViewerEndian::Little;
-  QString            m_encoding = QStringLiteral("UTF-8");
+  // m_encoding はユーザーがコンボで選んだ値 ("Auto" or 具体名)、
+  // m_actualEncoding は実際にデコードに使った具体名 ("Auto" のときは
+  // uchardet で検出した結果)。ステータス表示にはこちらを使う。
+  QString            m_encoding       = QStringLiteral("UTF-8");
+  QString            m_actualEncoding = QStringLiteral("UTF-8");
 };
 
 } // namespace Farman

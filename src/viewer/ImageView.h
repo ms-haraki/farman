@@ -9,9 +9,9 @@
 #include <QWidget>
 
 class QComboBox;
-class QHBoxLayout;
 class QMovie;
 class QScrollArea;
+class QToolBar;
 class QToolButton;
 
 namespace Farman {
@@ -90,9 +90,9 @@ private:
   static bool detectAnimated(const QString& filePath);
 
   // ツールバー
-  // ツールバー本体のレイアウト。末尾に addStretch() が入っており、
-  // addToolbarWidget() で stretch の手前に新規 widget を挿し込む。
-  QHBoxLayout* m_toolbarLayout     = nullptr;
+  // メインウィンドウのツールバーと同じ QToolBar を使い、ネイティブの
+  // ツールバー風デザインに揃える。addToolbarWidget で末尾に widget を追加。
+  QToolBar*    m_toolbar           = nullptr;
   QComboBox*   m_zoomCombo         = nullptr;
   // 「ウィンドウに合わせる」のチェック付きトグルボタン (アイコンのみ)。
   QToolButton* m_fitButton         = nullptr;

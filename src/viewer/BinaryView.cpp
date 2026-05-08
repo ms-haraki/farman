@@ -6,6 +6,7 @@
 #include <QFile>
 #include <QFontDatabase>
 #include <QHBoxLayout>
+#include <QToolBar>
 #include <QLocale>
 #include <QLabel>
 #include <QPalette>
@@ -13,6 +14,11 @@
 #include <QRegularExpression>
 #include <QSignalBlocker>
 #include <QStringDecoder>
+// uchardet: TextView の Auto と同じく、エンコード自動判定に使う。
+// ライブラリヘッダの場所は環境によって <uchardet.h> 直下か
+// <uchardet/uchardet.h> かが分かれるが、CMake で両方の include パスを
+// 通しているのでシンプルな名前で参照する。
+#include <uchardet.h>
 #include <QSyntaxHighlighter>
 #include <QTextCodec>
 #include <QVBoxLayout>
@@ -57,6 +63,26 @@ void appendUnitHex(QString& out, const unsigned char* valueBytes, int unitBytes,
       out.append(QLatin1Char(kHexDigits[valueBytes[i] & 0xF]));
     }
   }
+}
+
+// "Auto" 指定時に uchardet で実エンコードを判定する。判定不能なら "UTF-8"
+// にフォールバック (TextView と同じ流儀)。userEncoding が "Auto" 以外なら
+// そのまま返す。
+QString resolveEncoding(const QByteArray& data, const QString& userEncoding) {
+  if (userEncoding.compare(QStringLiteral("Auto"), Qt::CaseInsensitive) != 0) {
+    return userEncoding;
+  }
+  uchardet_t det = uchardet_new();
+  QString detected;
+  if (det) {
+    if (uchardet_handle_data(det, data.constData(),
+                             static_cast<size_t>(data.size())) == 0) {
+      uchardet_data_end(det);
+      detected = QString::fromLatin1(uchardet_get_charset(det));
+    }
+    uchardet_delete(det);
+  }
+  return detected.isEmpty() ? QStringLiteral("UTF-8") : detected;
 }
 
 QString decodeStringColumn(const QByteArray& chunk, const QString& encoding) {
@@ -168,19 +194,17 @@ void BinaryView::setupUi() {
   root->setContentsMargins(0, 0, 0, 0);
   root->setSpacing(0);
 
-  // ローカル設定オーバーレイ
-  QWidget* toolbar = new QWidget(this);
-  QHBoxLayout* tb = new QHBoxLayout(toolbar);
-  tb->setContentsMargins(4, 2, 4, 2);
-  tb->setSpacing(8);
-  // フォーカス枠の可視化 (メインツールバー / 他ビュアーと同じ流儀)。
+  // ローカル設定オーバーレイ (メインウィンドウのツールバーと同じ QToolBar)
+  QToolBar* toolbar = new QToolBar(this);
+  toolbar->setMovable(false);
+  toolbar->setFloatable(false);
+  toolbar->setIconSize(QSize(20, 20));
+  // フォーカス枠 + checkable の押下状態 + ホバー。共通スタイル。
   // 現状 BinaryView のヘッダは QComboBox のみだが、将来トグルボタンが
   // 追加される可能性も見越して同じスタイルを適用しておく。
-  toolbar->setStyleSheet(QStringLiteral(
-    "QToolButton:focus { border: 2px solid palette(highlight); border-radius: 3px; padding: 1px; }"
-  ));
+  toolbar->setStyleSheet(toolbarStyleSheet());
 
-  tb->addWidget(new QLabel(tr("Unit:"), toolbar));
+  toolbar->addWidget(new QLabel(tr("Unit:"), toolbar));
   m_unitCombo = new QComboBox(toolbar);
   m_unitCombo->addItem(tr("1 Byte"), 1);
   m_unitCombo->addItem(tr("2 Byte"), 2);
@@ -188,23 +212,23 @@ void BinaryView::setupUi() {
   m_unitCombo->addItem(tr("8 Byte"), 8);
   // macOS の「キーボードナビゲーション」設定に依存せず Tab で巡回させる
   m_unitCombo->setFocusPolicy(Qt::StrongFocus);
-  tb->addWidget(m_unitCombo);
+  toolbar->addWidget(m_unitCombo);
 
-  tb->addWidget(new QLabel(tr("Endian:"), toolbar));
+  toolbar->addWidget(new QLabel(tr("Endian:"), toolbar));
   m_endianCombo = new QComboBox(toolbar);
   m_endianCombo->addItem(tr("Little"), static_cast<int>(BinaryViewerEndian::Little));
   m_endianCombo->addItem(tr("Big"),    static_cast<int>(BinaryViewerEndian::Big));
   m_endianCombo->setFocusPolicy(Qt::StrongFocus);
-  tb->addWidget(m_endianCombo);
+  toolbar->addWidget(m_endianCombo);
 
-  tb->addWidget(new QLabel(tr("Encoding:"), toolbar));
+  toolbar->addWidget(new QLabel(tr("Encoding:"), toolbar));
   m_encodingCombo = new QComboBox(toolbar);
-  m_encodingCombo->setEditable(true);
+  // TextView 同様、自由入力 (= 候補外の名前を打つ) は意味が無いので
+  // editable にしない。
   m_encodingCombo->setFocusPolicy(Qt::StrongFocus);
   rebuildEncodingItems();
-  tb->addWidget(m_encodingCombo);
+  toolbar->addWidget(m_encodingCombo);
 
-  tb->addStretch();
   root->addWidget(toolbar);
 
   // ヘッダにボタンが増えたとき用に、QAbstractButton 子孫で Enter 押下を
@@ -246,6 +270,9 @@ void BinaryView::setupUi() {
 
 void BinaryView::rebuildEncodingItems() {
   m_encodingCombo->clear();
+  // "Auto" は uchardet で自動判定 (TextView と同じ仕組み)。判別不能時は
+  // UTF-8 にフォールバック。
+  m_encodingCombo->addItem(QStringLiteral("Auto"));
   m_encodingCombo->addItem(QStringLiteral("UTF-8"));
   m_encodingCombo->addItem(QStringLiteral("UTF-16LE"));
   m_encodingCombo->addItem(QStringLiteral("UTF-16BE"));
@@ -326,8 +353,11 @@ BinaryView::PreparedLoad BinaryView::prepareLoad(const QString&     filePath,
   r.data       = file.read(r.loadedSize);
   file.close();
 
-  // 重い hex 整形をワーカースレッドで先に済ませる。
-  r.text = formatHexDump(r.data, unit, endian, encoding);
+  // "Auto" 指定なら uchardet で実エンコードを判定。それ以外は素通し。
+  r.actualEncoding = resolveEncoding(r.data, encoding);
+
+  // 重い hex 整形をワーカースレッドで先に済ませる。actualEncoding を使う。
+  r.text = formatHexDump(r.data, unit, endian, r.actualEncoding);
   if (r.totalSize > r.loadedSize) {
     r.text.append(QStringLiteral("...\n[truncated: showing first %1 of %2 bytes]\n")
                     .arg(r.loadedSize)
@@ -338,10 +368,11 @@ BinaryView::PreparedLoad BinaryView::prepareLoad(const QString&     filePath,
 }
 
 void BinaryView::applyPreparedLoad(const PreparedLoad& r) {
-  m_filePath   = r.filePath;
-  m_data       = r.data;
-  m_totalSize  = r.totalSize;
-  m_loadedSize = r.loadedSize;
+  m_filePath        = r.filePath;
+  m_data            = r.data;
+  m_totalSize       = r.totalSize;
+  m_loadedSize      = r.loadedSize;
+  m_actualEncoding  = r.actualEncoding;
 
   // ハイライタを一旦切り離す。さもないと setPlainText の contentsChange を
   // 起点に全行 (8MB なら ~500K 行) で highlightBlock が同期実行され、
@@ -373,11 +404,21 @@ QString BinaryView::statusInfo() const {
     s += tr("  ·  truncated to first %1")
            .arg(QLocale(QLocale::English).formattedDataSize(m_loadedSize));
   }
+  // Auto 検出のときに何と判定されたかを末尾に表示する (TextView と同じ流儀)。
+  // 具体名を選んでいる場合は冗長なので出さない。
+  if (m_encoding.compare(QStringLiteral("Auto"), Qt::CaseInsensitive) == 0
+      && !m_actualEncoding.isEmpty()) {
+    s += QStringLiteral("  ·  %1").arg(m_actualEncoding);
+  }
   return s;
 }
 
 void BinaryView::render() {
-  QString text = formatHexDump(m_data, m_unit, m_endian, m_encoding);
+  // "Auto" のときは毎回 uchardet で再判定する。データが同じでも、
+  // unit/endian の変更で再 render が走るときに encoding を再評価しても
+  // 結果は同じだが、コストは小さく明示的で分かりやすい。
+  m_actualEncoding = resolveEncoding(m_data, m_encoding);
+  QString text = formatHexDump(m_data, m_unit, m_endian, m_actualEncoding);
   if (m_totalSize > m_loadedSize) {
     text.append(QStringLiteral("...\n[truncated: showing first %1 of %2 bytes]\n")
                   .arg(m_loadedSize)

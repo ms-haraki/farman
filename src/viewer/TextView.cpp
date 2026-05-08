@@ -1,6 +1,7 @@
 #include "TextView.h"
 #include "settings/Settings.h"
 
+#include <QToolBar>
 #include <QToolButton>
 #include "utils/EnterClickFilter.h"
 #include <QComboBox>
@@ -164,19 +165,18 @@ void TextView::setupUi() {
   root->setContentsMargins(0, 0, 0, 0);
   root->setSpacing(0);
 
-  // ツールバー
-  QWidget* toolbar = new QWidget(this);
-  QHBoxLayout* tb = new QHBoxLayout(toolbar);
-  tb->setContentsMargins(4, 2, 4, 2);
-  tb->setSpacing(8);
-  // フォーカス枠の可視化 (メインツールバー / 画像ビュアーと同じ流儀)。
-  toolbar->setStyleSheet(QStringLiteral(
-    "QToolButton:focus { border: 2px solid palette(highlight); border-radius: 3px; padding: 1px; }"
-  ));
+  // ツールバー (メインウィンドウのツールバーと同じ QToolBar)
+  QToolBar* toolbar = new QToolBar(this);
+  toolbar->setMovable(false);
+  toolbar->setFloatable(false);
+  toolbar->setIconSize(QSize(20, 20));
+  // フォーカス枠 + checkable の押下状態 + ホバー。共通スタイル。
+  toolbar->setStyleSheet(toolbarStyleSheet());
 
-  tb->addWidget(new QLabel(tr("Encoding:"), toolbar));
+  toolbar->addWidget(new QLabel(tr("Encoding:"), toolbar));
   m_encodingCombo = new QComboBox(toolbar);
-  m_encodingCombo->setEditable(true);
+  // 自由入力できても認識されない名前は意味が無く、誤入力で読み込み失敗する
+  // だけなので、選択リストからの固定候補に限定する。
   m_encodingCombo->addItem(QStringLiteral("Auto"));
   m_encodingCombo->addItem(QStringLiteral("UTF-8"));
   m_encodingCombo->addItem(QStringLiteral("UTF-16LE"));
@@ -185,29 +185,27 @@ void TextView::setupUi() {
   m_encodingCombo->addItem(QStringLiteral("EUC-JP"));
   m_encodingCombo->addItem(QStringLiteral("ISO-8859-1"));
   m_encodingCombo->setFocusPolicy(Qt::StrongFocus);
-  tb->addWidget(m_encodingCombo);
+  toolbar->addWidget(m_encodingCombo);
 
   // 行番号 / ワードラップは ON/OFF のトグル。アイコン QToolButton に変更
   // (メインツールバー / 画像ビュアーの統一感のため)。
   m_lineNumbersButton = new QToolButton(toolbar);
   m_lineNumbersButton->setCheckable(true);
   m_lineNumbersButton->setIcon(QIcon(QStringLiteral(":/icons/toolbar/line-numbers.svg")));
-  m_lineNumbersButton->setIconSize(QSize(20, 20));
   m_lineNumbersButton->setToolTip(tr("Show line numbers"));
   m_lineNumbersButton->setFocusPolicy(Qt::StrongFocus);
-  tb->addWidget(m_lineNumbersButton);
+  toolbar->addWidget(m_lineNumbersButton);
 
   m_wordWrapButton = new QToolButton(toolbar);
   m_wordWrapButton->setCheckable(true);
   m_wordWrapButton->setIcon(QIcon(QStringLiteral(":/icons/toolbar/word-wrap.svg")));
-  m_wordWrapButton->setIconSize(QSize(20, 20));
   m_wordWrapButton->setToolTip(tr("Word wrap"));
   m_wordWrapButton->setFocusPolicy(Qt::StrongFocus);
-  tb->addWidget(m_wordWrapButton);
+  toolbar->addWidget(m_wordWrapButton);
 
   // 検索コントロール群 (常設)。Tab で順に辿れる位置に置く。
-  tb->addSpacing(12);
-  tb->addWidget(new QLabel(tr("Find:"), toolbar));
+  toolbar->addSeparator();
+  toolbar->addWidget(new QLabel(tr("Find:"), toolbar));
 
   // ショートカット表記 (macOS: ⌘F / Win/Linux: Ctrl+F)
   const QString findShortcutText =
@@ -219,21 +217,23 @@ void TextView::setupUi() {
   m_findEdit->setClearButtonEnabled(true);
   m_findEdit->setFocusPolicy(Qt::StrongFocus);
   m_findEdit->setMinimumWidth(180);
+  // QToolBar には addWidget の stretch が無いので、ウィジェット側のサイズ
+  // ポリシーで横に伸びるよう指示する。
+  m_findEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   m_findEdit->installEventFilter(this);
-  tb->addWidget(m_findEdit, /*stretch*/ 1);
+  toolbar->addWidget(m_findEdit);
 
   // 大文字小文字区別もアイコンのトグル化 (Aa)。
   m_findCsButton = new QToolButton(toolbar);
   m_findCsButton->setCheckable(true);
   m_findCsButton->setIcon(QIcon(QStringLiteral(":/icons/toolbar/case-sensitive.svg")));
-  m_findCsButton->setIconSize(QSize(20, 20));
   m_findCsButton->setToolTip(tr("Case sensitive search"));
   m_findCsButton->setFocusPolicy(Qt::StrongFocus);
-  tb->addWidget(m_findCsButton);
+  toolbar->addWidget(m_findCsButton);
 
   m_findStatus = new QLabel(toolbar);
   m_findStatus->setMinimumWidth(80);
-  tb->addWidget(m_findStatus);
+  toolbar->addWidget(m_findStatus);
 
   root->addWidget(toolbar);
 

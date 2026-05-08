@@ -1202,12 +1202,9 @@ void MainWindow::createMainToolBar() {
   // は将来 Settings 経由で提供する余地あり。
   m_toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
   m_toolbar->setIconSize(QSize(20, 20));
-  // フォーカス枠の可視化。macOS 既定の QToolButton は focus indicator が
-  // 弱いので、palette の highlight 色で明示的に枠を描く。border 分が
-  // ボタンのサイズに足されないよう padding で調整。
-  m_toolbar->setStyleSheet(QStringLiteral(
-    "QToolButton:focus { border: 2px solid palette(highlight); border-radius: 3px; padding: 1px; }"
-  ));
+  // フォーカス枠 + checkable トグルの押下状態 + ホバーをまとめてスタイリング。
+  // (utils/EnterClickFilter.h の toolbarStyleSheet() に共通定義あり)
+  m_toolbar->setStyleSheet(toolbarStyleSheet());
 
   // 1 ボタン分の生成ヘルパ。CommandRegistry::execute(id) を呼ぶだけの
   // QAction を作って toolbar に追加。tooltip にはラベル + キーバインドを

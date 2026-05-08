@@ -7,6 +7,7 @@
 #include <QEvent>
 #include <QFileInfo>
 #include <QHBoxLayout>
+#include <QToolBar>
 #include <QImageReader>
 #include <QLabel>
 #include <QLocale>
@@ -175,57 +176,50 @@ void ImageView::setupUi() {
   root->setContentsMargins(0, 0, 0, 0);
   root->setSpacing(0);
 
-  // ツールバー
-  QWidget* toolbar = new QWidget(this);
-  QHBoxLayout* tb = new QHBoxLayout(toolbar);
-  m_toolbarLayout = tb;
-  tb->setContentsMargins(4, 2, 4, 2);
-  tb->setSpacing(8);
-  // フォーカス枠の可視化 (メインツールバーと同じ流儀)。QToolButton にだけ
-  // 適用するので、Zoom コンボや他のラベルには影響しない。
-  toolbar->setStyleSheet(QStringLiteral(
-    "QToolButton:focus { border: 2px solid palette(highlight); border-radius: 3px; padding: 1px; }"
-  ));
+  // ツールバー (メインウィンドウのツールバーと同じ QToolBar を使う)。
+  // QToolButton はメイン側と同じ視覚スタイル (autoRaise / hover 等) になる。
+  m_toolbar = new QToolBar(this);
+  m_toolbar->setMovable(false);
+  m_toolbar->setFloatable(false);
+  m_toolbar->setIconSize(QSize(20, 20));
+  // フォーカス枠 + checkable の押下状態 + ホバー。共通スタイル。
+  m_toolbar->setStyleSheet(toolbarStyleSheet());
 
-  tb->addWidget(new QLabel(tr("Zoom:"), toolbar));
-  m_zoomCombo = new QComboBox(toolbar);
+  m_toolbar->addWidget(new QLabel(tr("Zoom:"), m_toolbar));
+  m_zoomCombo = new QComboBox(m_toolbar);
   m_zoomCombo->setEditable(true);
   for (int p : { 25, 50, 75, 100, 200 }) {
     m_zoomCombo->addItem(QString::number(p) + QLatin1Char('%'), p);
   }
   m_zoomCombo->setFocusPolicy(Qt::StrongFocus);
-  tb->addWidget(m_zoomCombo);
+  m_toolbar->addWidget(m_zoomCombo);
 
   // 「ウィンドウに合わせる」(checkable + アイコン)。チェック ON で fitToWindow。
-  m_fitButton = new QToolButton(toolbar);
+  m_fitButton = new QToolButton(m_toolbar);
   m_fitButton->setCheckable(true);
   m_fitButton->setIcon(QIcon(QStringLiteral(":/icons/toolbar/fit-to-window.svg")));
-  m_fitButton->setIconSize(QSize(20, 20));
   m_fitButton->setToolTip(tr("Fit to Window"));
   m_fitButton->setFocusPolicy(Qt::StrongFocus);
-  tb->addWidget(m_fitButton);
+  m_toolbar->addWidget(m_fitButton);
 
   // 再生 / 停止 (アニメ画像のみ)。OFF なら ▶、ON なら ⏸ アイコン。
-  m_animButton = new QToolButton(toolbar);
+  m_animButton = new QToolButton(m_toolbar);
   m_animButton->setCheckable(true);
   m_animButton->setIcon(QIcon(QStringLiteral(":/icons/toolbar/play.svg")));
-  m_animButton->setIconSize(QSize(20, 20));
   m_animButton->setToolTip(tr("Play / Pause animation (GIF / WebP)"));
   m_animButton->setFocusPolicy(Qt::StrongFocus);
-  tb->addWidget(m_animButton);
+  m_toolbar->addWidget(m_animButton);
 
   // 透明部分のモード (checkable トグル)。OFF = Checker、ON = SolidColor。
-  m_transparencyButton = new QToolButton(toolbar);
+  m_transparencyButton = new QToolButton(m_toolbar);
   m_transparencyButton->setCheckable(true);
   m_transparencyButton->setIcon(QIcon(QStringLiteral(":/icons/toolbar/transparency.svg")));
-  m_transparencyButton->setIconSize(QSize(20, 20));
   m_transparencyButton->setToolTip(tr(
     "Transparency background: off = checker, on = solid color"));
   m_transparencyButton->setFocusPolicy(Qt::StrongFocus);
-  tb->addWidget(m_transparencyButton);
+  m_toolbar->addWidget(m_transparencyButton);
 
-  tb->addStretch();
-  root->addWidget(toolbar);
+  root->addWidget(m_toolbar);
 
   // 画像表示部 (スクロール可)
   m_scrollArea = new QScrollArea(this);
@@ -259,7 +253,7 @@ void ImageView::setupUi() {
   // 後から addToolbarWidget で追加された widget にも install するため、
   // メンバ m_clickFilter で保持しておく。
   m_clickFilter = new EnterClickFilter(this);
-  m_clickFilter->installOnButtonsIn(toolbar);
+  m_clickFilter->installOnButtonsIn(m_toolbar);
 
   // ローカル変更
   connect(m_zoomCombo, &QComboBox::currentTextChanged, this, [this](const QString& text) {
@@ -450,12 +444,10 @@ QSize ImageView::imageAreaSize() const {
 }
 
 void ImageView::addToolbarWidget(QWidget* widget) {
-  if (!m_toolbarLayout || !widget) return;
-  // 末尾に addStretch() が入っているので、最後の 1 個 (= stretch) の手前に挿入。
-  // 万が一 stretch が無くても insertWidget(0) には fall-back させない (UX の
-  // 一貫性のため)。layout->count() は stretch を含むカウントを返す。
-  const int idx = qMax(0, m_toolbarLayout->count() - 1);
-  m_toolbarLayout->insertWidget(idx, widget);
+  if (!m_toolbar || !widget) return;
+  // QToolBar は addWidget で末尾追加。ImageViewerWindow が「ウィンドウ
+  // サイズを画像にあわせる」ボタンを足すような用途。
+  m_toolbar->addWidget(widget);
 
   // Tab 順: 既存ツールバー末尾 → 新 widget → scrollArea。
   // これをやらないと、デフォルトのウィジェット作成順では新 widget が

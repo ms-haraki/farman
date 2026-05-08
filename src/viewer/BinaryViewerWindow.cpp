@@ -31,6 +31,11 @@ BinaryViewerWindow::BinaryViewerWindow(const QString& filePath, QWidget* parent)
     QMessageBox::critical(this, QStringLiteral("Error"),
       QStringLiteral("Failed to open file: %1").arg(filePath));
   }
+  // ウィンドウを表示しただけでは Qt の auto-first-responder 機構が
+  // 「最初の focusable 子孫」(= ツールバー先頭の Unit コンボ) を選んでしまう。
+  // BinaryView の setFocusProxy(m_textArea) を効かせるため、明示的に setFocus を呼ぶ
+  // (TextViewerWindow / ImageViewerWindow と同じ流儀)。
+  m_view->setFocus();
 }
 
 void BinaryViewerWindow::keyPressEvent(QKeyEvent* event) {
