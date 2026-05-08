@@ -3201,12 +3201,17 @@ Keybindings are not affected.</source>
         <translation>ショートカット一覧</translation>
     </message>
     <message>
-        <location filename="../src/ui/ShortcutListDialog.cpp" line="67"/>
+        <location filename="../src/ui/ShortcutListDialog.cpp" line="70"/>
+        <source>Filter (key, command name, or id)</source>
+        <translation>絞り込み (キー / コマンド名 / ID)</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ShortcutListDialog.cpp" line="78"/>
         <source>Key</source>
         <translation>キー</translation>
     </message>
     <message>
-        <location filename="../src/ui/ShortcutListDialog.cpp" line="67"/>
+        <location filename="../src/ui/ShortcutListDialog.cpp" line="78"/>
         <source>Command</source>
         <translation>コマンド</translation>
     </message>

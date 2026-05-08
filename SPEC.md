@@ -1219,12 +1219,19 @@ BinaryView では `setPlainText` 前後で `AddressHighlighter` を一時的に
   (`Settings::settingsChanged` を受けて `rebuild()` する)。
 - 単純な読み取り専用ウィンドウ。Settings の Keybindings タブで実際の
   変更を行う住み分け。
+- ヘッダ部分に **インクリメンタル検索ボックス** (`Filter (key, command
+  name, or id)`)。テキストが変わるたびに表示行を絞り込む (大文字小文字
+  区別なし、`keysText` / `cmd->label()` / `cmd->id()` / `cmd->description()`
+  のいずれかに含まれれば一致)。`clearButton` 付きで「×」一発で全件表示
+  に戻せる。ダイアログ表示時 (`showEvent`) は検索ボックスにフォーカス
+  + 既存テキストを `selectAll()` するので、`?` トグルで開いてすぐタイプ
+  し直しできる。マッチが 0 件のカテゴリは見出し行も自動的に隠す。
 
-### 未実装の拡張
+### スコープ外
 
-- インクリメンタル検索ボックスで絞り込めるようにする
-  (例: "copy" と打つと file.copy / file.copy_path が残る)。
-- **印刷可能** にしたい (Ctrl+P で QPrinter 経由でプリント or PDF 保存)。
+- 一覧の印刷機能 (Ctrl+P で QPrinter 経由のプリントや PDF 保存) は
+  実装しない。一覧は `?` で随時表示でき、コピー&ペーストや OS の
+  スクリーンショットで十分代替できると判断。
 
 ---
 
