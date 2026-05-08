@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "type": "farman.keybindings",
+  "name": "Default (farman)",
+  "description": "farman's out-of-the-box bindings — single-letter keys for primary file operations, vim-style navigation accents.",
+  "bindings": [
+    { "command": "navigate.up",                "keys": ["Up"] },
+    { "command": "navigate.down",              "keys": ["Down"] },
+    { "command": "navigate.left",              "keys": ["Left"] },
+    { "command": "navigate.right",             "keys": ["Right"] },
+    { "command": "navigate.home",              "keys": ["Home"] },
+    { "command": "navigate.end",               "keys": ["End"] },
+    { "command": "navigate.pageup",            "keys": ["PgUp"] },
+    { "command": "navigate.pagedown",          "keys": ["PgDown"] },
+    { "command": "navigate.enter",             "keys": ["Return", "Enter"] },
+    { "command": "navigate.parent",            "keys": ["Backspace"] },
+
+    { "command": "select.toggle_and_down",     "keys": ["Space"] },
+    { "command": "select.toggle",              "keys": ["Shift+Space"] },
+    { "command": "select.invert",              "keys": ["I"] },
+    { "command": "select.all",                 "keys": ["Ctrl+A"] },
+
+    { "command": "pane.toggle_single",         "keys": ["Ctrl+O"] },
+    { "command": "pane.sort_filter",           "keys": ["S"] },
+    { "command": "pane.sync_other_to_active",  "keys": ["Ctrl+Right"] },
+    { "command": "pane.sync_active_to_other",  "keys": ["Ctrl+Left"] },
+    { "command": "pane.sync_browse_toggle",    "keys": ["Y"] },
+
+    { "command": "file.copy",                  "keys": ["C"] },
+    { "command": "file.move",                  "keys": ["M"] },
+    { "command": "file.mkdir",                 "keys": ["K"] },
+    { "command": "file.delete",                "keys": ["D"] },
+    { "command": "file.rename",                "keys": ["R"] },
+    { "command": "file.bulk_rename",           "keys": ["Ctrl+R"] },
+    { "command": "file.copy_path",             "keys": ["Ctrl+C"] },
+    { "command": "file.newfile",               "keys": ["N"] },
+    { "command": "file.attributes",            "keys": ["A"] },
+    { "command": "file.search",                "keys": ["F"] },
+    { "command": "file.pack",                  "keys": ["P"] },
+    { "command": "file.unpack",                "keys": ["U"] },
+    { "command": "file.execute",               "keys": ["Shift+Return", "Shift+Enter"] },
+    { "command": "file.properties",            "keys": ["Alt+Return", "Alt+Enter"] },
+
+    { "command": "view.file",                  "keys": ["V"] },
+    { "command": "view.choose",                "keys": ["Ctrl+Return", "Ctrl+Enter"] },
+    { "command": "view.toggle_log",            "keys": ["Ctrl+L"] },
+    { "command": "view.quick_filter",          "keys": ["/"] },
+
+    { "command": "bookmark.toggle",            "keys": ["B"] },
+    { "command": "bookmark.list",              "keys": ["Ctrl+B"] },
+
+    { "command": "history.show",               "keys": ["H"] },
+
+    { "command": "app.settings",               "keys": ["Ctrl+,"] },
+    { "command": "app.quit",                   "keys": ["Ctrl+Q"] },
+
+    { "command": "user.cmd.terminal",          "keys": ["T"] },
+    { "command": "user.cmd.editor",            "keys": ["E"] },
+
+    { "command": "help.shortcuts",             "keys": ["?", "Shift+?", "Shift+/"] }
+  ]
+}

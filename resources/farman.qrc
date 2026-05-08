@@ -45,4 +45,15 @@
     <file alias="word-wrap.svg">icons/toolbar/word-wrap.svg</file>
     <file alias="case-sensitive.svg">icons/toolbar/case-sensitive.svg</file>
   </qresource>
+  <!--
+    プリセット (キーバインド / テーマ / ユーザコマンド) の同梱 JSON。
+    PresetIO::listBundledKeybindingPresets / listBundledThemePresets が
+    `:/presets/<kind>/` を QDir で列挙してメニューに並べる。
+    新しいプリセットを追加するときは、JSON を該当ディレクトリに置いて
+    ここに <file> を 1 行追加するだけで済む (ファイル名 = id)。
+  -->
+  <qresource prefix="/presets/keybindings">
+    <file alias="default.json">presets/keybindings/default.json</file>
+    <file alias="total-commander.json">presets/keybindings/total-commander.json</file>
+  </qresource>
 </RCC>

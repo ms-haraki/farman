@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "type": "farman.keybindings",
+  "name": "Total Commander",
+  "description": "Function-key based bindings familiar to long-time Total Commander / Far Manager users (F3 view, F5 copy, F6 move, F7 mkdir, F8 delete).",
+  "bindings": [
+    { "command": "navigate.up",                "keys": ["Up"] },
+    { "command": "navigate.down",              "keys": ["Down"] },
+    { "command": "navigate.left",              "keys": ["Left"] },
+    { "command": "navigate.right",             "keys": ["Right"] },
+    { "command": "navigate.home",              "keys": ["Home"] },
+    { "command": "navigate.end",               "keys": ["End"] },
+    { "command": "navigate.pageup",            "keys": ["PgUp"] },
+    { "command": "navigate.pagedown",          "keys": ["PgDown"] },
+    { "command": "navigate.enter",             "keys": ["Return", "Enter"] },
+    { "command": "navigate.parent",            "keys": ["Backspace"] },
+
+    { "command": "pane.switch",                "keys": ["Tab"] },
+    { "command": "pane.toggle_single",         "keys": ["Ctrl+O"] },
+    { "command": "pane.sort_filter",           "keys": ["Ctrl+F3"] },
+
+    { "command": "select.toggle_and_down",     "keys": ["Space"] },
+    { "command": "select.toggle",              "keys": ["Shift+Space"] },
+    { "command": "select.all",                 "keys": ["Ctrl+A"] },
+    { "command": "select.invert",              "keys": ["Ctrl+W"] },
+
+    { "command": "view.file",                  "keys": ["F3"] },
+    { "command": "view.choose",                "keys": ["Ctrl+Return", "Ctrl+Enter"] },
+    { "command": "view.toggle_log",            "keys": ["Ctrl+L"] },
+    { "command": "view.quick_filter",          "keys": ["/"] },
+
+    { "command": "user.cmd.editor",            "keys": ["F4"] },
+    { "command": "file.copy",                  "keys": ["F5"] },
+    { "command": "file.move",                  "keys": ["F6"] },
+    { "command": "file.mkdir",                 "keys": ["F7"] },
+    { "command": "file.delete",                "keys": ["F8", "Delete"] },
+    { "command": "file.rename",                "keys": ["Shift+F6"] },
+    { "command": "file.bulk_rename",           "keys": ["Ctrl+M"] },
+    { "command": "file.newfile",               "keys": ["Shift+F4"] },
+    { "command": "file.attributes",            "keys": ["Ctrl+F11"] },
+    { "command": "file.search",                "keys": ["Alt+F7"] },
+    { "command": "file.pack",                  "keys": ["Alt+F5"] },
+    { "command": "file.unpack",                "keys": ["Alt+F9"] },
+    { "command": "file.execute",               "keys": ["Shift+Return", "Shift+Enter"] },
+    { "command": "file.properties",            "keys": ["Alt+Return", "Alt+Enter"] },
+    { "command": "file.copy_path",             "keys": ["Ctrl+C"] },
+
+    { "command": "bookmark.toggle",            "keys": ["Ctrl+D"] },
+    { "command": "bookmark.list",              "keys": ["Ctrl+B"] },
+
+    { "command": "history.show",               "keys": ["Ctrl+H"] },
+
+    { "command": "app.settings",               "keys": ["Ctrl+,"] },
+    { "command": "app.quit",                   "keys": ["F10"] },
+
+    { "command": "user.cmd.terminal",          "keys": ["Ctrl+T"] },
+
+    { "command": "help.shortcuts",             "keys": ["F1"] }
+  ]
+}

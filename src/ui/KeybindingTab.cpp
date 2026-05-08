@@ -3,6 +3,7 @@
 #include "keybinding/CommandLayout.h"
 #include "keybinding/CommandRegistry.h"
 #include "keybinding/ICommand.h"
+#include "settings/PresetIO.h"
 #include "utils/Dialogs.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -14,6 +15,9 @@
 #include <QLabel>
 #include <QFrame>
 #include <QShortcut>
+#include <QComboBox>
+#include <QFileDialog>
+#include <QStandardPaths>
 
 namespace Farman {
 
@@ -36,6 +40,42 @@ KeybindingTab::KeybindingTab(QWidget* parent)
 
 void KeybindingTab::setupUi() {
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
+
+  // ─── プリセット / インポート / エクスポート行 ───
+  // 同梱プリセット (Default / Total Commander) をドロップダウンで選び、
+  // Apply で全置換適用する。任意の JSON ファイルをエクスポート / インポート
+  // することもできる。Apply / Import は確認ダイアログ → KeyBindingManager
+  // を在メモリで全置換 → updateTable() で反映。実際のディスク永続化は
+  // SettingsDialog の OK 時に走る (Reset to Defaults と同じ流儀)。
+  QHBoxLayout* presetRow = new QHBoxLayout();
+  presetRow->addWidget(new QLabel(tr("Preset:"), this));
+  m_presetCombo = new QComboBox(this);
+  m_presetCombo->setMinimumWidth(200);
+  // listBundledKeybindingPresets() が空でも「Apply」を無効化するだけにする。
+  for (const auto& p : PresetIO::listBundledKeybindingPresets()) {
+    m_presetCombo->addItem(p.displayName, p.resourcePath);
+  }
+  presetRow->addWidget(m_presetCombo);
+
+  m_applyPresetButton = new QPushButton(tr("Apply"), this);
+  m_applyPresetButton->setToolTip(tr("Replace all current bindings with the selected preset"));
+  m_applyPresetButton->setEnabled(m_presetCombo->count() > 0);
+  connect(m_applyPresetButton, &QPushButton::clicked, this, &KeybindingTab::onApplyPreset);
+  presetRow->addWidget(m_applyPresetButton);
+
+  presetRow->addSpacing(16);
+  m_exportButton = new QPushButton(tr("Export..."), this);
+  m_exportButton->setToolTip(tr("Save the current bindings to a JSON file"));
+  connect(m_exportButton, &QPushButton::clicked, this, &KeybindingTab::onExport);
+  presetRow->addWidget(m_exportButton);
+
+  m_importButton = new QPushButton(tr("Import..."), this);
+  m_importButton->setToolTip(tr("Load bindings from a JSON file (replaces existing)"));
+  connect(m_importButton, &QPushButton::clicked, this, &KeybindingTab::onImport);
+  presetRow->addWidget(m_importButton);
+
+  presetRow->addStretch();
+  mainLayout->addLayout(presetRow);
 
   // Info label
   QLabel* tableInfoLabel = new QLabel(tr("Press Enter or double-click to change a keybinding."), this);
@@ -596,6 +636,76 @@ void KeybindingTab::clearCurrentBinding() {
 
 void KeybindingTab::resetToDefaults() {
   onResetToDefaults();
+}
+
+void KeybindingTab::onApplyPreset() {
+  if (!m_presetCombo || m_presetCombo->currentIndex() < 0) return;
+  const QString name        = m_presetCombo->currentText();
+  const QString resourcePath = m_presetCombo->currentData().toString();
+  if (resourcePath.isEmpty()) return;
+
+  if (!confirm(this, tr("Apply Preset"),
+               tr("Replace all current keybindings with the '%1' preset?\n"
+                  "This will discard any custom bindings.").arg(name))) {
+    return;
+  }
+
+  QJsonObject obj;
+  if (auto r = PresetIO::loadJsonFromResource(resourcePath, obj); !r.ok) {
+    QMessageBox::warning(this, tr("Apply Preset"), r.error);
+    return;
+  }
+  if (auto r = PresetIO::applyKeybindingsFromJson(obj); !r.ok) {
+    QMessageBox::warning(this, tr("Apply Preset"), r.error);
+    return;
+  }
+
+  // Reset の流儀に合わせ、ペンディング変更も破棄してテーブル更新。
+  m_pendingChanges.clear();
+  updateTable();
+}
+
+void KeybindingTab::onExport() {
+  // 現在 KeyBindingManager に乗っている (= 編集中含む) 状態をエクスポート。
+  // ただし m_pendingChanges は KeyBindingManager に未反映なので、それも先に
+  // 取り込んでからエクスポートしたい。… が、ここで m_pendingChanges に
+  // コミットすると Cancel で戻せなくなる。簡素化のため「Export はディスクに
+  // 保存済み + 編集中ペインの値」では無く「現在 KeyBindingManager に
+  // 入っている値」をそのまま吐く方針 (= 個別編集分は OK 押下後にしか反映
+  // されない)。気になる場合は OK → 再 Export してくださいというワークフロー。
+  const QString defaultDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+  const QString path = QFileDialog::getSaveFileName(
+    this, tr("Export Keybindings"),
+    defaultDir + QStringLiteral("/farman-keybindings.json"),
+    tr("JSON Files (*.json)"));
+  if (path.isEmpty()) return;
+
+  if (auto r = PresetIO::exportKeybindingsToFile(path, /*name=*/{}); !r.ok) {
+    QMessageBox::warning(this, tr("Export Keybindings"), r.error);
+    return;
+  }
+}
+
+void KeybindingTab::onImport() {
+  const QString defaultDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+  const QString path = QFileDialog::getOpenFileName(
+    this, tr("Import Keybindings"), defaultDir,
+    tr("JSON Files (*.json)"));
+  if (path.isEmpty()) return;
+
+  if (!confirm(this, tr("Import Keybindings"),
+               tr("Replace all current keybindings with those in this file?\n"
+                  "This will discard any custom bindings."))) {
+    return;
+  }
+
+  if (auto r = PresetIO::importKeybindingsFromFile(path); !r.ok) {
+    QMessageBox::warning(this, tr("Import Keybindings"), r.error);
+    return;
+  }
+
+  m_pendingChanges.clear();
+  updateTable();
 }
 
 } // namespace Farman

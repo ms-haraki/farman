@@ -141,7 +141,12 @@ Result applyKeybindingsFromJson(const QJsonObject& obj) {
     return Result::failure(QObject::tr("Missing 'bindings' array"));
   }
 
-  // 適用は全置換: clearAllBindings してから KeyBindingManager::bind() で追加
+  // 適用は全置換: clearAllBindings してから KeyBindingManager::bind() で追加。
+  // ディスクへの書き出しはここではしない (Reset to Defaults と同じ流儀:
+  //   - Settings ダイアログで OK 押下 → SettingsDialog::onApply が
+  //     `KeyBindingManager::saveToSettings()` を呼ぶ
+  //   - Cancel 押下 → メモリだけ更新されディスクは旧値のまま (= 次回起動で戻る)
+  // これによりプリセット適用後に「やっぱりやめた」と Cancel が効く。
   auto& mgr = KeyBindingManager::instance();
   mgr.clearAllBindings();
   const QJsonArray bindings = obj.value(QStringLiteral("bindings")).toArray();
@@ -161,7 +166,6 @@ Result applyKeybindingsFromJson(const QJsonObject& obj) {
       ++totalKeys;
     }
   }
-  mgr.saveToSettings();
   return totalKeys > 0
            ? Result::success()
            : Result::failure(QObject::tr("No valid bindings were applied"));

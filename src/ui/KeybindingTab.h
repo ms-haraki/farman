@@ -10,6 +10,7 @@ class QTableWidgetItem;
 class QFrame;
 class QLabel;
 class QShortcut;
+class QComboBox;
 
 namespace Farman {
 
@@ -33,6 +34,13 @@ private slots:
   void onClearBinding();
   void onRecordOk();
   void onRecordCancel();
+  // 同梱プリセットの適用 (Apply ボタン)。確認ダイアログを出してから
+  // KeyBindingManager の現状を全置換し、テーブルを再描画する。
+  void onApplyPreset();
+  // ファイルエクスポート (現在のバインドを JSON で保存)
+  void onExport();
+  // ファイルインポート (JSON を読んで全置換適用)
+  void onImport();
 
 private:
   void setupUi();
@@ -45,6 +53,12 @@ private:
   QTableWidget* m_table;
   QPushButton*  m_resetButton;
   QPushButton*  m_clearButton;
+
+  // ── プリセット / インポート / エクスポート ─────
+  QComboBox*    m_presetCombo  = nullptr;
+  QPushButton*  m_applyPresetButton = nullptr;
+  QPushButton*  m_exportButton      = nullptr;
+  QPushButton*  m_importButton      = nullptr;
 
   // Key recording frame (shown below table when editing)
   QFrame*       m_recordFrame;

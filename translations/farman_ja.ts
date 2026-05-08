@@ -2124,6 +2124,62 @@ What would you like to do?</source>
 <context>
     <name>Farman::KeybindingTab</name>
     <message>
+        <source>Preset:</source>
+        <translation>プリセット:</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>適用</translation>
+    </message>
+    <message>
+        <source>Replace all current bindings with the selected preset</source>
+        <translation>現在のバインドを選択したプリセットで全置換する</translation>
+    </message>
+    <message>
+        <source>Export...</source>
+        <translation>エクスポート...</translation>
+    </message>
+    <message>
+        <source>Save the current bindings to a JSON file</source>
+        <translation>現在のバインドを JSON ファイルに保存する</translation>
+    </message>
+    <message>
+        <source>Import...</source>
+        <translation>インポート...</translation>
+    </message>
+    <message>
+        <source>Load bindings from a JSON file (replaces existing)</source>
+        <translation>JSON ファイルからバインドを読み込む (既存を置き換え)</translation>
+    </message>
+    <message>
+        <source>Apply Preset</source>
+        <translation>プリセット適用</translation>
+    </message>
+    <message>
+        <source>Replace all current keybindings with the &apos;%1&apos; preset?
+This will discard any custom bindings.</source>
+        <translation>現在のキーバインドを「%1」プリセットで全置換しますか?
+カスタムバインドはすべて破棄されます。</translation>
+    </message>
+    <message>
+        <source>Export Keybindings</source>
+        <translation>キーバインドをエクスポート</translation>
+    </message>
+    <message>
+        <source>Import Keybindings</source>
+        <translation>キーバインドをインポート</translation>
+    </message>
+    <message>
+        <source>Replace all current keybindings with those in this file?
+This will discard any custom bindings.</source>
+        <translation>このファイルのキーバインドで現在の設定を全置換しますか?
+カスタムバインドはすべて破棄されます。</translation>
+    </message>
+    <message>
+        <source>JSON Files (*.json)</source>
+        <translation>JSON ファイル (*.json)</translation>
+    </message>
+    <message>
         <location filename="../src/ui/KeybindingTab.cpp" line="41"/>
         <source>Press Enter or double-click to change a keybinding.</source>
         <translation>Enter またはダブルクリックでキーバインドを変更します。</translation>
