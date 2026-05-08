@@ -18,6 +18,10 @@
 #include <QComboBox>
 #include <QFileDialog>
 #include <QStandardPaths>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QFile>
+#include <QSet>
 
 namespace Farman {
 
@@ -284,11 +288,14 @@ void KeybindingTab::updateTable() {
       // New key (pending changes)
       QString newKey;
       if (m_pendingChanges.contains(commandId)) {
-        QKeySequence seq = m_pendingChanges[commandId];
-        if (!seq.isEmpty()) {
-          newKey = keySequenceToString(seq);
-        } else {
+        const QList<QKeySequence>& seqs = m_pendingChanges[commandId];
+        if (seqs.isEmpty()) {
           newKey = tr("(unbound)");
+        } else {
+          newKey = keySequenceToString(seqs.first());
+          if (seqs.size() > 1) {
+            newKey += tr(" (and %1 more)").arg(seqs.size() - 1);
+          }
         }
       }
       QTableWidgetItem* newItem = new QTableWidgetItem(newKey);
@@ -412,7 +419,7 @@ bool KeybindingTab::eventFilter(QObject* obj, QEvent* event) {
         // Validate and apply the recorded key
         if (!m_recordedKey.isEmpty()) {
           if (validateBinding(m_recordedKey, m_editingCommandId)) {
-            m_pendingChanges[m_editingCommandId] = m_recordedKey;
+            m_pendingChanges[m_editingCommandId] = QList<QKeySequence>{ m_recordedKey };
             updateTable();
           }
         }
@@ -484,9 +491,11 @@ bool KeybindingTab::validateBinding(const QKeySequence& newKey, const QString& c
   // Check if this key is already bound to another command
   QString existingCommand = keyManager.commandFor(newKey);
 
-  // Check pending changes too
+  // Check pending changes too. ペンディング側で同じキーを別コマンドに
+  // 割り当てているなら衝突と見なす。
   for (auto it = m_pendingChanges.begin(); it != m_pendingChanges.end(); ++it) {
-    if (it.value() == newKey && it.key() != commandId) {
+    if (it.key() == commandId) continue;
+    if (it.value().contains(newKey)) {
       existingCommand = it.key();
       break;
     }
@@ -504,8 +513,8 @@ bool KeybindingTab::validateBinding(const QKeySequence& newKey, const QString& c
       return false;
     }
 
-    // Unbind the old command
-    m_pendingChanges[existingCommand] = QKeySequence();
+    // Unbind the old command (空リスト = 全バインド削除)
+    m_pendingChanges[existingCommand] = QList<QKeySequence>{};
   }
 
   return true;
@@ -535,8 +544,8 @@ void KeybindingTab::onClearBinding() {
     return;
   }
 
-  // Set to empty sequence (unbound)
-  m_pendingChanges[commandId] = QKeySequence();
+  // 空リスト = 全バインド削除 (= unbound)
+  m_pendingChanges[commandId] = QList<QKeySequence>{};
 
   updateTable();
 }
@@ -563,7 +572,7 @@ void KeybindingTab::onRecordOk() {
   // Validate and apply the recorded key
   if (!m_recordedKey.isEmpty()) {
     if (validateBinding(m_recordedKey, m_editingCommandId)) {
-      m_pendingChanges[m_editingCommandId] = m_recordedKey;
+      m_pendingChanges[m_editingCommandId] = QList<QKeySequence>{ m_recordedKey };
       updateTable();
     }
   }
@@ -610,20 +619,19 @@ void KeybindingTab::save() {
 
   auto& keyManager = KeyBindingManager::instance();
 
-  // Apply all pending changes
+  // 各 pending entry について: そのコマンドに割当てられている既存キーを
+  // 全部 unbind してから、新しいキー列を 1 つずつ bind する。
+  // 空リストなら新しい bind 無しで終わる (= unbound)。
   for (auto it = m_pendingChanges.begin(); it != m_pendingChanges.end(); ++it) {
-    QString commandId = it.key();
-    QKeySequence newKey = it.value();
+    const QString commandId          = it.key();
+    const QList<QKeySequence>& newSeqs = it.value();
 
-    // First, remove all existing bindings for this command
-    QList<QKeySequence> oldKeys = keyManager.keysForCommand(commandId);
+    const QList<QKeySequence> oldKeys = keyManager.keysForCommand(commandId);
     for (const QKeySequence& oldKey : oldKeys) {
       keyManager.unbind(oldKey);
     }
-
-    // Then bind the new key (if not empty)
-    if (!newKey.isEmpty()) {
-      keyManager.bind(newKey, commandId);
+    for (const QKeySequence& seq : newSeqs) {
+      if (!seq.isEmpty()) keyManager.bind(seq, commandId);
     }
   }
 
@@ -638,15 +646,63 @@ void KeybindingTab::resetToDefaults() {
   onResetToDefaults();
 }
 
+bool KeybindingTab::applyBindingsToPending(const QJsonObject& obj, QString* errorMsg) {
+  // ヘッダの軽い検証 (PresetIO::checkHeader と同等。ここでは type/version
+  // チェックだけ行い、本体の bindings 配列を読み込む)。
+  const QString type = obj.value(QStringLiteral("type")).toString();
+  if (type != QLatin1String("farman.keybindings")) {
+    if (errorMsg) {
+      *errorMsg = tr("Wrong file type: expected 'farman.keybindings', got '%1'").arg(type);
+    }
+    return false;
+  }
+  if (!obj.value(QStringLiteral("bindings")).isArray()) {
+    if (errorMsg) *errorMsg = tr("Invalid preset: missing 'bindings' array");
+    return false;
+  }
+
+  // Step 1: 現在 KeyBindingManager に乗っている全コマンドを「空リスト」候補
+  //         として pending に登録 (= JSON で出てこなかったら結果的に unbound)。
+  m_pendingChanges.clear();
+  auto& keyManager = KeyBindingManager::instance();
+  const auto allBindings = keyManager.allBindings();
+  QSet<QString> previouslyBound;
+  for (auto it = allBindings.begin(); it != allBindings.end(); ++it) {
+    previouslyBound.insert(it.value());
+  }
+  for (const QString& cmd : previouslyBound) {
+    m_pendingChanges[cmd] = QList<QKeySequence>{};
+  }
+
+  // Step 2: JSON の各エントリで上書き
+  const QJsonArray bindings = obj.value(QStringLiteral("bindings")).toArray();
+  for (const QJsonValue& v : bindings) {
+    if (!v.isObject()) continue;
+    const QJsonObject e = v.toObject();
+    const QString cmd = e.value(QStringLiteral("command")).toString();
+    if (cmd.isEmpty()) continue;
+    QList<QKeySequence> seqs;
+    for (const QJsonValue& kv : e.value(QStringLiteral("keys")).toArray()) {
+      const QString s = kv.toString();
+      if (s.isEmpty()) continue;
+      const QKeySequence seq(s);
+      if (!seq.isEmpty()) seqs.append(seq);
+    }
+    m_pendingChanges[cmd] = seqs;
+  }
+  return true;
+}
+
 void KeybindingTab::onApplyPreset() {
   if (!m_presetCombo || m_presetCombo->currentIndex() < 0) return;
-  const QString name        = m_presetCombo->currentText();
+  const QString name         = m_presetCombo->currentText();
   const QString resourcePath = m_presetCombo->currentData().toString();
   if (resourcePath.isEmpty()) return;
 
   if (!confirm(this, tr("Apply Preset"),
                tr("Replace all current keybindings with the '%1' preset?\n"
-                  "This will discard any custom bindings.").arg(name))) {
+                  "Press OK in Settings to commit, or Cancel to revert.")
+                 .arg(name))) {
     return;
   }
 
@@ -655,13 +711,11 @@ void KeybindingTab::onApplyPreset() {
     QMessageBox::warning(this, tr("Apply Preset"), r.error);
     return;
   }
-  if (auto r = PresetIO::applyKeybindingsFromJson(obj); !r.ok) {
-    QMessageBox::warning(this, tr("Apply Preset"), r.error);
+  QString err;
+  if (!applyBindingsToPending(obj, &err)) {
+    QMessageBox::warning(this, tr("Apply Preset"), err);
     return;
   }
-
-  // Reset の流儀に合わせ、ペンディング変更も破棄してテーブル更新。
-  m_pendingChanges.clear();
   updateTable();
 }
 
@@ -695,16 +749,33 @@ void KeybindingTab::onImport() {
 
   if (!confirm(this, tr("Import Keybindings"),
                tr("Replace all current keybindings with those in this file?\n"
-                  "This will discard any custom bindings."))) {
+                  "Press OK in Settings to commit, or Cancel to revert."))) {
     return;
   }
 
-  if (auto r = PresetIO::importKeybindingsFromFile(path); !r.ok) {
-    QMessageBox::warning(this, tr("Import Keybindings"), r.error);
+  // ファイルを読んで applyBindingsToPending に流し込む。
+  // (プリセット適用と同じく KeyBindingManager は触らず、テーブルの
+  //  「New Key」列にプレビュー表示する)
+  QFile file(path);
+  if (!file.open(QIODevice::ReadOnly)) {
+    QMessageBox::warning(this, tr("Import Keybindings"),
+                         tr("Cannot open file: %1").arg(file.errorString()));
     return;
   }
-
-  m_pendingChanges.clear();
+  const QByteArray bytes = file.readAll();
+  file.close();
+  QJsonParseError parseErr;
+  const QJsonDocument doc = QJsonDocument::fromJson(bytes, &parseErr);
+  if (parseErr.error != QJsonParseError::NoError || !doc.isObject()) {
+    QMessageBox::warning(this, tr("Import Keybindings"),
+                         tr("Invalid JSON: %1").arg(parseErr.errorString()));
+    return;
+  }
+  QString err;
+  if (!applyBindingsToPending(doc.object(), &err)) {
+    QMessageBox::warning(this, tr("Import Keybindings"), err);
+    return;
+  }
   updateTable();
 }
 

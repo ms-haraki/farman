@@ -2233,9 +2233,9 @@ What would you like to do?</source>
     </message>
     <message>
         <source>Replace all current keybindings with the &apos;%1&apos; preset?
-This will discard any custom bindings.</source>
+Press OK in Settings to commit, or Cancel to revert.</source>
         <translation>現在のキーバインドを「%1」プリセットで全置換しますか?
-カスタムバインドはすべて破棄されます。</translation>
+Settings で OK を押すと確定、Cancel で元に戻せます。</translation>
     </message>
     <message>
         <source>Export Keybindings</source>
@@ -2247,9 +2247,25 @@ This will discard any custom bindings.</source>
     </message>
     <message>
         <source>Replace all current keybindings with those in this file?
-This will discard any custom bindings.</source>
+Press OK in Settings to commit, or Cancel to revert.</source>
         <translation>このファイルのキーバインドで現在の設定を全置換しますか?
-カスタムバインドはすべて破棄されます。</translation>
+Settings で OK を押すと確定、Cancel で元に戻せます。</translation>
+    </message>
+    <message>
+        <source>Cannot open file: %1</source>
+        <translation>ファイルを開けません: %1</translation>
+    </message>
+    <message>
+        <source>Invalid JSON: %1</source>
+        <translation>JSON が不正です: %1</translation>
+    </message>
+    <message>
+        <source>Wrong file type: expected &apos;farman.keybindings&apos;, got &apos;%1&apos;</source>
+        <translation>ファイル種別が不正です。&apos;farman.keybindings&apos; が期待されますが &apos;%1&apos; でした</translation>
+    </message>
+    <message>
+        <source>Invalid preset: missing &apos;bindings&apos; array</source>
+        <translation>プリセットが不正です: bindings 配列がありません</translation>
     </message>
     <message>
         <source>JSON Files (*.json)</source>

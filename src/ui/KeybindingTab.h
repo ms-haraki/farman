@@ -1,7 +1,9 @@
 #pragma once
 
 #include <QWidget>
+#include <QJsonObject>
 #include <QMap>
+#include <QList>
 #include <QKeySequence>
 
 class QTableWidget;
@@ -49,6 +51,11 @@ private:
   QString keySequenceToString(const QKeySequence& key) const;
   bool validateBinding(const QKeySequence& newKey, const QString& commandId);
   void startRecording(int row);
+  // プリセット / インポート JSON → m_pendingChanges への流し込み (共通実装)。
+  // 既存バインドを一旦すべて「空リスト」として候補入りさせ、JSON で出てきた
+  // コマンドだけ上書きする。これにより JSON に書いていないコマンドは結果的に
+  // unbound になる (= プリセットの「全置換」セマンティクス)。失敗時 false。
+  bool applyBindingsToPending(const QJsonObject& obj, QString* errorMsg);
 
   QTableWidget* m_table;
   QPushButton*  m_resetButton;
@@ -68,8 +75,12 @@ private:
   QPushButton*  m_recordOkButton;
   QPushButton*  m_recordCancelButton;
 
-  // Track pending changes: commandId -> new key sequence
-  QMap<QString, QKeySequence> m_pendingChanges;
+  // ペンディング変更: コマンド ID → そのコマンドに割当てる新しいキー列。
+  // - 空リスト  = 全バインドを取り除く (Clear)
+  // - 1 個のみ = ユーザーが個別編集で 1 キーに置き換え
+  // - 複数個   = プリセット適用などでマルチキーを保持
+  // - キーが map に無い = 変更なし
+  QMap<QString, QList<QKeySequence>> m_pendingChanges;
 
   // Track the command being edited
   QString m_editingCommandId;
