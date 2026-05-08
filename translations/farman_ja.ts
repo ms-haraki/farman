@@ -62,6 +62,38 @@
 <context>
     <name>Farman::AppearanceTab</name>
     <message>
+        <source>Theme</source>
+        <translation>テーマ</translation>
+    </message>
+    <message>
+        <source>Mode:</source>
+        <translation>モード:</translation>
+    </message>
+    <message>
+        <source>Auto (follow OS)</source>
+        <translation>自動 (OS 設定に追従)</translation>
+    </message>
+    <message>
+        <source>Light</source>
+        <translation>ライト</translation>
+    </message>
+    <message>
+        <source>Dark</source>
+        <translation>ダーク</translation>
+    </message>
+    <message>
+        <source>Follow the operating system's appearance setting. Editing automatically targets the currently active side.</source>
+        <translation>OS の外観設定に追従する。編集対象は現在アクティブな側に自動で切り替わる。</translation>
+    </message>
+    <message>
+        <source>Editing: Light scheme</source>
+        <translation>編集中: Light スキーム</translation>
+    </message>
+    <message>
+        <source>Editing: Dark scheme</source>
+        <translation>編集中: Dark スキーム</translation>
+    </message>
+    <message>
         <location filename="../src/ui/AppearanceTab.cpp" line="55"/>
         <location filename="../src/ui/AppearanceTab.cpp" line="116"/>
         <source>Select Font...</source>

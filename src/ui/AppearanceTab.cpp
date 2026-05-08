@@ -11,6 +11,8 @@
 #include <QSpinBox>
 #include <QFontDialog>
 #include <QColorDialog>
+#include <QRadioButton>
+#include <QButtonGroup>
 
 namespace Farman {
 
@@ -23,6 +25,44 @@ AppearanceTab::AppearanceTab(QWidget* parent)
 
 void AppearanceTab::setupUi() {
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
+
+  // ─── Theme グループ: Light / Dark / Auto モード切替 ───
+  // モードを切替えると、その瞬間のウィジェット値が「直前まで編集していた側」
+  // のシャドースキームへ書き戻され、反対側の値が読み込まれる。
+  // OK ボタン押下で両側のスキームと themeMode が一括コミットされる。
+  QGroupBox* themeGroup = new QGroupBox(tr("Theme"), this);
+  QHBoxLayout* themeRow = new QHBoxLayout(themeGroup);
+  themeRow->addWidget(new QLabel(tr("Mode:"), this));
+  m_themeAutoRadio  = new QRadioButton(tr("Auto (follow OS)"), this);
+  m_themeLightRadio = new QRadioButton(tr("Light"), this);
+  m_themeDarkRadio  = new QRadioButton(tr("Dark"),  this);
+  m_themeAutoRadio->setToolTip(
+    tr("Follow the operating system's appearance setting. "
+       "Editing automatically targets the currently active side."));
+  // QButtonGroup で排他的に管理 (RadioButton は同一 parent でも自動グルーピング
+  // されるが、明示しておくと意図が読みやすい)。
+  auto* group = new QButtonGroup(this);
+  group->addButton(m_themeAutoRadio);
+  group->addButton(m_themeLightRadio);
+  group->addButton(m_themeDarkRadio);
+  themeRow->addWidget(m_themeAutoRadio);
+  themeRow->addWidget(m_themeLightRadio);
+  themeRow->addWidget(m_themeDarkRadio);
+  themeRow->addSpacing(16);
+
+  m_editingTargetLabel = new QLabel(this);
+  m_editingTargetLabel->setStyleSheet("QLabel { color: palette(mid); font-style: italic; }");
+  themeRow->addWidget(m_editingTargetLabel);
+  themeRow->addStretch();
+  mainLayout->addWidget(themeGroup);
+
+  auto onModeChanged = [this](bool checked) {
+    if (!checked) return;  // off side のシグナルは無視
+    applyThemeModeFromRadios();
+  };
+  connect(m_themeAutoRadio,  &QRadioButton::toggled, this, onModeChanged);
+  connect(m_themeLightRadio, &QRadioButton::toggled, this, onModeChanged);
+  connect(m_themeDarkRadio,  &QRadioButton::toggled, this, onModeChanged);
 
   // 色ボタン生成のヘルパー
   auto makeColorButton = [this](QColor& storedValue, const QString& dialogTitle) -> QPushButton* {
@@ -180,46 +220,35 @@ void AppearanceTab::setupUi() {
 void AppearanceTab::loadSettings() {
   auto& settings = Settings::instance();
 
-  // Load fonts
-  m_selectedFont = settings.font();
-  m_fontButton->setText(QString("%1, %2pt").arg(m_selectedFont.family()).arg(m_selectedFont.pointSize()));
-  m_addressFontValue = settings.addressFont();
-  m_addressFontButton->setText(QString("%1, %2pt").arg(m_addressFontValue.family()).arg(m_addressFontValue.pointSize()));
+  // ── テーマスキーム: Light/Dark 双方をシャドーバッファに取り込む ──
+  m_dialogLight = settings.scheme(ThemeMode::Light);
+  m_dialogDark  = settings.scheme(ThemeMode::Dark);
+  m_dialogMode  = settings.themeMode();
+  // 編集対象 (= 現在 effective なテーマ)
+  m_dialogEditingSide = (m_dialogMode == ThemeMode::Auto)
+                          ? settings.effectiveTheme()
+                          : m_dialogMode;
 
-  // ファイルサイズ・日時の表示形式は Behavior タブで読み書きする
-
-  // Load file list row height (0 = Auto = SpinBox の specialValueText が出る)
-  m_rowHeightSpin->setValue(settings.fileListRowHeight());
-
-
-  // Load category colors: 4 states (active/inactive × normal/selected)
-  for (int i = 0; i < static_cast<int>(FileCategory::Count); ++i) {
-    auto loadState = [&](CategoryStateRow& r, bool selected, bool inactive) {
-      r.value = settings.categoryColor(static_cast<FileCategory>(i), selected, inactive);
-      updateColorButton(r.fgButton, r.value.foreground);
-      updateColorButton(r.bgButton, r.value.background);
-      r.boldCheck->setChecked(r.value.bold);
-    };
-    loadState(m_categoryRows[i].normal,           false, false);
-    loadState(m_categoryRows[i].selected,         true,  false);
-    loadState(m_categoryRows[i].inactiveNormal,   false, true);
-    loadState(m_categoryRows[i].inactiveSelected, true,  true);
+  // モードラジオを反映 (ハンドラを抑止して再ロードを防ぐ)
+  {
+    QSignalBlocker b1(m_themeAutoRadio);
+    QSignalBlocker b2(m_themeLightRadio);
+    QSignalBlocker b3(m_themeDarkRadio);
+    switch (m_dialogMode) {
+      case ThemeMode::Auto:  m_themeAutoRadio->setChecked(true);  break;
+      case ThemeMode::Light: m_themeLightRadio->setChecked(true); break;
+      case ThemeMode::Dark:  m_themeDarkRadio->setChecked(true);  break;
+    }
   }
 
-  // 非アクティブペイン設定
+  // 編集対象側のスキームをウィジェットに流し込む
+  loadFromScheme(currentScheme());
+  updateEditingTargetLabel();
+
+  // 非アクティブペイン設定 (テーマ非依存; グローバル設定)
   m_inactivePaneGroup->setChecked(settings.useInactivePaneColors());
 
-  // Path & Cursor
-  m_addressFgValue = settings.addressForeground();
-  m_addressBgValue = settings.addressBackground();
-  updateColorButton(m_addressFgButton, m_addressFgValue);
-  updateColorButton(m_addressBgButton, m_addressBgValue);
-
-  m_cursorActiveValue   = settings.cursorColor(true);
-  m_cursorInactiveValue = settings.cursorColor(false);
-  updateColorButton(m_cursorActiveButton,   m_cursorActiveValue);
-  updateColorButton(m_cursorInactiveButton, m_cursorInactiveValue);
-
+  // カーソル形状 / 太さ (テーマ非依存)
   for (int i = 0; i < m_cursorShapeCombo->count(); ++i) {
     if (m_cursorShapeCombo->itemData(i).toInt() == static_cast<int>(settings.cursorShape())) {
       m_cursorShapeCombo->setCurrentIndex(i);
@@ -228,6 +257,95 @@ void AppearanceTab::loadSettings() {
   }
   m_cursorThicknessSpin->setValue(settings.cursorThickness());
   m_cursorThicknessSpin->setEnabled(settings.cursorShape() == CursorShape::Underline);
+}
+
+ColorScheme& AppearanceTab::currentScheme() {
+  return m_dialogEditingSide == ThemeMode::Dark ? m_dialogDark : m_dialogLight;
+}
+
+void AppearanceTab::loadFromScheme(const ColorScheme& s) {
+  // フォント
+  m_selectedFont = s.listFont;
+  m_fontButton->setText(QString("%1, %2pt").arg(m_selectedFont.family()).arg(m_selectedFont.pointSize()));
+  m_addressFontValue = s.addressFont;
+  m_addressFontButton->setText(QString("%1, %2pt").arg(m_addressFontValue.family()).arg(m_addressFontValue.pointSize()));
+
+  // 行高
+  m_rowHeightSpin->setValue(s.fileListRowHeight);
+
+  // ファイル種別カラー
+  for (int i = 0; i < static_cast<int>(FileCategory::Count); ++i) {
+    auto setState = [](CategoryStateRow& r, const CategoryColor& v, AppearanceTab* self) {
+      r.value = v;
+      self->updateColorButton(r.fgButton, v.foreground);
+      self->updateColorButton(r.bgButton, v.background);
+      r.boldCheck->setChecked(v.bold);
+    };
+    setState(m_categoryRows[i].normal,           s.categoryColors[i],                 this);
+    setState(m_categoryRows[i].selected,         s.selectedCategoryColors[i],         this);
+    setState(m_categoryRows[i].inactiveNormal,   s.inactiveCategoryColors[i],         this);
+    setState(m_categoryRows[i].inactiveSelected, s.inactiveSelectedCategoryColors[i], this);
+  }
+
+  // アドレス / カーソル色
+  m_addressFgValue = s.addressForeground;
+  m_addressBgValue = s.addressBackground;
+  updateColorButton(m_addressFgButton, m_addressFgValue);
+  updateColorButton(m_addressBgButton, m_addressBgValue);
+
+  m_cursorActiveValue   = s.cursorActiveColor;
+  m_cursorInactiveValue = s.cursorInactiveColor;
+  updateColorButton(m_cursorActiveButton,   m_cursorActiveValue);
+  updateColorButton(m_cursorInactiveButton, m_cursorInactiveValue);
+}
+
+void AppearanceTab::saveToScheme(ColorScheme& s) const {
+  s.listFont           = m_selectedFont;
+  s.addressFont        = m_addressFontValue;
+  s.fileListRowHeight  = m_rowHeightSpin->value();
+
+  for (int i = 0; i < static_cast<int>(FileCategory::Count); ++i) {
+    s.categoryColors[i]                  = m_categoryRows[i].normal.value;
+    s.selectedCategoryColors[i]          = m_categoryRows[i].selected.value;
+    s.inactiveCategoryColors[i]          = m_categoryRows[i].inactiveNormal.value;
+    s.inactiveSelectedCategoryColors[i]  = m_categoryRows[i].inactiveSelected.value;
+  }
+
+  s.addressForeground  = m_addressFgValue;
+  s.addressBackground  = m_addressBgValue;
+  s.cursorActiveColor  = m_cursorActiveValue;
+  s.cursorInactiveColor= m_cursorInactiveValue;
+
+  // 注意: colorRules / textViewer / imageViewer / binaryViewer 系のフィールドは
+  // この AppearanceTab には UI が無いので触らない (s に元から入っている値が
+  // そのまま温存される)。ViewersTab 側で編集する viewer フォントや色は別系統。
+}
+
+void AppearanceTab::applyThemeModeFromRadios() {
+  // 1. いまウィジェットに表示されている値を、現在編集中の側へ書き戻す
+  saveToScheme(currentScheme());
+
+  // 2. ラジオの新しい状態から m_dialogMode を更新
+  if      (m_themeLightRadio->isChecked()) m_dialogMode = ThemeMode::Light;
+  else if (m_themeDarkRadio->isChecked())  m_dialogMode = ThemeMode::Dark;
+  else                                     m_dialogMode = ThemeMode::Auto;
+
+  // 3. 編集対象側を再決定
+  m_dialogEditingSide = (m_dialogMode == ThemeMode::Auto)
+                          ? Settings::instance().effectiveTheme()
+                          : m_dialogMode;
+
+  // 4. 新しい編集対象のスキームをウィジェットへロード
+  loadFromScheme(currentScheme());
+  updateEditingTargetLabel();
+}
+
+void AppearanceTab::updateEditingTargetLabel() {
+  if (!m_editingTargetLabel) return;
+  m_editingTargetLabel->setText(
+    m_dialogEditingSide == ThemeMode::Dark
+      ? tr("Editing: Dark scheme")
+      : tr("Editing: Light scheme"));
 }
 
 void AppearanceTab::onSelectFont() {
@@ -323,29 +441,21 @@ void AppearanceTab::updateColorButton(QPushButton* btn, const QColor& color) {
 void AppearanceTab::save() {
   auto& settings = Settings::instance();
 
-  // Save fonts
-  settings.setFont(m_selectedFont);
-  settings.setAddressFont(m_addressFontValue);
+  // 1. 現在ウィジェットに乗っている値を編集中側のシャドースキームへ最終反映
+  saveToScheme(currentScheme());
 
-  // ファイルサイズ・日時の表示形式は Behavior タブで読み書きする
-  settings.setFileListRowHeight(m_rowHeightSpin->value());
+  // 2. 両方のスキームを Settings へ流し込む。setScheme は内部で
+  //    「アクティブ側ならそのまま m_ にも反映」する。setThemeMode で最終
+  //    アクティブ側を確定するため、ここでの順序は light → dark で OK。
+  //    (両者の setScheme で save が走るが影響範囲は内部 m_ のみ)
+  settings.setScheme(ThemeMode::Light, m_dialogLight);
+  settings.setScheme(ThemeMode::Dark,  m_dialogDark);
 
+  // 3. テーマモードを反映 (変更があれば m_ を新側へスワップ + save)
+  settings.setThemeMode(m_dialogMode);
 
-  // Save category colors: 4 states
-  for (int i = 0; i < static_cast<int>(FileCategory::Count); ++i) {
-    const FileCategory cat = static_cast<FileCategory>(i);
-    settings.setCategoryColor(cat, false, false, m_categoryRows[i].normal.value);
-    settings.setCategoryColor(cat, true,  false, m_categoryRows[i].selected.value);
-    settings.setCategoryColor(cat, false, true,  m_categoryRows[i].inactiveNormal.value);
-    settings.setCategoryColor(cat, true,  true,  m_categoryRows[i].inactiveSelected.value);
-  }
+  // 4. テーマ非依存のグローバル設定
   settings.setUseInactivePaneColors(m_inactivePaneGroup->isChecked());
-
-  // Save path & cursor colors
-  settings.setAddressForeground(m_addressFgValue);
-  settings.setAddressBackground(m_addressBgValue);
-  settings.setCursorColor(true,  m_cursorActiveValue);
-  settings.setCursorColor(false, m_cursorInactiveValue);
   settings.setCursorShape(
     static_cast<CursorShape>(m_cursorShapeCombo->currentData().toInt()));
   settings.setCursorThickness(m_cursorThicknessSpin->value());

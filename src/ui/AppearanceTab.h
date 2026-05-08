@@ -1,6 +1,7 @@
 #pragma once
 
 #include "settings/Settings.h"
+#include "settings/ColorScheme.h"
 #include <QWidget>
 #include <QFont>
 #include <QColor>
@@ -11,6 +12,8 @@ class QGroupBox;
 class QCheckBox;
 class QGridLayout;
 class QSpinBox;
+class QRadioButton;
+class QLabel;
 
 namespace Farman {
 
@@ -29,6 +32,20 @@ private slots:
 private:
   void setupUi();
   void loadSettings();
+
+  // ── Light / Dark スキーム編集 ─────────────────
+  // ダイアログ内では Light/Dark 双方の ColorScheme をシャドーで保持する。
+  // ウィジェットには「現在編集中の側」だけが表示され、Mode ラジオを
+  // 切替えると現状値を該当スキームへ書き戻してから反対側を読み直す。
+  // OK 押下時に setScheme(Light, ...) / setScheme(Dark, ...) で両側を
+  // Settings に流し込み、最後に setThemeMode で適用。
+  ColorScheme& currentScheme();
+  void         loadFromScheme(const ColorScheme& s);
+  void         saveToScheme(ColorScheme& s) const;
+  // テーマモードラジオの状態を m_dialogMode に反映 + 編集対象を再計算 + 再ロード
+  void         applyThemeModeFromRadios();
+  // 編集対象 (Light/Dark) を示すラベルを更新
+  void         updateEditingTargetLabel();
 
   // カテゴリ×状態（通常／選択）1 組のウィジェットをまとめた構造
   struct CategoryStateRow {
@@ -78,6 +95,19 @@ private:
   QColor       m_cursorInactiveValue;
   QComboBox*   m_cursorShapeCombo     = nullptr;
   QSpinBox*    m_cursorThicknessSpin  = nullptr;
+
+  // ── テーマ (Light / Dark) ─────────────────────
+  QRadioButton* m_themeAutoRadio  = nullptr;
+  QRadioButton* m_themeLightRadio = nullptr;
+  QRadioButton* m_themeDarkRadio  = nullptr;
+  QLabel*       m_editingTargetLabel = nullptr;
+  // ダイアログ内でのモード設定 (OK で確定)
+  ThemeMode     m_dialogMode        = ThemeMode::Auto;
+  // 現在ウィジェットが表示しているのが Light か Dark か
+  ThemeMode     m_dialogEditingSide = ThemeMode::Light;
+  // 「未保存の変更を含む両側のスキームスナップショット」
+  ColorScheme   m_dialogLight;
+  ColorScheme   m_dialogDark;
 
   // (旧 m_pendingDateTimeFormat* は Behavior タブへ移動)
 };
