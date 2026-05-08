@@ -10,6 +10,7 @@
 #include <QDebug>
 #include <QFontDatabase>
 #include <QGuiApplication>
+#include <QStyleHints>
 #include <QSize>
 #include <QPoint>
 
@@ -22,6 +23,25 @@ Settings& Settings::instance() {
 
 Settings::Settings(QObject* parent) : QObject(parent) {
   applyDefaults();
+
+  // OS のカラースキーム変更 (Qt 6.5+) を監視。Auto モードのとき自動切替する。
+  // Qt 6.4 以下では QStyleHints::colorSchemeChanged が無いので no-op。
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+  if (auto* hints = QGuiApplication::styleHints()) {
+    connect(hints, &QStyleHints::colorSchemeChanged, this, [this](Qt::ColorScheme) {
+      if (m_themeMode != ThemeMode::Auto) return;
+      const ThemeMode now = detectOsTheme();
+      if (now == m_lastEffective) return;
+      // アクティブな m_ フィールドを旧スキームへ退避してから切替
+      ColorScheme snapshot = collectThemeFields();
+      if (m_lastEffective == ThemeMode::Light) m_lightScheme = snapshot;
+      else                                     m_darkScheme  = snapshot;
+      m_lastEffective = now;
+      applyThemeFields(now == ThemeMode::Light ? m_lightScheme : m_darkScheme);
+      emit settingsChanged();
+    });
+  }
+#endif
 }
 
 void Settings::resetToDefaults() {
@@ -195,6 +215,169 @@ void Settings::applyDefaults() {
   m_windowPositionMode   = WindowPositionMode::Default;
   m_customWindowPosition = QPoint();
   m_lastWindowPosition   = QPoint();
+
+  // ── テーマスキーム (Light/Dark) ─────────
+  // 出荷時 Light/Dark の標準値で両スキームを初期化。実行環境の OS フォントは
+  // 既に m_font に入っているのでそれをスキームへ転写する (デフォルト Light の
+  // listFont は QFont() で空のため、OS 既定で上書き)。
+  m_lightScheme = defaultLightScheme();
+  m_darkScheme  = defaultDarkScheme();
+  m_lightScheme.listFont    = m_font;
+  m_lightScheme.addressFont = m_addressFont;
+  m_lightScheme.textViewerFont   = m_textViewerFont;
+  m_lightScheme.binaryViewerFont = m_binaryViewerFont;
+  // Dark 側も実行環境のフォントで揃えておく (色だけを差し替えるため)。
+  m_darkScheme.listFont    = m_font;
+  m_darkScheme.addressFont = m_addressFont;
+  m_darkScheme.textViewerFont   = m_textViewerFont;
+  m_darkScheme.binaryViewerFont = m_binaryViewerFont;
+
+  m_themeMode     = ThemeMode::Auto;
+  m_lastEffective = detectOsTheme();
+  // Light/Dark どちらをアクティブとみなして m_ に流し込むかは effectiveTheme
+  // 次第。ここで applyThemeFields すると上で設定した defaultDarkScheme の
+  // 反転色で m_textViewerNormalFg 等が上書きされてしまうので、Auto かつ
+  // OS が Dark のときだけ Dark を流し込む。それ以外 (Light) では既に
+  // applyDefaults() で設定した Light 値が m_ に入っているのでそのまま。
+  if (m_lastEffective == ThemeMode::Dark) {
+    applyThemeFields(m_darkScheme);
+  }
+}
+
+// ── テーマヘルパ ─────────────────────────────────
+// 現在 m_ に載っているテーマ依存フィールドを ColorScheme へスナップショット
+// する。save() の直前と setThemeMode() の冒頭で呼び、active スキーム側を
+// 最新化する。
+ColorScheme Settings::collectThemeFields() const {
+  ColorScheme s;
+  s.listFont           = m_font;
+  s.addressFont        = m_addressFont;
+  s.fileListRowHeight  = m_fileListRowHeight;
+  s.colorRules         = m_colorRules;
+  for (size_t i = 0; i < s.categoryColors.size(); ++i) {
+    s.categoryColors[i]                  = m_categoryColors[i];
+    s.selectedCategoryColors[i]          = m_selectedCategoryColors[i];
+    s.inactiveCategoryColors[i]          = m_inactiveCategoryColors[i];
+    s.inactiveSelectedCategoryColors[i]  = m_inactiveSelectedCategoryColors[i];
+  }
+  s.addressForeground  = m_addressForeground;
+  s.addressBackground  = m_addressBackground;
+  s.cursorActiveColor  = m_cursorActiveColor;
+  s.cursorInactiveColor= m_cursorInactiveColor;
+
+  s.textViewerFont          = m_textViewerFont;
+  s.textViewerNormalFg      = m_textViewerNormalFg;
+  s.textViewerNormalBg      = m_textViewerNormalBg;
+  s.textViewerSelectedFg    = m_textViewerSelectedFg;
+  s.textViewerSelectedBg    = m_textViewerSelectedBg;
+  s.textViewerLineNumberFg  = m_textViewerLineNumberFg;
+  s.textViewerLineNumberBg  = m_textViewerLineNumberBg;
+
+  s.imageViewerSolidColor   = m_imageViewerSolidColor;
+  s.imageViewerCheckerColor1= m_imageViewerCheckerColor1;
+  s.imageViewerCheckerColor2= m_imageViewerCheckerColor2;
+
+  s.binaryViewerFont        = m_binaryViewerFont;
+  s.binaryViewerNormalFg    = m_binaryViewerNormalFg;
+  s.binaryViewerNormalBg    = m_binaryViewerNormalBg;
+  s.binaryViewerSelectedFg  = m_binaryViewerSelectedFg;
+  s.binaryViewerSelectedBg  = m_binaryViewerSelectedBg;
+  s.binaryViewerAddressFg   = m_binaryViewerAddressFg;
+  s.binaryViewerAddressBg   = m_binaryViewerAddressBg;
+  return s;
+}
+
+// 渡された ColorScheme の値を m_ フィールドに流し込む。シグナルは出さない
+// (呼び出し側で settingsChanged を必要に応じて発火)。
+void Settings::applyThemeFields(const ColorScheme& s) {
+  m_font            = s.listFont;
+  m_addressFont     = s.addressFont;
+  m_fileListRowHeight = s.fileListRowHeight;
+  m_colorRules      = s.colorRules;
+  for (size_t i = 0; i < s.categoryColors.size(); ++i) {
+    m_categoryColors[i]                 = s.categoryColors[i];
+    m_selectedCategoryColors[i]         = s.selectedCategoryColors[i];
+    m_inactiveCategoryColors[i]         = s.inactiveCategoryColors[i];
+    m_inactiveSelectedCategoryColors[i] = s.inactiveSelectedCategoryColors[i];
+  }
+  m_addressForeground  = s.addressForeground;
+  m_addressBackground  = s.addressBackground;
+  m_cursorActiveColor  = s.cursorActiveColor;
+  m_cursorInactiveColor= s.cursorInactiveColor;
+
+  m_textViewerFont          = s.textViewerFont;
+  m_textViewerNormalFg      = s.textViewerNormalFg;
+  m_textViewerNormalBg      = s.textViewerNormalBg;
+  m_textViewerSelectedFg    = s.textViewerSelectedFg;
+  m_textViewerSelectedBg    = s.textViewerSelectedBg;
+  m_textViewerLineNumberFg  = s.textViewerLineNumberFg;
+  m_textViewerLineNumberBg  = s.textViewerLineNumberBg;
+
+  m_imageViewerSolidColor    = s.imageViewerSolidColor;
+  m_imageViewerCheckerColor1 = s.imageViewerCheckerColor1;
+  m_imageViewerCheckerColor2 = s.imageViewerCheckerColor2;
+
+  m_binaryViewerFont        = s.binaryViewerFont;
+  m_binaryViewerNormalFg    = s.binaryViewerNormalFg;
+  m_binaryViewerNormalBg    = s.binaryViewerNormalBg;
+  m_binaryViewerSelectedFg  = s.binaryViewerSelectedFg;
+  m_binaryViewerSelectedBg  = s.binaryViewerSelectedBg;
+  m_binaryViewerAddressFg   = s.binaryViewerAddressFg;
+  m_binaryViewerAddressBg   = s.binaryViewerAddressBg;
+}
+
+ThemeMode Settings::detectOsTheme() const {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+  if (auto* hints = QGuiApplication::styleHints()) {
+    const Qt::ColorScheme cs = hints->colorScheme();
+    if (cs == Qt::ColorScheme::Dark)  return ThemeMode::Dark;
+    if (cs == Qt::ColorScheme::Light) return ThemeMode::Light;
+  }
+#endif
+  return ThemeMode::Light;  // 不明 / 古い Qt → Light 扱い
+}
+
+ThemeMode Settings::themeMode() const { return m_themeMode; }
+
+ThemeMode Settings::effectiveTheme() const {
+  if (m_themeMode == ThemeMode::Light) return ThemeMode::Light;
+  if (m_themeMode == ThemeMode::Dark)  return ThemeMode::Dark;
+  return detectOsTheme();
+}
+
+void Settings::setThemeMode(ThemeMode mode) {
+  if (m_themeMode == mode) return;
+  // 切替前: いま m_ に乗っている値を旧 active スキームへ退避
+  ColorScheme snapshot = collectThemeFields();
+  if (m_lastEffective == ThemeMode::Light) m_lightScheme = snapshot;
+  else                                     m_darkScheme  = snapshot;
+
+  m_themeMode = mode;
+  const ThemeMode now = effectiveTheme();
+  m_lastEffective = now;
+  applyThemeFields(now == ThemeMode::Light ? m_lightScheme : m_darkScheme);
+  save();
+  emit settingsChanged();
+}
+
+ColorScheme Settings::scheme(ThemeMode which) const {
+  // Auto は不可だがプログラム上は Light フォールバック。
+  if (which == ThemeMode::Dark) {
+    return (m_lastEffective == ThemeMode::Dark) ? collectThemeFields() : m_darkScheme;
+  }
+  return (m_lastEffective == ThemeMode::Light) ? collectThemeFields() : m_lightScheme;
+}
+
+void Settings::setScheme(ThemeMode which, const ColorScheme& s) {
+  if (which == ThemeMode::Auto) return;
+  if (which == ThemeMode::Light) m_lightScheme = s;
+  else                            m_darkScheme  = s;
+  // 上書き先がアクティブなら m_ にも反映
+  if (which == m_lastEffective) {
+    applyThemeFields(s);
+  }
+  save();
+  emit settingsChanged();
 }
 
 PaneSettings Settings::paneSettings(PaneType pane) const {
@@ -1494,7 +1677,43 @@ void Settings::load() {
     }
   }
 
-  qDebug() << "Settings::load: loaded settings from" << filePath;
+  // ── テーマ (Light / Dark スキーム) ────────────
+  // `themes` ブロックがあれば新形式 (themes.mode + themes.light + themes.dark)。
+  // 無ければ旧形式 → m_ に既に「実質 Light」の値が入っている前提で、両スキーム
+  // ともそのスナップショットで初期化する (ユーザーが Dark に切替したら自分で
+  // 編集する想定)。
+  ColorScheme migrationSnapshot = collectThemeFields();
+  if (root.contains("themes") && root.value("themes").isObject()) {
+    QJsonObject themes = root.value("themes").toObject();
+    const QString modeStr = themes.value("mode").toString("auto");
+    if      (modeStr == "light") m_themeMode = ThemeMode::Light;
+    else if (modeStr == "dark")  m_themeMode = ThemeMode::Dark;
+    else                          m_themeMode = ThemeMode::Auto;
+
+    auto loadScheme = [&](const QJsonObject& obj, ColorScheme fallback) -> ColorScheme {
+      colorSchemeFromJson(obj, fallback);
+      return fallback;
+    };
+    m_lightScheme = loadScheme(themes.value("light").toObject(), m_lightScheme);
+    m_darkScheme  = loadScheme(themes.value("dark").toObject(),  m_darkScheme);
+
+    // m_ フィールドの値は appearance/textViewer/... ブロックを読んだ
+    // 直後の状態 = 「旧アクティブ値」になっている。新 effectiveTheme に
+    // 合わせて m_ を上書きしないと、Dark を選んでいたのに Light の m_ が
+    // 残るような混在状態になる。
+    m_lastEffective = effectiveTheme();
+    applyThemeFields(m_lastEffective == ThemeMode::Light ? m_lightScheme : m_darkScheme);
+  } else {
+    // 旧形式: いま m_ に入っている値を Light/Dark 双方のベースにする。
+    m_lightScheme   = migrationSnapshot;
+    m_darkScheme    = migrationSnapshot;
+    m_themeMode     = ThemeMode::Auto;
+    m_lastEffective = detectOsTheme();
+  }
+
+  qDebug() << "Settings::load: loaded settings from" << filePath
+           << "(theme mode =" << static_cast<int>(m_themeMode)
+           << ", effective =" << static_cast<int>(m_lastEffective) << ")";
   emit settingsChanged();
 }
 
@@ -1777,6 +1996,28 @@ void Settings::save() const {
       arr.append(userCommandToJson(c));
     }
     root["userCommands"] = arr;
+  }
+
+  // Save themes (Light / Dark スキームの永続化)
+  // m_ フィールドには「現在 active なテーマの値」が乗っている前提で、
+  // active 側のスキームスナップショットを今ここで取り直してから書き出す。
+  // これにより「set...() でいじった値 → save()」の流れで両スキーム JSON が
+  // 矛盾しないことを保証する。
+  {
+    ColorScheme snap = collectThemeFields();
+    Settings* mutSelf = const_cast<Settings*>(this);
+    if (m_lastEffective == ThemeMode::Light) mutSelf->m_lightScheme = snap;
+    else                                      mutSelf->m_darkScheme  = snap;
+
+    QJsonObject themes;
+    switch (m_themeMode) {
+      case ThemeMode::Light: themes["mode"] = "light"; break;
+      case ThemeMode::Dark:  themes["mode"] = "dark";  break;
+      case ThemeMode::Auto:  themes["mode"] = "auto";  break;
+    }
+    themes["light"] = colorSchemeToJson(m_lightScheme);
+    themes["dark"]  = colorSchemeToJson(m_darkScheme);
+    root["themes"] = themes;
   }
 
   QJsonDocument doc(root);

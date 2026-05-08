@@ -121,6 +121,7 @@ qt_add_executable(farman
   src/keybinding/commands/FileOperationCommands.cpp
   src/keybinding/commands/ApplicationCommands.cpp
   src/settings/Settings.cpp
+  src/settings/ColorScheme.cpp
 )
 
 # macOS の場合のみ .icns をバンドルに同梱
@@ -194,6 +195,7 @@ qt_add_executable(test_worker
   # 各シンボルが未定義になるので UserCommand.cpp も同梱する (Manager / Runner は
   # Settings 自体は使わないので不要)。
   src/settings/Settings.cpp
+  src/settings/ColorScheme.cpp
   src/core/BookmarkManager.cpp
   src/core/UserCommand.cpp
 )

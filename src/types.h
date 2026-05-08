@@ -94,6 +94,17 @@ enum class LanguageMode {
   Japanese   // 強制 ja
 };
 
+// 配色テーマモード。
+// - Auto:  OS の Light / Dark 設定に追従。Qt 6.5+ の
+//          `QGuiApplication::styleHints()->colorScheme()` を読む。
+// - Light: 強制的に Light スキームを使用。
+// - Dark:  強制的に Dark スキームを使用。
+enum class ThemeMode {
+  Auto,
+  Light,
+  Dark
+};
+
 // 初期表示ディレクトリのモード（ペイン別）
 enum class InitialPathMode {
   Default,      // ホームディレクトリ
@@ -151,6 +162,16 @@ struct CategoryColor {
   QColor foreground;   // 文字色（invalid なら既定を使用）
   QColor background;   // 背景色（invalid なら背景を上書きしない）
   bool   bold = false; // 太字で表示するか
+};
+
+// ファイル種別ごとのカラーリング設定 (glob パターン → 前景/背景色 + 太字)。
+// 本来 Settings.h に置きたいが、テーマ用の ColorScheme から参照する都合で
+// ここに先出しする (Settings.h は ColorScheme.h を include するため)。
+struct ColorRule {
+  QString pattern;     // glob パターン: "*.cpp", "*.h"
+  QColor  foreground;
+  QColor  background;
+  bool    bold = false;
 };
 
 } // namespace Farman

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.h"
+#include "ColorScheme.h"
 #include "core/UserCommand.h"
 #include <QObject>
 #include <QFont>
@@ -21,13 +22,8 @@ struct Bookmark {
   bool    isDefault = false;
 };
 
-// ファイル種別ごとのカラーリング設定
-struct ColorRule {
-  QString pattern;     // glob パターン: "*.cpp", "*.h"
-  QColor  foreground;
-  QColor  background;
-  bool    bold = false;
-};
+// ColorRule / CategoryColor は ColorScheme から参照する都合で types.h に
+// 移動済み。ここでは types.h の定義をそのまま使う。
 
 // ペインごとの設定
 // バイナリビュアー設定のシリアライズ補助
@@ -331,6 +327,19 @@ public:
   QPoint             lastWindowPosition() const;
   void               setLastWindowPosition(const QPoint& pos);
 
+  // ── テーマ (Light / Dark スキーム) ────────────
+  // モードと「現在実際に適用されているスキーム種別」を分けて取得する。
+  // Auto モード時は OS のカラースキーム (Qt 6.5+) に追従する。
+  ThemeMode  themeMode()        const;
+  ThemeMode  effectiveTheme()   const;  // Light か Dark のどちらかが返る
+  void       setThemeMode(ThemeMode mode);
+
+  // 任意のスキーム (Light / Dark) を直接読み書きする。
+  // (Theme インポートやスキーム間コピー用。アクティブスキームを書き換えた
+  //  場合は m_ フィールドへの再ロードを内部で行い settingsChanged を発火)
+  ColorScheme scheme(ThemeMode which) const;
+  void        setScheme(ThemeMode which, const ColorScheme& s);
+
   // ── 読み書き ───────────────────────────
   void load();
   void save() const;
@@ -475,6 +484,27 @@ private:
   WindowPositionMode m_windowPositionMode = WindowPositionMode::Default;
   QPoint             m_customWindowPosition;
   QPoint             m_lastWindowPosition;
+
+  // ── テーマスキーム ────────────────────────
+  // m_ 個別フィールド (m_font / m_addressForeground / ...) が「現在の
+  // ワーキング値」、以下 2 つが Light/Dark のスナップショット。
+  // save() の直前に collectThemeFields() でアクティブ側を更新し、
+  // load() / setThemeMode() の直後に applyThemeFields() で m_ 側へ書き戻す。
+  ColorScheme        m_lightScheme;
+  ColorScheme        m_darkScheme;
+  ThemeMode          m_themeMode = ThemeMode::Auto;
+
+  // 現在 effectiveTheme() の値をキャッシュする (OS 追従のシグナル受信時に
+  // 直前と同じならシグナル抑止できるよう)。
+  mutable ThemeMode  m_lastEffective = ThemeMode::Light;
+
+  // m_ フィールド ↔ ColorScheme のシリアライズ。private 実装ヘルパ。
+  ColorScheme collectThemeFields() const;
+  void        applyThemeFields(const ColorScheme& s);
+
+  // OS のカラースキーム (Light/Dark) を読み、Auto モード用に Light か
+  // Dark かを返す。Qt 6.5 未満や不明な OS では Light を返す。
+  ThemeMode   detectOsTheme() const;
 };
 
 } // namespace Farman
