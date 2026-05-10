@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- 中央: 画像本体 (ソリッド rect) -->
+  <rect x="6" y="6" width="12" height="12" rx="1"/>
+  <!-- 周囲 4 隅: ウィンドウ枠が画像に向かって縮む様子を示すブラケット。
+       fit-to-window.svg (画像をウィンドウに合わせる) との視覚的な区別。 -->
+  <path d="M2 6 L2 2 L6 2"/>
+  <path d="M18 2 L22 2 L22 6"/>
+  <path d="M2 18 L2 22 L6 22"/>
+  <path d="M18 22 L22 22 L22 18"/>
+</svg>

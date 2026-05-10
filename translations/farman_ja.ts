@@ -2193,6 +2193,10 @@ What would you like to do?</source>
         <translation>画像が自然サイズで表示されるよう、このウィンドウのサイズを調整します (Ctrl+1)。画像が画面より大きい場合は利用可能な画面領域にクランプされます。</translation>
     </message>
     <message>
+        <source>Fit window to image (Ctrl+1) — resize this window so the image is shown at its natural size. If the image is larger than the screen, the window is clamped to the available screen area.</source>
+        <translation>ウィンドウサイズを画像にあわせる (Ctrl+1) — 画像が自然サイズで表示されるようウィンドウを調整します。画像が画面より大きい場合は利用可能な画面領域にクランプされます。</translation>
+    </message>
+    <message>
         <source>Resize this window so that the image is shown at its natural size. If the image is larger than the screen, the window is clamped to the available screen area.</source>
         <translation type="vanished">画像が自然サイズで表示されるよう、このウィンドウのサイズを調整します。画像が画面より大きい場合は利用可能な画面領域にクランプされます。</translation>
     </message>

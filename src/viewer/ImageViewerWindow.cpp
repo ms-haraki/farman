@@ -2,10 +2,11 @@
 #include "ImageView.h"
 
 #include <QFileInfo>
+#include <QIcon>
 #include <QKeyEvent>
 #include <QMessageBox>
-#include <QPushButton>
 #include <QScreen>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -33,17 +34,21 @@ void ImageViewerWindow::setupUi() {
 
   // 「ウィンドウサイズを画像にあわせる」ボタンを ImageView の既存ツールバー
   // (Zoom / Fit / Anim / Transparency) と同じ列に挿入する。
+  // - 表示形式: アイコンのみ (他のツールバーボタンと揃える)
   // - ショートカット: Ctrl+1 (Total Commander 風の "1:1 表示" 流儀)
-  // - Tab フォーカス: QPushButton のデフォルトは StrongFocus で OK だが、
-  //   macOS のキーボードナビゲーション設定に依存しないよう明示する。
-  auto* fitWinBtn = new QPushButton(tr("Fit window to image"), this);
+  // - Tab フォーカス: macOS のキーボードナビゲーション設定に依存しないよう
+  //   StrongFocus を明示。
+  auto* fitWinBtn = new QToolButton(this);
+  fitWinBtn->setIcon(QIcon(QStringLiteral(":/icons/toolbar/fit-window-to-image.svg")));
+  fitWinBtn->setIconSize(QSize(20, 20));
   fitWinBtn->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_1));
   fitWinBtn->setFocusPolicy(Qt::StrongFocus);
+  fitWinBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
   fitWinBtn->setToolTip(tr(
-    "Resize this window so that the image is shown at its natural size "
-    "(Ctrl+1). If the image is larger than the screen, the window is "
-    "clamped to the available screen area."));
-  connect(fitWinBtn, &QPushButton::clicked, this,
+    "Fit window to image (Ctrl+1) — resize this window so the image is shown "
+    "at its natural size. If the image is larger than the screen, the window "
+    "is clamped to the available screen area."));
+  connect(fitWinBtn, &QToolButton::clicked, this,
           &ImageViewerWindow::fitWindowToImage);
   m_imageView->addToolbarWidget(fitWinBtn);
 
