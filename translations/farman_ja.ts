@@ -2764,8 +2764,8 @@ This will discard all custom keybindings.</source>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="881"/>
         <location filename="../src/ui/MainWindow.cpp" line="1099"/>
-        <source>External Viewer Window</source>
-        <translation>外部ビュアーウィンドウ</translation>
+        <source>Use External Viewer Window</source>
+        <translation>ビュアーを別ウィンドウで表示</translation>
     </message>
     <message>
         <location filename="../src/ui/MainWindow.cpp" line="895"/>

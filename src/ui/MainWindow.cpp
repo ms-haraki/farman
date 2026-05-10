@@ -878,7 +878,7 @@ void MainWindow::registerCommands() {
   // 不整合のまま残らないように)。
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "view.toggle_viewer_mode",
-    tr("External Viewer Window"),
+    tr("Use External Viewer Window"),
     [this]() {
       auto& s = Settings::instance();
       const ViewerMode next = (s.viewerMode() == ViewerMode::External)
@@ -1096,7 +1096,7 @@ void MainWindow::createMenus() {
   // ビュアー表示モード (Inline / External) のトグル。チェック付きでメニューに
   // 表示し、aboutToShow で Settings の現状を反映する。
   QAction* viewerModeAction = addCmd(viewMenu, "view.toggle_viewer_mode",
-                                     tr("External Viewer Window"));
+                                     tr("Use External Viewer Window"));
   viewerModeAction->setCheckable(true);
   viewerModeAction->setChecked(Settings::instance().viewerMode() == ViewerMode::External);
   connect(viewMenu, &QMenu::aboutToShow, this, [viewerModeAction]() {
