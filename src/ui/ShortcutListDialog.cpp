@@ -119,7 +119,12 @@ void ShortcutListDialog::rebuild() {
       m_table->insertRow(row);
 
       const auto keys = KeyBindingManager::instance().keysForCommand(cmd->id());
-      auto* keyItem  = new QTableWidgetItem(keysToText(keys));
+      // テンキー Enter のみのバインドは keysToText で除外されるため、
+      // 「実質バインド無し」かどうかは表示文字列が "—" かで判定する。
+      const QString keyText = keysToText(keys);
+      const bool unbound    = (keyText == QStringLiteral("—"));
+
+      auto* keyItem  = new QTableWidgetItem(keyText);
       auto* nameItem = new QTableWidgetItem(cmd->label());
 
       keyItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
@@ -127,6 +132,15 @@ void ShortcutListDialog::rebuild() {
       keyItem->setToolTip(cmd->id());
       if (!cmd->description().isEmpty()) {
         nameItem->setToolTip(cmd->description());
+      }
+
+      // バインドが無いコマンドは、無効ボタンと同等の薄い色 (palette mid) で
+      // 描画して「現状打鍵できない」ことを視認しやすくする。
+      // ItemIsEnabled は外さない (= フィルタ検索やセル選択は普通に効く)。
+      if (unbound) {
+        const QColor dim = palette().color(QPalette::Disabled, QPalette::WindowText);
+        keyItem->setForeground(dim);
+        nameItem->setForeground(dim);
       }
 
       m_table->setItem(row, 0, keyItem);
