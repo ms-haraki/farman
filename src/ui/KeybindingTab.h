@@ -62,10 +62,11 @@ private:
   QPushButton*  m_clearButton;
 
   // ── プリセット / インポート / エクスポート ─────
+  // プリセット選択はコンボの currentIndexChanged で即時プレビュー反映するので
+  // Apply ボタンは存在しない。Export / Import は明示クリック必須。
   QComboBox*    m_presetCombo  = nullptr;
-  QPushButton*  m_applyPresetButton = nullptr;
-  QPushButton*  m_exportButton      = nullptr;
-  QPushButton*  m_importButton      = nullptr;
+  QPushButton*  m_exportButton = nullptr;
+  QPushButton*  m_importButton = nullptr;
 
   // Key recording frame (shown below table when editing)
   QFrame*       m_recordFrame;

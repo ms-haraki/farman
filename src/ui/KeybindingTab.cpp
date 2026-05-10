@@ -46,26 +46,23 @@ void KeybindingTab::setupUi() {
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
   // ─── プリセット / インポート / エクスポート行 ───
-  // 同梱プリセット (Default / Total Commander) をドロップダウンで選び、
-  // Apply で全置換適用する。任意の JSON ファイルをエクスポート / インポート
-  // することもできる。Apply / Import は確認ダイアログ → KeyBindingManager
-  // を在メモリで全置換 → updateTable() で反映。実際のディスク永続化は
-  // SettingsDialog の OK 時に走る (Reset to Defaults と同じ流儀)。
+  // 同梱プリセット (Default / Total Commander) をドロップダウンで選んだ
+  // 瞬間に「New Key」列へプレビュー表示する。実際の全置換は SettingsDialog
+  // の OK 時、Cancel すれば破棄される。1 行目は「(Choose a preset...)」の
+  // プレースホルダで、ロード時の不意な発火を防ぐ役割を兼ねる。
   QHBoxLayout* presetRow = new QHBoxLayout();
   presetRow->addWidget(new QLabel(tr("Preset:"), this));
   m_presetCombo = new QComboBox(this);
-  m_presetCombo->setMinimumWidth(200);
-  // listBundledKeybindingPresets() が空でも「Apply」を無効化するだけにする。
+  m_presetCombo->setMinimumWidth(220);
+  m_presetCombo->setToolTip(tr("Selecting a preset previews it in the New Key column. "
+                                "Press OK to commit or Cancel to revert."));
+  m_presetCombo->addItem(tr("(Choose a preset...)"), QString());
   for (const auto& p : PresetIO::listBundledKeybindingPresets()) {
     m_presetCombo->addItem(p.displayName, p.resourcePath);
   }
+  connect(m_presetCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, &KeybindingTab::onApplyPreset);
   presetRow->addWidget(m_presetCombo);
-
-  m_applyPresetButton = new QPushButton(tr("Apply"), this);
-  m_applyPresetButton->setToolTip(tr("Replace all current bindings with the selected preset"));
-  m_applyPresetButton->setEnabled(m_presetCombo->count() > 0);
-  connect(m_applyPresetButton, &QPushButton::clicked, this, &KeybindingTab::onApplyPreset);
-  presetRow->addWidget(m_applyPresetButton);
 
   presetRow->addSpacing(16);
   m_exportButton = new QPushButton(tr("Export..."), this);
@@ -695,14 +692,11 @@ bool KeybindingTab::applyBindingsToPending(const QJsonObject& obj, QString* erro
 
 void KeybindingTab::onApplyPreset() {
   if (!m_presetCombo || m_presetCombo->currentIndex() < 0) return;
-  const QString name         = m_presetCombo->currentText();
   const QString resourcePath = m_presetCombo->currentData().toString();
-  if (resourcePath.isEmpty()) return;
-
-  if (!confirm(this, tr("Apply Preset"),
-               tr("Replace all current keybindings with the '%1' preset?\n"
-                  "Press OK in Settings to commit, or Cancel to revert.")
-                 .arg(name))) {
+  // プレースホルダ "(Choose a preset...)" は data 空文字 → 何もせずペンディング解除
+  if (resourcePath.isEmpty()) {
+    m_pendingChanges.clear();
+    updateTable();
     return;
   }
 

@@ -2208,8 +2208,12 @@ What would you like to do?</source>
         <translation>適用</translation>
     </message>
     <message>
-        <source>Replace all current bindings with the selected preset</source>
-        <translation>現在のバインドを選択したプリセットで全置換する</translation>
+        <source>Selecting a preset previews it in the New Key column. Press OK to commit or Cancel to revert.</source>
+        <translation>プリセットを選ぶと「New Key」列にプレビュー表示されます。OK で確定、Cancel で破棄します。</translation>
+    </message>
+    <message>
+        <source>(Choose a preset...)</source>
+        <translation>(プリセットを選択...)</translation>
     </message>
     <message>
         <source>Export...</source>
