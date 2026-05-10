@@ -103,8 +103,12 @@ void ImageViewerWindow::fitWindowToImage() {
 }
 
 void ImageViewerWindow::keyPressEvent(QKeyEvent* event) {
-  // Esc でウィンドウを閉じる。WA_DeleteOnClose 付きで生成されているので破棄される。
-  if (event->key() == Qt::Key_Escape) {
+  // Esc / Enter / Return でウィンドウを閉じる。Inline モードと挙動を揃え、
+  // どちらのキーでもファイラに戻れるようにしている。
+  // WA_DeleteOnClose 付きで生成されているので close() で破棄される。
+  if (event->key() == Qt::Key_Escape ||
+      event->key() == Qt::Key_Return ||
+      event->key() == Qt::Key_Enter) {
     close();
     return;
   }

@@ -377,8 +377,11 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
     // ビューアパネル表示中
     else if (m_stack->currentWidget() == m_viewerPanel) {
       if (obj == m_viewerPanel) {
-        // Enterキーでファイルマネージャーに戻る
-        if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
+        // Enter / Return / Esc でファイルマネージャーに戻る (External モード
+        // 各 *ViewerWindow とキー対応を揃える)
+        if (keyEvent->key() == Qt::Key_Return ||
+            keyEvent->key() == Qt::Key_Enter  ||
+            keyEvent->key() == Qt::Key_Escape) {
           showFileManager();
           return true;
         }
@@ -392,7 +395,11 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event) {
 void MainWindow::keyPressEvent(QKeyEvent* event) {
   // ビューアパネル表示中のキーイベント
   if (m_stack->currentWidget() == m_viewerPanel) {
-    if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
+    // Enter / Return / Esc でファイラに戻る (External モード各 *ViewerWindow
+    // とキー対応を揃える)
+    if (event->key() == Qt::Key_Return ||
+        event->key() == Qt::Key_Enter  ||
+        event->key() == Qt::Key_Escape) {
       showFileManager();
       return;
     }

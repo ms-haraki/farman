@@ -42,9 +42,12 @@ void TextViewerWindow::loadFile() {
 }
 
 void TextViewerWindow::keyPressEvent(QKeyEvent* event) {
-  // Esc でウィンドウを閉じる (Inline モード時の Enter / Esc 戻りと挙動を揃える)。
-  // close() は WA_DeleteOnClose 付きで生成されているのでウィンドウは破棄される。
-  if (event->key() == Qt::Key_Escape) {
+  // Esc / Enter / Return でウィンドウを閉じる (Inline モード時の戻り操作と
+  // 挙動を揃える)。close() は WA_DeleteOnClose 付きで生成されているので
+  // ウィンドウは破棄される。
+  if (event->key() == Qt::Key_Escape ||
+      event->key() == Qt::Key_Return ||
+      event->key() == Qt::Key_Enter) {
     close();
     return;
   }

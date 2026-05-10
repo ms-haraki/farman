@@ -39,8 +39,12 @@ BinaryViewerWindow::BinaryViewerWindow(const QString& filePath, QWidget* parent)
 }
 
 void BinaryViewerWindow::keyPressEvent(QKeyEvent* event) {
-  // Esc でウィンドウを閉じる。WA_DeleteOnClose 付きで生成されているので破棄される。
-  if (event->key() == Qt::Key_Escape) {
+  // Esc / Enter / Return でウィンドウを閉じる (Inline モード時の戻り操作と
+  // 挙動を揃える)。close() は WA_DeleteOnClose 付きで生成されているので
+  // ウィンドウは破棄される。
+  if (event->key() == Qt::Key_Escape ||
+      event->key() == Qt::Key_Return ||
+      event->key() == Qt::Key_Enter) {
     close();
     return;
   }
