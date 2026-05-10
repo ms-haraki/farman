@@ -34,6 +34,7 @@
     <file alias="close.svg">icons/toolbar/close.svg</file>
     <file alias="sort-filter.svg">icons/toolbar/sort-filter.svg</file>
     <file alias="view-file.svg">icons/toolbar/view-file.svg</file>
+    <file alias="external-viewer.svg">icons/toolbar/external-viewer.svg</file>
     <file alias="shortcuts.svg">icons/toolbar/shortcuts.svg</file>
     <file alias="terminal.svg">icons/toolbar/terminal.svg</file>
     <file alias="editor.svg">icons/toolbar/editor.svg</file>

@@ -2839,6 +2839,10 @@ This will discard all custom keybindings.</source>
         <translation>表示</translation>
     </message>
     <message>
+        <source>Viewer</source>
+        <translation>ビュアー</translation>
+    </message>
+    <message>
         <location filename="../src/ui/MainWindow.cpp" line="1255"/>
         <source>Sort &amp;&amp; Filter</source>
         <translation>ソート / フィルタ</translation>
