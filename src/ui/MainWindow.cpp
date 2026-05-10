@@ -1249,6 +1249,21 @@ void MainWindow::createMainToolBar() {
   addBtn("file.rename",             tr("Rename"),       QStringLiteral("rename.svg"));
   m_toolbar->addSeparator();
   addBtn("view.file",               tr("Viewer"),       QStringLiteral("view-file.svg"));
+  // ビュアー外部表示モード切替 — 「ビュアー」ボタンの隣に置く方が自然なので
+  // 従来のトグル群 (Single Pane / Sync Browse / Log) ではなくここに配置する。
+  // checkable: ON = ビュアーを別ウィンドウで開く設定。Settings::settingsChanged
+  // 経由で他経路 (Settings ダイアログ / メニュー / キーバインド) からの変更も
+  // 表示状態に反映される。
+  QAction* externalViewerAct = addBtn("view.toggle_viewer_mode",
+                                      tr("Use External Viewer Window"),
+                                      QStringLiteral("external-viewer.svg"));
+  externalViewerAct->setCheckable(true);
+  externalViewerAct->setChecked(Settings::instance().viewerMode() == ViewerMode::External);
+  connect(&Settings::instance(), &Settings::settingsChanged,
+          this, [externalViewerAct]() {
+    QSignalBlocker b(externalViewerAct);
+    externalViewerAct->setChecked(Settings::instance().viewerMode() == ViewerMode::External);
+  });
   addBtn("pane.sort_filter",        tr("Sort && Filter"), QStringLiteral("sort-filter.svg"));
   addBtn("file.search",             tr("Search"),       QStringLiteral("search.svg"));
   m_toolbar->addSeparator();
@@ -1297,21 +1312,6 @@ void MainWindow::createMainToolBar() {
           this, [logAct](bool visible) {
     QSignalBlocker b(logAct);
     logAct->setChecked(visible);
-  });
-
-  // ビュアー外部表示モード切替 (`view.toggle_viewer_mode`)。
-  // checkable: ON = ビュアーを別ウィンドウで開く設定。
-  // Settings::settingsChanged 経由で他経路 (Settings ダイアログや
-  // メニュー) から変更されたときも自動で表示状態を追従させる。
-  QAction* externalViewerAct = addBtn("view.toggle_viewer_mode",
-                                      tr("Use External Viewer Window"),
-                                      QStringLiteral("external-viewer.svg"));
-  externalViewerAct->setCheckable(true);
-  externalViewerAct->setChecked(Settings::instance().viewerMode() == ViewerMode::External);
-  connect(&Settings::instance(), &Settings::settingsChanged,
-          this, [externalViewerAct]() {
-    QSignalBlocker b(externalViewerAct);
-    externalViewerAct->setChecked(Settings::instance().viewerMode() == ViewerMode::External);
   });
 
   m_toolbar->addSeparator();
