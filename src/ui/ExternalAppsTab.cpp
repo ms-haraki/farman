@@ -21,10 +21,35 @@
 #include <QStandardPaths>
 #include <QStyle>
 #include <QToolButton>
+#include <QKeyEvent>
 #include <QUuid>
 #include <QVBoxLayout>
 
 namespace Farman {
+
+namespace {
+
+// Browse 用の小さな QToolButton (フォルダアイコン) に共通設定を 1 箇所で当てる。
+//   - 強制 StrongFocus (macOS 既定では Tab 巡回に含まれないため)
+//   - QSS でフォーカス時にハイライト枠を出す (native QToolButton には visible
+//     focus ring が出ないため、ユーザーが今どこにフォーカスがあるか分かるように)
+//   - Enter / Return でも click が走るよう、event filter を installEventFilter
+//     で targetForEnter (= ExternalAppsTab) に向ける
+QToolButton* makeBrowseButton(QWidget* parent, QObject* targetForEnter) {
+  QToolButton* btn = new QToolButton(parent);
+  btn->setIcon(parent->style()->standardIcon(QStyle::SP_DirOpenIcon));
+  btn->setToolTip(QObject::tr("Browse for executable..."));
+  btn->setFocusPolicy(Qt::StrongFocus);
+  btn->setStyleSheet(QStringLiteral(
+    "QToolButton { padding: 2px; border: 1px solid transparent; "
+                  "border-radius: 3px; }"
+    "QToolButton:focus { border: 2px solid palette(highlight); padding: 1px; }"));
+  btn->installEventFilter(targetForEnter);
+  return btn;
+}
+
+} // anonymous namespace
+
 
 ExternalAppsTab::ExternalAppsTab(QWidget* parent)
   : QWidget(parent) {
@@ -64,9 +89,7 @@ void ExternalAppsTab::setupUi() {
     programRowLayout->setContentsMargins(0, 0, 0, 0);
     programEdit = new QLineEdit(this);
     programEdit->setPlaceholderText(tr("/path/to/executable"));
-    programBrowse = new QToolButton(this);
-    programBrowse->setIcon(style()->standardIcon(QStyle::SP_DirOpenIcon));
-    programBrowse->setToolTip(tr("Browse for executable..."));
+    programBrowse = makeBrowseButton(this, this);
     programRowLayout->addWidget(programEdit, 1);
     programRowLayout->addWidget(programBrowse);
     form->addRow(tr("Program:"), programRow);
@@ -86,6 +109,11 @@ void ExternalAppsTab::setupUi() {
     testRow->addStretch(1);
     testRow->addWidget(testButton);
     form->addRow(QString(), testRow);
+
+    // 明示 Tab 順: Program → 📁 → Arguments → Test launch
+    QWidget::setTabOrder(programEdit,   programBrowse);
+    QWidget::setTabOrder(programBrowse, argsEdit);
+    QWidget::setTabOrder(argsEdit,      testButton);
 
     return box;
   };
@@ -163,9 +191,7 @@ void ExternalAppsTab::setupUi() {
   addProgramRowLayout->setContentsMargins(0, 0, 0, 0);
   m_addCmdProgram = new QLineEdit(m_addCmdBox);
   m_addCmdProgram->setPlaceholderText(tr("/path/to/executable"));
-  m_addCmdProgramBrowse = new QToolButton(m_addCmdBox);
-  m_addCmdProgramBrowse->setIcon(style()->standardIcon(QStyle::SP_DirOpenIcon));
-  m_addCmdProgramBrowse->setToolTip(tr("Browse for executable..."));
+  m_addCmdProgramBrowse = makeBrowseButton(m_addCmdBox, this);
   addProgramRowLayout->addWidget(m_addCmdProgram, 1);
   addProgramRowLayout->addWidget(m_addCmdProgramBrowse);
   addForm->addRow(tr("Program:"), addProgramRow);
@@ -191,6 +217,14 @@ void ExternalAppsTab::setupUi() {
   addBtnRow->addWidget(m_addCmdAddButton);
   addForm->addRow(QString(), addBtnRow);
 
+  // 明示 Tab 順: Name → Program → 📁 → Arguments → Show → Test → Add
+  QWidget::setTabOrder(m_addCmdName,         m_addCmdProgram);
+  QWidget::setTabOrder(m_addCmdProgram,      m_addCmdProgramBrowse);
+  QWidget::setTabOrder(m_addCmdProgramBrowse,m_addCmdArgs);
+  QWidget::setTabOrder(m_addCmdArgs,         m_addCmdShowInTools);
+  QWidget::setTabOrder(m_addCmdShowInTools,  m_addCmdTestButton);
+  QWidget::setTabOrder(m_addCmdTestButton,   m_addCmdAddButton);
+
   mainLayout->addWidget(m_addCmdBox);
 
   connect(m_addCmdProgramBrowse, &QToolButton::clicked,
@@ -200,28 +234,25 @@ void ExternalAppsTab::setupUi() {
   connect(m_addCmdAddButton,  &QPushButton::clicked,
           this, &ExternalAppsTab::onAddCommandClicked);
 
-  // ─── 末尾: Import / Export ───
-  // ファイル経由でユーザー定義コマンドを取り回す。組み込み 2 件は対象外。
-  QGroupBox* ioGroup = new QGroupBox(tr("Custom Commands"), this);
-  QHBoxLayout* ioRow = new QHBoxLayout(ioGroup);
-  QLabel* ioInfoLabel = new QLabel(
-    tr("Share custom commands between machines via Import / Export. "
-       "Built-in Terminal and Editor are not included."),
-    this);
-  ioInfoLabel->setWordWrap(true);
-  ioRow->addWidget(ioInfoLabel, /*stretch*/ 1);
+  // ─── 末尾: Import / Export ボタン (組み込み 2 件は除外) ───
+  QHBoxLayout* ioRow = new QHBoxLayout();
+  ioRow->addStretch(1);
 
   QPushButton* exportButton = new QPushButton(tr("Export..."), this);
-  exportButton->setToolTip(tr("Save all custom (non-builtin) user commands to a JSON file"));
+  exportButton->setToolTip(tr(
+    "Save user-defined commands to a JSON file. "
+    "The built-in Terminal and Text Editor entries are not included."));
   connect(exportButton, &QPushButton::clicked, this, &ExternalAppsTab::onExportCommands);
   ioRow->addWidget(exportButton);
 
   QPushButton* importButton = new QPushButton(tr("Import..."), this);
-  importButton->setToolTip(tr("Load custom user commands from a JSON file"));
+  importButton->setToolTip(tr(
+    "Load user-defined commands from a JSON file. "
+    "The built-in Terminal and Text Editor entries are not affected."));
   connect(importButton, &QPushButton::clicked, this, &ExternalAppsTab::onImportCommands);
   ioRow->addWidget(importButton);
 
-  mainLayout->addWidget(ioGroup);
+  mainLayout->addLayout(ioRow);
 
   mainLayout->addStretch();
 }
@@ -573,6 +604,45 @@ void ExternalAppsTab::rebuildCustomCommandRows() {
   for (const UserCommand& c : m_nonBuiltinUserCommands) {
     buildExistingCommandRow(c);
   }
+  // buildExistingCommandRow が個別に rebuildCustomCommandTabOrder を呼ぶが、
+  // 0 件のときも巻き直しておく (削除直後など)。
+  rebuildCustomCommandTabOrder();
+}
+
+void ExternalAppsTab::rebuildCustomCommandTabOrder() {
+  // 目的の順:
+  //   ターミナル -> エディタ (= m_editorTestButton まで)
+  //   既存ユーザー定義コマンド 1 つ目の Name → ... → 1 つ目の Delete
+  //   2 つ目の Name → ... → 2 つ目の Delete
+  //   ...
+  //   m_addCmdName → m_addCmdProgram → 📁 → m_addCmdArgs →
+  //   m_addCmdShowInTools → m_addCmdTestButton → m_addCmdAddButton
+  //
+  // setTabOrder(a, b) は a の次に b を置く (= 既存のチェーンを差し替える)。
+  // 列挙して隣り合うペアごとに呼べば全体が望みの順序に巻き直る。
+  QList<QWidget*> chain;
+  if (m_editorTestButton) chain.append(m_editorTestButton);
+  for (const CustomCommandRow& r : m_customRows) {
+    if (r.nameEdit)         chain.append(r.nameEdit);
+    if (r.programEdit)      chain.append(r.programEdit);
+    if (r.programBrowse)    chain.append(r.programBrowse);
+    if (r.argsEdit)         chain.append(r.argsEdit);
+    if (r.showInToolsCheck) chain.append(r.showInToolsCheck);
+    if (r.testBtn)          chain.append(r.testBtn);
+    if (r.updateBtn)        chain.append(r.updateBtn);
+    if (r.deleteBtn)        chain.append(r.deleteBtn);
+  }
+  if (m_addCmdName)          chain.append(m_addCmdName);
+  if (m_addCmdProgram)       chain.append(m_addCmdProgram);
+  if (m_addCmdProgramBrowse) chain.append(m_addCmdProgramBrowse);
+  if (m_addCmdArgs)          chain.append(m_addCmdArgs);
+  if (m_addCmdShowInTools)   chain.append(m_addCmdShowInTools);
+  if (m_addCmdTestButton)    chain.append(m_addCmdTestButton);
+  if (m_addCmdAddButton)     chain.append(m_addCmdAddButton);
+
+  for (int i = 0; i + 1 < chain.size(); ++i) {
+    QWidget::setTabOrder(chain[i], chain[i + 1]);
+  }
 }
 
 void ExternalAppsTab::buildExistingCommandRow(const UserCommand& cmd) {
@@ -594,9 +664,7 @@ void ExternalAppsTab::buildExistingCommandRow(const UserCommand& cmd) {
   progRowLayout->setContentsMargins(0, 0, 0, 0);
   QLineEdit* programEdit = new QLineEdit(cmd.program, box);
   programEdit->setPlaceholderText(tr("/path/to/executable"));
-  QToolButton* programBrowse = new QToolButton(box);
-  programBrowse->setIcon(style()->standardIcon(QStyle::SP_DirOpenIcon));
-  programBrowse->setToolTip(tr("Browse for executable..."));
+  QToolButton* programBrowse = makeBrowseButton(box, this);
   progRowLayout->addWidget(programEdit, 1);
   progRowLayout->addWidget(programBrowse);
   form->addRow(tr("Program:"), progRow);
@@ -622,6 +690,8 @@ void ExternalAppsTab::buildExistingCommandRow(const UserCommand& cmd) {
   btnRow->addWidget(updateBtn);
   btnRow->addWidget(deleteBtn);
   form->addRow(QString(), btnRow);
+
+  // Tab 順は rebuildCustomCommandTabOrder() でまとめて再構築する。
 
   // 追加フォームの上に挿入する。m_customRowsLayout は m_addCmdBox とは別の
   // レイアウトなので、末尾に追加 = 追加フォームの直上に挿入される。
@@ -669,10 +739,11 @@ void ExternalAppsTab::buildExistingCommandRow(const UserCommand& cmd) {
     const QString shown = nameEdit->text().trimmed().isEmpty()
                             ? tr("(Unnamed)")
                             : nameEdit->text().trimmed();
-    if (QMessageBox::question(this, tr("Remove Command"),
-          tr("Remove user command \"%1\"?").arg(shown),
-          QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
-        != QMessageBox::Yes) {
+    // confirm() を使うことで Tab フォーカス、Y/N 単押し、Enter / Esc 全部に
+    // 対応する (macOS の Full Keyboard Access 設定にも依存しない)。
+    if (!confirm(this, tr("Remove Command"),
+                 tr("Remove user command \"%1\"?").arg(shown),
+                 /*defaultYes=*/false)) {
       return;
     }
     // モデルから削除
@@ -691,6 +762,8 @@ void ExternalAppsTab::buildExistingCommandRow(const UserCommand& cmd) {
     }
     box->setParent(nullptr);
     box->deleteLater();
+    // Tab 順を再構築 (削除した行を抜いた状態に揃える)
+    rebuildCustomCommandTabOrder();
   });
 
   CustomCommandRow row;
@@ -698,9 +771,15 @@ void ExternalAppsTab::buildExistingCommandRow(const UserCommand& cmd) {
   row.box              = box;
   row.nameEdit         = nameEdit;
   row.programEdit      = programEdit;
+  row.programBrowse    = programBrowse;
   row.argsEdit         = argsEdit;
   row.showInToolsCheck = showCheck;
+  row.testBtn          = testBtn;
+  row.updateBtn        = updateBtn;
+  row.deleteBtn        = deleteBtn;
   m_customRows.append(row);
+
+  rebuildCustomCommandTabOrder();
 }
 
 void ExternalAppsTab::flushCustomCommandRowsToModel() {
@@ -771,6 +850,22 @@ void ExternalAppsTab::onAddCommandClicked() {
   m_addCmdArgs->clear();
   m_addCmdShowInTools->setChecked(true);
   m_addCmdName->setFocus();
+}
+
+bool ExternalAppsTab::eventFilter(QObject* watched, QEvent* event) {
+  // makeBrowseButton() で installEventFilter された Browse 用 QToolButton に
+  // 対し、Enter / Return キーを Space と同じ「click」扱いにする。
+  if (event->type() == QEvent::KeyPress) {
+    if (auto* btn = qobject_cast<QToolButton*>(watched)) {
+      auto* keyEvent = static_cast<QKeyEvent*>(event);
+      const int key = keyEvent->key();
+      if (key == Qt::Key_Return || key == Qt::Key_Enter) {
+        btn->animateClick();  // 少し光らせつつ clicked() を発火
+        return true;          // イベント消費 (デフォルトの Return 動作を抑止)
+      }
+    }
+  }
+  return QWidget::eventFilter(watched, event);
 }
 
 } // namespace Farman

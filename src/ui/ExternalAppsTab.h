@@ -26,6 +26,11 @@ public:
 
   void save();
 
+protected:
+  // Browse 用 QToolButton 群に対し、Enter / Return キーでもクリック扱いになる
+  // ように KeyPress を捕捉する。デフォルトでは Space しか効かないため。
+  bool eventFilter(QObject* watched, QEvent* event) override;
+
 private slots:
   void onBrowseTerminalProgram();
   void onBrowseEditorProgram();
@@ -105,17 +110,21 @@ private:
   QPushButton*  m_addCmdAddButton    = nullptr;
 
   // 既存コマンド 1 件ぶんのウィジェット束。lambda の per-row connect を
-  // 配線する都合上、box (= QGroupBox*) と入力ウィジェット 4 つだけ覚える。
-  // 並び順は m_nonBuiltinUserCommands と一致 (= UI 表示順)。Update / Test
-  // 時はこのウィジェットから値を読み、id (= UserCommand.id) で
-  // m_nonBuiltinUserCommands を引き当てて更新する。
+  // 配線する都合上、box (= QGroupBox*) と全フォーカス可能ウィジェットを
+  // 持つ。並び順は m_nonBuiltinUserCommands と一致 (= UI 表示順)。
+  // Update / Test 時はこのウィジェットから値を読み、id (= UserCommand.id)
+  // で m_nonBuiltinUserCommands を引き当てて更新する。
   struct CustomCommandRow {
-    QString    id;
-    QWidget*   box              = nullptr;   // QGroupBox 実体
-    QLineEdit* nameEdit         = nullptr;
-    QLineEdit* programEdit      = nullptr;
-    QLineEdit* argsEdit         = nullptr;
-    QCheckBox* showInToolsCheck = nullptr;
+    QString      id;
+    QWidget*     box              = nullptr;   // QGroupBox 実体
+    QLineEdit*   nameEdit         = nullptr;
+    QLineEdit*   programEdit      = nullptr;
+    QToolButton* programBrowse    = nullptr;
+    QLineEdit*   argsEdit         = nullptr;
+    QCheckBox*   showInToolsCheck = nullptr;
+    QPushButton* testBtn          = nullptr;
+    QPushButton* updateBtn        = nullptr;
+    QPushButton* deleteBtn        = nullptr;
   };
   QList<CustomCommandRow> m_customRows;
 
@@ -128,6 +137,11 @@ private:
   // 各既存行のウィジェット内容を m_nonBuiltinUserCommands へ反映する。
   // save() 直前に呼び、未押下の「更新」ボタンの内容も拾うようにする。
   void flushCustomCommandRowsToModel();
+  // Tab 順を「ターミナル → エディタ → 既存ユーザー定義コマンド 1, 2 ... → 新規
+  // コマンド追加フォーム」に揃える。動的に追加 / 削除された行はデフォルト
+  // ではチェーンの末尾に積まれてしまうので、行を増減するたびに本関数で
+  // 全体を巻き直す。
+  void rebuildCustomCommandTabOrder();
 };
 
 } // namespace Farman
