@@ -100,6 +100,7 @@ qt_add_executable(farman
   src/core/workers/PropertiesWorker.cpp
   src/core/workers/ArchiveCreateWorker.cpp
   src/core/workers/ArchiveExtractWorker.cpp
+  src/core/workers/ArchiveExtractEntriesWorker.cpp
   src/model/FileListModel.cpp
   src/viewer/ViewerDispatcher.cpp
   src/viewer/TextView.cpp

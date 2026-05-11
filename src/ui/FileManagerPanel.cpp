@@ -13,6 +13,7 @@
 #include "ExtractArchiveDialog.h"
 #include "core/workers/ArchiveCreateWorker.h"
 #include "core/workers/ArchiveExtractWorker.h"
+#include "core/workers/ArchiveExtractEntriesWorker.h"
 #include "model/FileListModel.h"
 #include "core/FileItem.h"
 #include "core/ArchiveContext.h"
@@ -32,6 +33,7 @@
 #include <QInputDialog>
 #include <QLocale>
 #include <QMessageBox>
+#include <QSet>
 #include <QSplitter>
 #include <QTemporaryDir>
 #include <QUrl>
@@ -1143,8 +1145,97 @@ void FileManagerPanel::copySelectedFiles() {
   FileListPane* srcPane = activePane();
   FileListPane* destPane = (m_activePane == PaneType::Left) ? m_rightPane : m_leftPane;
 
-  FileListModel* srcModel = srcPane->model();
+  FileListModel* srcModel  = srcPane->model();
+  FileListModel* destModel = destPane->model();
   QString destDir = destPane->currentPath();
+
+  // ── アーカイブ書込ガード ──────────────────
+  // 反対パネルがアーカイブモードのときは「アーカイブ内に書き込み」になるので拒否。
+  if (destModel->isInArchiveMode()) {
+    QMessageBox::warning(this, tr("Read-only archive"),
+      tr("Cannot copy into a read-only archive."));
+    return;
+  }
+
+  // ── アーカイブからの抽出コピー ──────────────────
+  // srcPane がアーカイブモードのときは、選択エントリだけを反対パネルに展開する。
+  if (srcModel->isInArchiveMode()) {
+    // 選択エントリを集める (なければカーソル行 1 件、".." 除く)。
+    // アーカイブモードでは selectedFilePaths() が "<archive>!/..." 形式の絶対パスを
+    // 返してくるので、ここでは ArchiveEntry 経由で pathInArchive を集める。
+    QStringList selFiles;
+    QStringList selDirs;
+    auto addItem = [&](const FileItem* it) {
+      if (!it || it->isDotDot()) return;
+      const ArchiveEntry* ae = it->archiveEntry();
+      if (!ae) return;
+      if (ae->isDir) selDirs.append(ae->pathInArchive);
+      else           selFiles.append(ae->pathInArchive);
+    };
+    bool anySelected = false;
+    for (const FileItem* it : srcModel->selectedItems()) {
+      anySelected = true;
+      addItem(it);
+    }
+    if (!anySelected) {
+      const QModelIndex cur = srcPane->view()->currentIndex();
+      if (cur.isValid()) addItem(srcModel->itemAt(cur));
+    }
+    if (selFiles.isEmpty() && selDirs.isEmpty()) return;
+
+    const QString archiveAbs   = srcModel->archivePath();
+    // カレントアーカイブ内ディレクトリを worker に渡す (先頭 '/' は付かない形式)。
+    QString innerCurrent = srcModel->archiveInnerPath();
+    while (innerCurrent.startsWith(QLatin1Char('/'))) innerCurrent.remove(0, 1);
+    while (innerCurrent.endsWith(QLatin1Char('/')))   innerCurrent.chop(1);
+
+    // 進捗ダイアログの「N / M files」表示用に、展開対象エントリ数を事前計算。
+    // ArchiveContext のメモリ上 entries を走査するだけなので軽量。
+    // 判定ロジックは worker と一致させる: ファイル単独 / ディレクトリ単独 /
+    // ディレクトリ prefix 配下のいずれかにマッチすればカウント。
+    const QSet<QString> fileSet(selFiles.cbegin(), selFiles.cend());
+    const QSet<QString> dirSet(selDirs.cbegin(),  selDirs.cend());
+    QStringList dirPrefixes;
+    for (const QString& d : selDirs) dirPrefixes.append(d + QLatin1Char('/'));
+    int filesTotal = 0;
+    if (const ArchiveContext* ctx = srcModel->archiveContext()) {
+      for (auto it = ctx->entries.cbegin(); it != ctx->entries.cend(); ++it) {
+        const QString& p = it.key();
+        bool match = fileSet.contains(p) || dirSet.contains(p);
+        if (!match) {
+          for (const QString& pre : dirPrefixes) {
+            if (p.startsWith(pre)) { match = true; break; }
+          }
+        }
+        if (match) ++filesTotal;
+      }
+    }
+
+    const int totalCount = selFiles.size() + selDirs.size();
+
+    auto* worker = new ArchiveExtractEntriesWorker(
+      archiveAbs, selFiles, selDirs, innerCurrent, destDir, filesTotal, this);
+    ProgressDialog* dialog = new ProgressDialog(tr("Extracting files..."), this);
+    dialog->setWorker(worker);
+
+    connect(worker, &WorkerBase::finished, this,
+      [this, srcPane, destPane, archiveAbs, totalCount](bool ok) {
+        Logger::instance().log(ok ? Logger::Info : Logger::Error,
+          QStringLiteral("Archive copy %1: %2 entry/entries from %3")
+            .arg(ok ? QStringLiteral("done") : QStringLiteral("failed"))
+            .arg(totalCount)
+            .arg(archiveAbs));
+        // 反対パネル (展開先) だけ refresh。srcPane はアーカイブのままなので
+        // 内容は変わらない。
+        destPane->setPath(destPane->currentPath());
+        srcPane->model()->setSelectedAll(false);
+        activePane()->view()->setFocus();
+      });
+
+    worker->start();
+    dialog->exec();
+    return;
+  }
 
   // Get selected files, or current item if no selection
   QStringList selectedFiles = srcModel->selectedFilePaths();
@@ -1270,6 +1361,12 @@ void FileManagerPanel::moveSelectedFiles() {
   FileListPane* destPane = (m_activePane == PaneType::Left) ? m_rightPane : m_leftPane;
 
   FileListModel* srcModel = srcPane->model();
+  // アーカイブモードでは「移動」は両側成立しない (アーカイブが read-only)。
+  if (srcModel->isInArchiveMode() || destPane->model()->isInArchiveMode()) {
+    QMessageBox::warning(this, tr("Read-only archive"),
+      tr("Cannot move files to or from a read-only archive."));
+    return;
+  }
   QString destDir = destPane->currentPath();
 
   // Get selected files, or current item if no selection
@@ -1395,6 +1492,12 @@ void FileManagerPanel::deleteSelectedFiles() {
   FileListPane* srcPane = activePane();
   FileListModel* srcModel = srcPane->model();
 
+  if (srcModel->isInArchiveMode()) {
+    QMessageBox::warning(this, tr("Read-only archive"),
+      tr("Cannot delete entries inside a read-only archive."));
+    return;
+  }
+
   // Get selected files, or current item if no selection
   QStringList selectedFiles = srcModel->selectedFilePaths();
   if (selectedFiles.isEmpty()) {
@@ -1495,6 +1598,11 @@ void FileManagerPanel::deleteSelectedFiles() {
 
 void FileManagerPanel::createDirectory() {
   FileListPane* srcPane = activePane();
+  if (srcPane->model()->isInArchiveMode()) {
+    QMessageBox::warning(this, tr("Read-only archive"),
+      tr("Cannot create a directory inside a read-only archive."));
+    return;
+  }
   QString currentPath = srcPane->currentPath();
 
   // Ask for directory name
@@ -1543,6 +1651,11 @@ void FileManagerPanel::createDirectory() {
 
 void FileManagerPanel::createFile() {
   FileListPane* srcPane = activePane();
+  if (srcPane->model()->isInArchiveMode()) {
+    QMessageBox::warning(this, tr("Read-only archive"),
+      tr("Cannot create a new file inside a read-only archive."));
+    return;
+  }
   QString currentPath = srcPane->currentPath();
 
   bool ok = false;
@@ -1598,6 +1711,12 @@ void FileManagerPanel::changeAttributes() {
   FileListPane* srcPane = activePane();
   FileListModel* model = srcPane->model();
 
+  if (model->isInArchiveMode()) {
+    QMessageBox::warning(this, tr("Read-only archive"),
+      tr("Cannot change attributes of entries inside a read-only archive."));
+    return;
+  }
+
   // 選択 or カレントのファイル/ディレクトリのパスを収集
   QStringList paths = model->selectedFilePaths();
   if (paths.isEmpty()) {
@@ -1638,6 +1757,19 @@ void FileManagerPanel::createArchive() {
   FileListPane* srcPane  = activePane();
   FileListPane* destPane = (m_activePane == PaneType::Left) ? m_rightPane : m_leftPane;
   FileListModel* srcModel = srcPane->model();
+
+  // アーカイブモード中はソースが仮想 FS の中なので圧縮対象を選べない。
+  // 反対パネル側がアーカイブモードなら書き込み先として無効。
+  if (srcModel->isInArchiveMode()) {
+    QMessageBox::warning(this, tr("Read-only archive"),
+      tr("Cannot create an archive from entries inside another archive."));
+    return;
+  }
+  if (destPane->model()->isInArchiveMode()) {
+    QMessageBox::warning(this, tr("Read-only archive"),
+      tr("Cannot write a new archive into a read-only archive."));
+    return;
+  }
 
   // 選択ファイル or カレント
   QStringList paths = srcModel->selectedFilePaths();
@@ -1711,6 +1843,21 @@ void FileManagerPanel::extractArchive() {
   FileListPane* srcPane  = activePane();
   FileListPane* destPane = (m_activePane == PaneType::Left) ? m_rightPane : m_leftPane;
   FileListModel* srcModel = srcPane->model();
+
+  // アーカイブの中の "アーカイブ" を `u` で展開しようとしているケース。
+  // 仮想エントリを直接 libarchive に渡せないので拒否する。
+  // (アーカイブ内のサブアーカイブを取り出したい場合は、まず c で
+  //  反対パネルに展開してからそちらで u する)。
+  if (srcModel->isInArchiveMode()) {
+    QMessageBox::warning(this, tr("Read-only archive"),
+      tr("Cannot extract an archive that lives inside another archive."));
+    return;
+  }
+  if (destPane->model()->isInArchiveMode()) {
+    QMessageBox::warning(this, tr("Read-only archive"),
+      tr("Cannot extract into a read-only archive."));
+    return;
+  }
 
   QModelIndex currentIndex = srcPane->view()->currentIndex();
   if (!currentIndex.isValid()) return;
@@ -1855,6 +2002,12 @@ void FileManagerPanel::bulkRenameItems() {
   FileListPane* srcPane  = activePane();
   FileListModel* srcModel = srcPane->model();
 
+  if (srcModel->isInArchiveMode()) {
+    QMessageBox::warning(this, tr("Read-only archive"),
+      tr("Cannot rename entries inside a read-only archive."));
+    return;
+  }
+
   // 対象集め: 選択ファイルがあればそれら、無ければカーソル行 1 件
   QStringList names;
   for (int i = 0; i < srcModel->rowCount(); ++i) {
@@ -1914,6 +2067,12 @@ void FileManagerPanel::bulkRenameItems() {
 void FileManagerPanel::renameItem() {
   FileListPane* srcPane = activePane();
   FileListModel* srcModel = srcPane->model();
+
+  if (srcModel->isInArchiveMode()) {
+    QMessageBox::warning(this, tr("Read-only archive"),
+      tr("Cannot rename an entry inside a read-only archive."));
+    return;
+  }
 
   QModelIndex currentIndex = srcPane->view()->currentIndex();
   if (!currentIndex.isValid()) {
