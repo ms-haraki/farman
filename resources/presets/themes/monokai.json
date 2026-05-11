@@ -5,43 +5,91 @@
   "description": "Wimer Hazenberg's Monokai palette adapted for farman. Dark background with vivid green / pink / yellow accents.",
   "dark": {
     "categories": {
-      "normal":            { "normal": { "foreground": "#fff8f8f2", "bold": false },
-                             "hidden": { "foreground": "#ff75715e", "bold": false },
-                             "directory": { "foreground": "#ff66d9ef", "bold": true } },
-      "selected":          { "normal": { "foreground": "#ff272822", "background": "#fff8f8f2", "bold": false },
-                             "hidden": { "foreground": "#ff272822", "background": "#fff8f8f2", "bold": false },
-                             "directory": { "foreground": "#ff272822", "background": "#fff8f8f2", "bold": true } },
-      "inactiveNormal":    { "normal": { "foreground": "#ff75715e", "bold": false },
-                             "hidden": { "foreground": "#ff5a5747", "bold": false },
-                             "directory": { "foreground": "#ff4ba2b3", "bold": true } },
-      "inactiveSelected":  { "normal": { "foreground": "#ff272822", "background": "#ff75715e", "bold": false },
-                             "hidden": { "foreground": "#ff272822", "background": "#ff75715e", "bold": false },
-                             "directory": { "foreground": "#ff272822", "background": "#ff75715e", "bold": true } }
+      "normal": {
+        "normal": {
+          "foreground": "#fff8f8f2",
+          "bold": false
+        },
+        "hidden": {
+          "foreground": "#ff75715e",
+          "bold": false
+        },
+        "directory": {
+          "foreground": "#ff66d9ef",
+          "bold": true
+        }
+      },
+      "selected": {
+        "normal": {
+          "foreground": "#ff272822",
+          "background": "#fff8f8f2",
+          "bold": false
+        },
+        "hidden": {
+          "foreground": "#ff272822",
+          "background": "#fff8f8f2",
+          "bold": false
+        },
+        "directory": {
+          "foreground": "#ff272822",
+          "background": "#fff8f8f2",
+          "bold": true
+        }
+      },
+      "inactiveNormal": {
+        "normal": {
+          "foreground": "#ff75715e",
+          "bold": false
+        },
+        "hidden": {
+          "foreground": "#ff5a5747",
+          "bold": false
+        },
+        "directory": {
+          "foreground": "#ff4ba2b3",
+          "bold": true
+        }
+      },
+      "inactiveSelected": {
+        "normal": {
+          "foreground": "#ff272822",
+          "background": "#ff75715e",
+          "bold": false
+        },
+        "hidden": {
+          "foreground": "#ff272822",
+          "background": "#ff75715e",
+          "bold": false
+        },
+        "directory": {
+          "foreground": "#ff272822",
+          "background": "#ff75715e",
+          "bold": true
+        }
+      }
     },
-    "addressForeground":  "#fff8f8f2",
-    "addressBackground":  "#ff3e3d32",
-    "cursorActive":       "#fff8f8f2",
-    "cursorInactive":     "#ff75715e",
+    "addressForeground": "#fff8f8f2",
+    "addressBackground": "#ff3e3d32",
+    "cursorActive": "#fff8f8f2",
+    "cursorInactive": "#ff75715e",
     "textViewer": {
-      "normalFg":     "#fff8f8f2",
-      "normalBg":     "#ff272822",
-      "selectedFg":   "#ff272822",
-      "selectedBg":   "#fff8f8f2",
+      "normalFg": "#fff8f8f2",
+      "normalBg": "#ff272822",
+      "selectedFg": "#ff272822",
+      "selectedBg": "#fff8f8f2",
       "lineNumberFg": "#ff75715e",
       "lineNumberBg": "#ff3e3d32"
     },
     "imageViewer": {
-      "solidColor":    "#ff272822",
-      "checkerColor1": "#ff3e3d32",
-      "checkerColor2": "#ff49483e"
+      "solidColor": "#ff272822"
     },
     "binaryViewer": {
-      "normalFg":   "#fff8f8f2",
-      "normalBg":   "#ff272822",
+      "normalFg": "#fff8f8f2",
+      "normalBg": "#ff272822",
       "selectedFg": "#ff272822",
       "selectedBg": "#fff8f8f2",
-      "addressFg":  "#ff75715e",
-      "addressBg":  "#ff3e3d32"
+      "addressFg": "#ff75715e",
+      "addressBg": "#ff3e3d32"
     }
   }
 }

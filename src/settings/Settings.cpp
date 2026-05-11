@@ -303,8 +303,7 @@ ColorScheme Settings::collectThemeFields() const {
   s.textViewerLineNumberBg  = m_textViewerLineNumberBg;
 
   s.imageViewerSolidColor   = m_imageViewerSolidColor;
-  s.imageViewerCheckerColor1= m_imageViewerCheckerColor1;
-  s.imageViewerCheckerColor2= m_imageViewerCheckerColor2;
+  // checkerColor1/2 はテーマ非依存のため ColorScheme には載せない。
 
   s.binaryViewerFont        = m_binaryViewerFont;
   s.binaryViewerNormalFg    = m_binaryViewerNormalFg;
@@ -346,8 +345,9 @@ void Settings::applyThemeFields(const ColorScheme& s) {
   m_textViewerLineNumberBg  = s.textViewerLineNumberBg;
 
   m_imageViewerSolidColor    = s.imageViewerSolidColor;
-  m_imageViewerCheckerColor1 = s.imageViewerCheckerColor1;
-  m_imageViewerCheckerColor2 = s.imageViewerCheckerColor2;
+  // checkerColor1/2 はテーマ非依存。Settings.flat フィールドが既にユーザー
+  // 設定の最新値を持っているので、ここでは上書きしない (load 経路は
+  // top-level imageViewer.checker* に限定する)。
 
   m_binaryViewerFont        = s.binaryViewerFont;
   m_binaryViewerNormalFg    = s.binaryViewerNormalFg;

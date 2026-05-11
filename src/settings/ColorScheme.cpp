@@ -92,8 +92,6 @@ ColorScheme defaultLightScheme() {
 
   // 画像ビュアー
   s.imageViewerSolidColor   = QColor(Qt::white);
-  s.imageViewerCheckerColor1= QColor(0xC8, 0xC8, 0xC8);
-  s.imageViewerCheckerColor2= QColor(0xF0, 0xF0, 0xF0);
 
   // バイナリビュアー
   s.binaryViewerFont        = defaultMonospaceFont();
@@ -138,8 +136,6 @@ ColorScheme defaultDarkScheme() {
 
   // 画像ビュアー: 透明部分の色も暗めに
   s.imageViewerSolidColor   = QColor(0x1E, 0x1E, 0x1E);
-  s.imageViewerCheckerColor1= QColor(0x2A, 0x2A, 0x2A);
-  s.imageViewerCheckerColor2= QColor(0x35, 0x35, 0x35);
 
   // バイナリビュアー
   s.binaryViewerFont        = defaultMonospaceFont();
@@ -303,8 +299,8 @@ QJsonObject colorSchemeToJson(const ColorScheme& s) {
   // ── 画像ビュアー (色のみ)
   QJsonObject iv;
   iv["solidColor"]    = colorString(s.imageViewerSolidColor);
-  iv["checkerColor1"] = colorString(s.imageViewerCheckerColor1);
-  iv["checkerColor2"] = colorString(s.imageViewerCheckerColor2);
+  // checkerColor1/2 はテーマ非依存。ここでは保存しない (Settings の
+  // top-level "imageViewer" ブロックに 1 セットだけ保存される)。
   o["imageViewer"] = iv;
 
   // ── バイナリビュアー
@@ -365,9 +361,10 @@ void colorSchemeFromJson(const QJsonObject& o, ColorScheme& s) {
 
   if (o.contains("imageViewer")) {
     QJsonObject iv = o.value("imageViewer").toObject();
-    readColor(iv, "solidColor",    s.imageViewerSolidColor);
-    readColor(iv, "checkerColor1", s.imageViewerCheckerColor1);
-    readColor(iv, "checkerColor2", s.imageViewerCheckerColor2);
+    readColor(iv, "solidColor", s.imageViewerSolidColor);
+    // checkerColor1/2 はテーマ非依存のため、ここでは読み飛ばす (旧形式の
+    // themes.{light,dark}.imageViewer.checker* も後方互換のため明示的に
+    // 無視する。値は Settings の top-level imageViewer 側で管理する)。
   }
 
   if (o.contains("binaryViewer")) {

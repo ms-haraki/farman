@@ -71,9 +71,10 @@ struct ColorScheme {
   QColor  textViewerLineNumberBg;
 
   // ── 画像ビュアー (透明部分の色) ────────────
+  // Solid 色のみテーマ依存。Checker 柄は「透明部分のインジケータ」として
+  // テーマに依存しない固定値を使うため、ここには持たない (Settings の
+  // フラットフィールド m_imageViewerCheckerColor1/2 に直接保存される)。
   QColor  imageViewerSolidColor;
-  QColor  imageViewerCheckerColor1;
-  QColor  imageViewerCheckerColor2;
 
   // ── バイナリビュアー ───────────────────────
   QFont   binaryViewerFont;

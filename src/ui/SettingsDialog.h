@@ -13,7 +13,6 @@ class KeybindingTab;
 class AppearanceTab;
 class BehaviorTab;
 class GeneralTab;
-class ViewersTab;
 class ExternalAppsTab;
 
 class SettingsDialog : public QDialog {
@@ -58,7 +57,6 @@ private:
   AppearanceTab*    m_appearanceTab;
   BehaviorTab*      m_behaviorTab;
   GeneralTab*       m_generalTab;
-  ViewersTab*       m_viewersTab;
   ExternalAppsTab*  m_externalAppsTab;
   QDialogButtonBox* m_buttonBox;
   QShortcut*      m_clearShortcut;

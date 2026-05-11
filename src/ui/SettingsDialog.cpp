@@ -3,7 +3,6 @@
 #include "AppearanceTab.h"
 #include "BehaviorTab.h"
 #include "GeneralTab.h"
-#include "ViewersTab.h"
 #include "ExternalAppsTab.h"
 #include "settings/Settings.h"
 #include "keybinding/KeyBindingManager.h"
@@ -20,6 +19,7 @@
 #include <QListWidget>
 #include <QProcess>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QShortcut>
 #include <QSpinBox>
 #include <QStackedWidget>
@@ -40,7 +40,6 @@ SettingsDialog::SettingsDialog(const QString& leftCurrentPath,
   , m_keybindingTab(nullptr)
   , m_appearanceTab(nullptr)
   , m_behaviorTab(nullptr)
-  , m_viewersTab(nullptr)
   , m_externalAppsTab(nullptr)
   , m_buttonBox(nullptr)
   , m_leftCurrentPath(leftCurrentPath)
@@ -52,7 +51,9 @@ SettingsDialog::SettingsDialog(const QString& leftCurrentPath,
 
 void SettingsDialog::setupUi() {
   setWindowTitle(tr("Settings"));
-  resize(900, 600);  // サイドメニュー分を加味してやや横長に
+  // 横方向はスクロールしないので、ファイル種別カラーや拡張子 LineEdit が
+  // 1 行に収まる幅を確保する。縦は QScrollArea でラップしているので超えても OK。
+  resize(1000, 620);
 
   // メインは上下 2 段: 上 = サイドメニュー + ページ、下 = ボタン行
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
@@ -83,28 +84,36 @@ void SettingsDialog::setupUi() {
   contentLayout->addWidget(m_stackedWidget, /*stretch*/ 1);
 
   // ── 各ページ生成 ──
+  // 旧 ViewersTab はビュアー設定を AppearanceTab のサブタブ
+  // (Main/Text/Binary/Image) へ統合した結果、廃止。Viewer Display Mode
+  // (Inline/External) は BehaviorTab へ移動した。
   m_keybindingTab   = new KeybindingTab(this);
   m_appearanceTab   = new AppearanceTab(this);
   m_behaviorTab     = new BehaviorTab(this);
   m_generalTab      = new GeneralTab(m_leftCurrentPath, m_rightCurrentPath,
                                      m_currentWindowSize, m_currentWindowPosition,
                                      this);
-  m_viewersTab      = new ViewersTab(this);
   m_externalAppsTab = new ExternalAppsTab(this);
 
   // ページとメニュー項目を 1:1 で並べる。順序は旧 TabWidget と同じ。
   // 外部アプリはキーバインドと密結合 (T / E などのキーが指す先) なので
   // Keybindings の直前に並べる。
+  // 各ページは QScrollArea でラップする。これにより縦に長いタブ (主に
+  // Appearance のサブタブ群) でも縦スクロールで全項目にアクセスできる。
   auto addPage = [this](QWidget* page, const QString& label) {
     m_sideMenu->addItem(label);
-    m_stackedWidget->addWidget(page);
+    QScrollArea* scroll = new QScrollArea(this);
+    scroll->setWidgetResizable(true);            // page を scroll の幅に追従
+    scroll->setFrameShape(QFrame::NoFrame);      // 余計な枠線を出さない
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);  // 横は不要
+    scroll->setWidget(page);
+    m_stackedWidget->addWidget(scroll);
   };
   addPage(m_generalTab,      tr("1. General"));
   addPage(m_behaviorTab,     tr("2. Behavior"));
   addPage(m_appearanceTab,   tr("3. Appearance"));
-  addPage(m_viewersTab,      tr("4. Viewers"));
-  addPage(m_externalAppsTab, tr("5. External Apps"));
-  addPage(m_keybindingTab,   tr("6. Keybindings"));
+  addPage(m_externalAppsTab, tr("4. External Apps"));
+  addPage(m_keybindingTab,   tr("5. Keybindings"));
 
   m_sideMenu->setCurrentRow(0);
   connect(m_sideMenu, &QListWidget::currentRowChanged,
@@ -116,7 +125,7 @@ void SettingsDialog::setupUi() {
   // 依存させたくないので、各ページ内の操作対象ウィジェットに対して明示的に
   // StrongFocus を設定する。Tab キーで全項目を辿れるようにするのが目的。
   const QList<QWidget*> tabRoots = {
-    m_generalTab, m_behaviorTab, m_appearanceTab, m_viewersTab,
+    m_generalTab, m_behaviorTab, m_appearanceTab,
     m_externalAppsTab, m_keybindingTab
   };
   for (QWidget* root : tabRoots) {
@@ -203,7 +212,6 @@ void SettingsDialog::onApply() {
   m_appearanceTab->save();
   m_behaviorTab->save();
   m_generalTab->save();
-  m_viewersTab->save();
   m_externalAppsTab->save();
 
   // Save settings to file

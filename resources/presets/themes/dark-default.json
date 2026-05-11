@@ -6,43 +6,91 @@
   "dark": {
     "fileListRowHeight": 0,
     "categories": {
-      "normal":            { "normal": { "foreground": "#ffe0e0e0", "bold": false },
-                             "hidden": { "foreground": "#ff808080", "bold": false },
-                             "directory": { "foreground": "#ff6e9fff", "bold": true } },
-      "selected":          { "normal": { "foreground": "#ffffffff", "background": "#ff264f78", "bold": false },
-                             "hidden": { "foreground": "#ffffffff", "background": "#ff264f78", "bold": false },
-                             "directory": { "foreground": "#ffffffff", "background": "#ff264f78", "bold": true } },
-      "inactiveNormal":    { "normal": { "foreground": "#ff909090", "bold": false },
-                             "hidden": { "foreground": "#ff606060", "bold": false },
-                             "directory": { "foreground": "#ff5c79b8", "bold": true } },
-      "inactiveSelected":  { "normal": { "foreground": "#ffffffff", "background": "#ff3a3f4a", "bold": false },
-                             "hidden": { "foreground": "#ffffffff", "background": "#ff3a3f4a", "bold": false },
-                             "directory": { "foreground": "#ffffffff", "background": "#ff3a3f4a", "bold": true } }
+      "normal": {
+        "normal": {
+          "foreground": "#ffe0e0e0",
+          "bold": false
+        },
+        "hidden": {
+          "foreground": "#ff808080",
+          "bold": false
+        },
+        "directory": {
+          "foreground": "#ff6e9fff",
+          "bold": true
+        }
+      },
+      "selected": {
+        "normal": {
+          "foreground": "#ffffffff",
+          "background": "#ff264f78",
+          "bold": false
+        },
+        "hidden": {
+          "foreground": "#ffffffff",
+          "background": "#ff264f78",
+          "bold": false
+        },
+        "directory": {
+          "foreground": "#ffffffff",
+          "background": "#ff264f78",
+          "bold": true
+        }
+      },
+      "inactiveNormal": {
+        "normal": {
+          "foreground": "#ff909090",
+          "bold": false
+        },
+        "hidden": {
+          "foreground": "#ff606060",
+          "bold": false
+        },
+        "directory": {
+          "foreground": "#ff5c79b8",
+          "bold": true
+        }
+      },
+      "inactiveSelected": {
+        "normal": {
+          "foreground": "#ffffffff",
+          "background": "#ff3a3f4a",
+          "bold": false
+        },
+        "hidden": {
+          "foreground": "#ffffffff",
+          "background": "#ff3a3f4a",
+          "bold": false
+        },
+        "directory": {
+          "foreground": "#ffffffff",
+          "background": "#ff3a3f4a",
+          "bold": true
+        }
+      }
     },
-    "addressForeground":  "#ffe0e0e0",
-    "addressBackground":  "#ff303030",
-    "cursorActive":       "#ffe0e0e0",
-    "cursorInactive":     "#ff707070",
+    "addressForeground": "#ffe0e0e0",
+    "addressBackground": "#ff303030",
+    "cursorActive": "#ffe0e0e0",
+    "cursorInactive": "#ff707070",
     "textViewer": {
-      "normalFg":     "#ffe0e0e0",
-      "normalBg":     "#ff1e1e1e",
-      "selectedFg":   "#ffffffff",
-      "selectedBg":   "#ff264f78",
+      "normalFg": "#ffe0e0e0",
+      "normalBg": "#ff1e1e1e",
+      "selectedFg": "#ffffffff",
+      "selectedBg": "#ff264f78",
       "lineNumberFg": "#ff808080",
       "lineNumberBg": "#ff252526"
     },
     "imageViewer": {
-      "solidColor":    "#ff1e1e1e",
-      "checkerColor1": "#ff2a2a2a",
-      "checkerColor2": "#ff353535"
+      "solidColor": "#ff1e1e1e"
     },
     "binaryViewer": {
-      "normalFg":   "#ffe0e0e0",
-      "normalBg":   "#ff1e1e1e",
+      "normalFg": "#ffe0e0e0",
+      "normalBg": "#ff1e1e1e",
       "selectedFg": "#ffffffff",
       "selectedBg": "#ff264f78",
-      "addressFg":  "#ff808080",
-      "addressBg":  "#ff252526"
+      "addressFg": "#ff808080",
+      "addressBg": "#ff252526"
     }
   }
 }

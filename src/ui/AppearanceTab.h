@@ -14,6 +14,8 @@ class QRadioButton;
 class QGridLayout;
 class QSpinBox;
 class QLabel;
+class QLineEdit;
+class QTabWidget;
 
 namespace Farman {
 
@@ -25,6 +27,23 @@ public:
   ~AppearanceTab() override = default;
 
   void save();
+
+  // 「今ダイアログ内でどちら側 (Light/Dark) のスキームを編集しているか」を返す。
+  // 他タブから編集対象側を取得するためのアクセサ (現状は未使用 — ViewersTab を
+  // 統合した結果 connection が不要になったが API は残しておく)。
+  ThemeMode editingSide() const { return m_dialogEditingSide; }
+
+protected:
+  // m_subTabs の QTabBar に対する FocusIn/FocusOut を捕捉し、フォーカスが
+  // 外れたときだけ「選択中タブ」の色を淡くするための event filter。stylesheet
+  // を動的に切替えることで、フォーカス時は native の青、非フォーカス時は
+  // muted な見た目に変える。
+  bool eventFilter(QObject* watched, QEvent* event) override;
+
+signals:
+  // Mode ラジオ変更で編集対象側 (Light/Dark) が切替わったときに発火。
+  // ViewersTab がこれを受けて自分側の編集対象もスワップする。
+  void editingSideChanged(ThemeMode newSide);
 
 private slots:
   void onSelectFont();
@@ -38,6 +57,15 @@ private slots:
 private:
   void setupUi();
   void loadSettings();
+
+  // ── サブタブ構築 (メイン / テキスト / バイナリ / 画像) ─────
+  // 設定ダイアログでは Theme グループ (Mode + Preset) の下に QTabWidget を
+  // 置き、メイン (ファイルリスト) と 3 種ビュアー (Text/Binary/Image) を
+  // 切替える。各ビュアー sub-tab はかつての ViewersTab と同等の内容を持つ。
+  QWidget* buildMainPage();
+  QWidget* buildTextViewerPage();
+  QWidget* buildBinaryViewerPage();
+  QWidget* buildImageViewerPage();
 
   // ── Light / Dark スキーム編集 ─────────────────
   // ダイアログ内では Light/Dark 双方の ColorScheme をシャドーで保持する。
@@ -145,6 +173,72 @@ private:
   // 「未保存の変更を含む両側のスキームスナップショット」
   ColorScheme   m_dialogLight;
   ColorScheme   m_dialogDark;
+
+  // ── サブタブ ────────────────────────────────
+  // メイン (ファイルリスト) / テキスト / バイナリ / 画像 を切替える QTabWidget。
+  // Theme グループ (Mode + Preset) の下に置く。
+  QTabWidget*   m_subTabs = nullptr;
+
+  // ── ビュアー設定 (旧 ViewersTab から統合) ─────
+  // テーマ依存フィールド (font/colors) は loadFromScheme/saveToScheme で読み書き。
+  // テーマ非依存フィールド (拡張子/MIME/エンコーディング/zoom 等) は loadSettings
+  // と save で直接 Settings に対し読み書きする。
+  // Viewer Display Mode (Inline / External) は Behavior タブへ移動した。
+
+  // Text viewer
+  QLineEdit*   m_textExtensionsEdit       = nullptr;
+  QLineEdit*   m_textMimePatternsEdit     = nullptr;
+  QPushButton* m_textFontButton           = nullptr;
+  QFont        m_textSelectedFont;
+  QComboBox*   m_textEncodingCombo        = nullptr;
+  QCheckBox*   m_textShowLineNumbersCheck = nullptr;
+  QCheckBox*   m_textWordWrapCheck        = nullptr;
+  QPushButton* m_textNormalFgButton       = nullptr;
+  QPushButton* m_textNormalBgButton       = nullptr;
+  QPushButton* m_textSelectedFgButton     = nullptr;
+  QPushButton* m_textSelectedBgButton     = nullptr;
+  QPushButton* m_textLineNumberFgButton   = nullptr;
+  QPushButton* m_textLineNumberBgButton   = nullptr;
+  QColor       m_textNormalFgValue;
+  QColor       m_textNormalBgValue;
+  QColor       m_textSelectedFgValue;
+  QColor       m_textSelectedBgValue;
+  QColor       m_textLineNumberFgValue;
+  QColor       m_textLineNumberBgValue;
+
+  // Image viewer
+  QLineEdit*    m_imageExtensionsEdit           = nullptr;
+  QLineEdit*    m_imageMimePatternsEdit         = nullptr;
+  QComboBox*    m_imageZoomCombo                = nullptr;
+  QCheckBox*    m_imageFitToWindowCheck         = nullptr;
+  QCheckBox*    m_imageAnimationCheck           = nullptr;
+  QRadioButton* m_imageTransparencyCheckerRadio = nullptr;
+  QRadioButton* m_imageTransparencySolidRadio   = nullptr;
+  QPushButton*  m_imageCheckerColor1Button      = nullptr;
+  QPushButton*  m_imageCheckerColor2Button      = nullptr;
+  QPushButton*  m_imageSolidColorButton         = nullptr;
+  QColor        m_imageCheckerColor1Value;
+  QColor        m_imageCheckerColor2Value;
+  QColor        m_imageSolidColorValue;
+
+  // Binary viewer
+  QComboBox*   m_binaryUnitCombo        = nullptr;
+  QComboBox*   m_binaryEndianCombo      = nullptr;
+  QComboBox*   m_binaryEncodingCombo    = nullptr;
+  QPushButton* m_binaryFontButton       = nullptr;
+  QFont        m_binarySelectedFont;
+  QPushButton* m_binaryNormalFgButton   = nullptr;
+  QPushButton* m_binaryNormalBgButton   = nullptr;
+  QPushButton* m_binarySelectedFgButton = nullptr;
+  QPushButton* m_binarySelectedBgButton = nullptr;
+  QPushButton* m_binaryAddressFgButton  = nullptr;
+  QPushButton* m_binaryAddressBgButton  = nullptr;
+  QColor       m_binaryNormalFgValue;
+  QColor       m_binaryNormalBgValue;
+  QColor       m_binarySelectedFgValue;
+  QColor       m_binarySelectedBgValue;
+  QColor       m_binaryAddressFgValue;
+  QColor       m_binaryAddressBgValue;
 
   // (旧 m_pendingDateTimeFormat* は Behavior タブへ移動)
 };
