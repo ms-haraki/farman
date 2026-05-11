@@ -31,12 +31,11 @@ struct AppPreset {
 //   - Windows: 同上 + 既知の Program Files パスを補助的にチェック
 QList<AppPreset> detectInstalledPresets(const QString& kind);
 
-// 現在の Program / Arguments / Working Dir 値が、検出済みプリセットの
-// いずれかと **完全一致** すればその id を返す。一致しなければ空文字。
-// ロード時に「コンボの初期選択」を決めるのに使う。
+// 現在の Program / Arguments が、検出済みプリセットのいずれかと **完全一致**
+// すればその id を返す。一致しなければ空文字。ロード時に「コンボの初期選択」を
+// 決めるのに使う。workingDirTemplate は UI から削除したため比較対象に含めない。
 QString matchPresetId(const QList<AppPreset>& presets,
                       const QString& program,
-                      const QStringList& argsTemplate,
-                      const QString& workingDirTemplate);
+                      const QStringList& argsTemplate);
 
 } // namespace Farman

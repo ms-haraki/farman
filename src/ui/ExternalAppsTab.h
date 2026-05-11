@@ -52,11 +52,12 @@ private:
   void switchEditorToCustom();
 
   // Terminal
+  // 作業ディレクトリはアクティブペインに固定 (= UserCommand.workingDirTemplate
+  // を常に空) としたため、UI には Working Dir フィールドを持たない。
   QComboBox*   m_terminalPresetCombo    = nullptr;
   QLineEdit*   m_terminalProgramEdit    = nullptr;
   QToolButton* m_terminalProgramBrowse  = nullptr;
   QLineEdit*   m_terminalArgsEdit       = nullptr;
-  QLineEdit*   m_terminalWorkingDirEdit = nullptr;
   QPushButton* m_terminalTestButton     = nullptr;
 
   // Text Editor
@@ -64,7 +65,6 @@ private:
   QLineEdit*   m_editorProgramEdit      = nullptr;
   QToolButton* m_editorProgramBrowse    = nullptr;
   QLineEdit*   m_editorArgsEdit         = nullptr;
-  QLineEdit*   m_editorWorkingDirEdit   = nullptr;
   QPushButton* m_editorTestButton       = nullptr;
 
   // タブ構築時に検出したプリセット一覧 (Combo の userData の id から逆引きする

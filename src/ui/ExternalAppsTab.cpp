@@ -34,16 +34,15 @@ void ExternalAppsTab::setupUi() {
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
   // 「Terminal」「Text Editor」を 2 ペインの GroupBox で並べる。
-  // 各グループの先頭に「Preset」コンボを置き、選ぶと Program / Arguments /
-  // Working Dir が自動で埋まる。フィールドを手で書き換えると "(Custom)" に戻る。
-  // フェーズ 2 でユーザー定義コマンドの一覧 UI をこの下に追加する想定。
+  // 各グループの先頭に「Preset」コンボを置き、選ぶと Program / Arguments が
+  // 自動で埋まる。フィールドを手で書き換えると "(Custom)" に戻る。
+  // 作業ディレクトリは常にアクティブペインの cwd に固定 (UI から削除)。
   auto buildExtAppBox = [this](
       const QString& title,
       QComboBox*&    presetCombo,
       QLineEdit*&    programEdit,
       QToolButton*&  programBrowse,
       QLineEdit*&    argsEdit,
-      QLineEdit*&    workingDirEdit,
       QPushButton*&  testButton,
       const QString& argsPlaceholder) -> QGroupBox* {
     QGroupBox* box = new QGroupBox(title, this);
@@ -78,14 +77,6 @@ void ExternalAppsTab::setupUi() {
       "Placeholders: {dir} {otherDir} {file} {files} {name} {ext}"));
     form->addRow(tr("Arguments:"), argsEdit);
 
-    // Working dir
-    workingDirEdit = new QLineEdit(this);
-    workingDirEdit->setPlaceholderText(tr("(active pane)"));
-    workingDirEdit->setToolTip(tr(
-      "Working directory of the launched process. "
-      "Empty = the active pane's current directory."));
-    form->addRow(tr("Working Dir:"), workingDirEdit);
-
     // Test launch
     testButton = new QPushButton(tr("Test launch"), this);
     QHBoxLayout* testRow = new QHBoxLayout();
@@ -101,14 +92,14 @@ void ExternalAppsTab::setupUi() {
     tr("Terminal"),
     m_terminalPresetCombo,
     m_terminalProgramEdit, m_terminalProgramBrowse,
-    m_terminalArgsEdit, m_terminalWorkingDirEdit, m_terminalTestButton,
+    m_terminalArgsEdit, m_terminalTestButton,
     tr("e.g. --working-directory={dir}")));
 
   mainLayout->addWidget(buildExtAppBox(
     tr("Text Editor"),
     m_editorPresetCombo,
     m_editorProgramEdit, m_editorProgramBrowse,
-    m_editorArgsEdit, m_editorWorkingDirEdit, m_editorTestButton,
+    m_editorArgsEdit, m_editorTestButton,
     tr("e.g. {file}")));
 
   // 検出 + コンボ初期化。検出は同期で軽量 (10〜20 個のパス確認のみ) なので
@@ -136,17 +127,13 @@ void ExternalAppsTab::setupUi() {
   // フィールドを手で書き換え → Preset コンボを "(Custom)" に戻す。
   // textEdited はユーザーの入力でのみ発火し、setText() による反映では発火しない
   // ため、プリセット選択時の自動書き換えと衝突しない。
-  connect(m_terminalProgramEdit,    &QLineEdit::textEdited,
+  connect(m_terminalProgramEdit, &QLineEdit::textEdited,
           this, &ExternalAppsTab::switchTerminalToCustom);
-  connect(m_terminalArgsEdit,       &QLineEdit::textEdited,
+  connect(m_terminalArgsEdit,    &QLineEdit::textEdited,
           this, &ExternalAppsTab::switchTerminalToCustom);
-  connect(m_terminalWorkingDirEdit, &QLineEdit::textEdited,
-          this, &ExternalAppsTab::switchTerminalToCustom);
-  connect(m_editorProgramEdit,      &QLineEdit::textEdited,
+  connect(m_editorProgramEdit,   &QLineEdit::textEdited,
           this, &ExternalAppsTab::switchEditorToCustom);
-  connect(m_editorArgsEdit,         &QLineEdit::textEdited,
-          this, &ExternalAppsTab::switchEditorToCustom);
-  connect(m_editorWorkingDirEdit,   &QLineEdit::textEdited,
+  connect(m_editorArgsEdit,      &QLineEdit::textEdited,
           this, &ExternalAppsTab::switchEditorToCustom);
 
   // ─── ユーザー定義コマンドの Import / Export ───
@@ -196,19 +183,19 @@ void ExternalAppsTab::loadSettings() {
   const QList<UserCommand> all = settings.userCommands();
 
   auto fillExtApp = [](const UserCommand& c,
-                       QLineEdit* program, QLineEdit* args, QLineEdit* wd) {
+                       QLineEdit* program, QLineEdit* args) {
     program->setText(c.program);
     args->setText(joinArgsTemplate(c.argsTemplate));
-    wd->setText(c.workingDirTemplate);
+    // workingDirTemplate は UI に持たない (常にアクティブペイン)
   };
 
   bool gotTerm = false, gotEdit = false;
   for (const UserCommand& c : all) {
     if (c.builtin && c.builtinKind == QLatin1String("terminal") && !gotTerm) {
-      fillExtApp(c, m_terminalProgramEdit, m_terminalArgsEdit, m_terminalWorkingDirEdit);
+      fillExtApp(c, m_terminalProgramEdit, m_terminalArgsEdit);
       gotTerm = true;
     } else if (c.builtin && c.builtinKind == QLatin1String("editor") && !gotEdit) {
-      fillExtApp(c, m_editorProgramEdit, m_editorArgsEdit, m_editorWorkingDirEdit);
+      fillExtApp(c, m_editorProgramEdit, m_editorArgsEdit);
       gotEdit = true;
     } else {
       m_nonBuiltinUserCommands.append(c);
@@ -222,10 +209,10 @@ void ExternalAppsTab::loadSettings() {
     const QList<UserCommand> defaults = defaultBuiltinUserCommands();
     for (const UserCommand& d : defaults) {
       if (!gotTerm && d.builtinKind == QLatin1String("terminal")) {
-        fillExtApp(d, m_terminalProgramEdit, m_terminalArgsEdit, m_terminalWorkingDirEdit);
+        fillExtApp(d, m_terminalProgramEdit, m_terminalArgsEdit);
         gotTerm = true;
       } else if (!gotEdit && d.builtinKind == QLatin1String("editor")) {
-        fillExtApp(d, m_editorProgramEdit, m_editorArgsEdit, m_editorWorkingDirEdit);
+        fillExtApp(d, m_editorProgramEdit, m_editorArgsEdit);
         gotEdit = true;
       }
     }
@@ -237,12 +224,10 @@ void ExternalAppsTab::loadSettings() {
   // 呼ばれるが、(a) 値は既に同じなので setText が走っても変化はなく、
   // (b) "(Custom)" 選択ロジックは何もしないので副作用はない。
   auto selectMatchedPreset = [](QComboBox* combo, const QList<AppPreset>& presets,
-                                QLineEdit* program, QLineEdit* args,
-                                QLineEdit* wd) {
+                                QLineEdit* program, QLineEdit* args) {
     const QString matchedId = matchPresetId(presets,
                                             program->text().trimmed(),
-                                            splitArgsTemplate(args->text()),
-                                            wd->text().trimmed());
+                                            splitArgsTemplate(args->text()));
     int index = 0; // "(Custom)"
     for (int i = 1; i < combo->count(); ++i) {
       if (combo->itemData(i).toString() == matchedId) { index = i; break; }
@@ -251,19 +236,16 @@ void ExternalAppsTab::loadSettings() {
     combo->setCurrentIndex(index);
   };
   selectMatchedPreset(m_terminalPresetCombo, m_terminalPresets,
-                      m_terminalProgramEdit, m_terminalArgsEdit,
-                      m_terminalWorkingDirEdit);
+                      m_terminalProgramEdit, m_terminalArgsEdit);
   selectMatchedPreset(m_editorPresetCombo, m_editorPresets,
-                      m_editorProgramEdit, m_editorArgsEdit,
-                      m_editorWorkingDirEdit);
+                      m_editorProgramEdit, m_editorArgsEdit);
 }
 
 void ExternalAppsTab::save() {
   auto& settings = Settings::instance();
 
   auto buildBuiltin = [](const QString& kind, const QString& name,
-                         const QLineEdit* program, const QLineEdit* args,
-                         const QLineEdit* wd) {
+                         const QLineEdit* program, const QLineEdit* args) {
     UserCommand c;
     c.id                  = QStringLiteral("user.cmd.") + kind;
     c.name                = name;
@@ -272,17 +254,16 @@ void ExternalAppsTab::save() {
     c.showInToolsMenu     = true;
     c.program             = program->text().trimmed();
     c.argsTemplate        = splitArgsTemplate(args->text());
-    c.workingDirTemplate  = wd->text().trimmed();
+    // 作業ディレクトリは常にアクティブペイン (= empty)。
+    c.workingDirTemplate  = QString();
     return c;
   };
 
   QList<UserCommand> updated;
   updated.append(buildBuiltin(QStringLiteral("terminal"), tr("Terminal"),
-                              m_terminalProgramEdit, m_terminalArgsEdit,
-                              m_terminalWorkingDirEdit));
+                              m_terminalProgramEdit, m_terminalArgsEdit));
   updated.append(buildBuiltin(QStringLiteral("editor"), tr("Text Editor"),
-                              m_editorProgramEdit, m_editorArgsEdit,
-                              m_editorWorkingDirEdit));
+                              m_editorProgramEdit, m_editorArgsEdit));
   // ロード時に避けておいた非 builtin エントリを末尾に戻す。
   for (const UserCommand& c : m_nonBuiltinUserCommands) updated.append(c);
   settings.setUserCommands(updated);
@@ -302,8 +283,7 @@ void browseProgramInto(QWidget* parent, QLineEdit* target, const QString& title)
 }
 
 UserCommand buildTransient(const QString& kind, const QString& name,
-                           QLineEdit* programEdit, QLineEdit* argsEdit,
-                           QLineEdit* wdEdit) {
+                           QLineEdit* programEdit, QLineEdit* argsEdit) {
   UserCommand c;
   c.id                 = QStringLiteral("user.cmd.") + kind;
   c.name               = name;
@@ -311,7 +291,8 @@ UserCommand buildTransient(const QString& kind, const QString& name,
   c.builtinKind        = kind;
   c.program            = programEdit->text().trimmed();
   c.argsTemplate       = splitArgsTemplate(argsEdit->text());
-  c.workingDirTemplate = wdEdit->text().trimmed();
+  // 作業ディレクトリはアクティブペインに固定 (= empty)
+  c.workingDirTemplate = QString();
   return c;
 }
 
@@ -328,7 +309,7 @@ void ExternalAppsTab::onBrowseEditorProgram() {
 void ExternalAppsTab::onTestLaunchTerminal() {
   const UserCommand c = buildTransient(
     QStringLiteral("terminal"), tr("Terminal"),
-    m_terminalProgramEdit, m_terminalArgsEdit, m_terminalWorkingDirEdit);
+    m_terminalProgramEdit, m_terminalArgsEdit);
   QString err;
   if (!UserCommandManager::instance().runTransient(c, &err)) {
     QMessageBox::warning(this, tr("Test launch failed"), err);
@@ -338,7 +319,7 @@ void ExternalAppsTab::onTestLaunchTerminal() {
 void ExternalAppsTab::onTestLaunchEditor() {
   const UserCommand c = buildTransient(
     QStringLiteral("editor"), tr("Text Editor"),
-    m_editorProgramEdit, m_editorArgsEdit, m_editorWorkingDirEdit);
+    m_editorProgramEdit, m_editorArgsEdit);
   QString err;
   if (!UserCommandManager::instance().runTransient(c, &err)) {
     QMessageBox::warning(this, tr("Test launch failed"), err);
@@ -350,16 +331,17 @@ namespace {
 // 共通: 選択された Preset のフィールドを LineEdit 群に流し込む。
 // "(Custom)" (= userData 空) なら何もしない。setText() は textEdited を発火
 // しないので、switch*ToCustom() に取られて Custom に戻る心配はない。
+// workingDirTemplate は UI から削除したためここでも反映しない (実行時は
+// アクティブペインの cwd が使われる)。
 void applyPresetTo(QComboBox* combo,
                    const QList<AppPreset>& presets,
-                   QLineEdit* program, QLineEdit* args, QLineEdit* wd) {
+                   QLineEdit* program, QLineEdit* args) {
   const QString id = combo->currentData().toString();
   if (id.isEmpty()) return;  // (Custom)
   for (const AppPreset& p : presets) {
     if (p.id == id) {
       program->setText(p.program);
       args->setText(joinArgsTemplate(p.argsTemplate));
-      wd->setText(p.workingDirTemplate);
       return;
     }
   }
@@ -369,14 +351,12 @@ void applyPresetTo(QComboBox* combo,
 
 void ExternalAppsTab::onTerminalPresetChanged(int /*index*/) {
   applyPresetTo(m_terminalPresetCombo, m_terminalPresets,
-                m_terminalProgramEdit, m_terminalArgsEdit,
-                m_terminalWorkingDirEdit);
+                m_terminalProgramEdit, m_terminalArgsEdit);
 }
 
 void ExternalAppsTab::onEditorPresetChanged(int /*index*/) {
   applyPresetTo(m_editorPresetCombo, m_editorPresets,
-                m_editorProgramEdit, m_editorArgsEdit,
-                m_editorWorkingDirEdit);
+                m_editorProgramEdit, m_editorArgsEdit);
 }
 
 void ExternalAppsTab::switchTerminalToCustom() {

@@ -379,14 +379,14 @@ QList<AppPreset> detectInstalledPresets(const QString& kind) {
 
 QString matchPresetId(const QList<AppPreset>& presets,
                       const QString& program,
-                      const QStringList& argsTemplate,
-                      const QString& workingDirTemplate) {
-  // 完全一致のみ。1 引数の差 (空白の有無 etc.) で誤マッチしないよう、
-  // QString / QStringList の == 比較に依存する。
+                      const QStringList& argsTemplate) {
+  // program + argsTemplate の完全一致のみで判定する。workingDirTemplate は
+  // UI から削除し常に空 (= active pane の cwd) としたため、比較対象に含めない。
+  // (xterm 等のプリセットは preset.workingDirTemplate に "{dir}" を持つが、
+  //  empty と "{dir}" は PlaceholderExpander 上で同じ結果なので無視して良い)
   for (const AppPreset& p : presets) {
     if (p.program == program
-        && p.argsTemplate == argsTemplate
-        && p.workingDirTemplate == workingDirTemplate) {
+        && p.argsTemplate == argsTemplate) {
       return p.id;
     }
   }
