@@ -1619,186 +1619,303 @@ Used as the initial value in the Search dialog&apos;s Exclude dirs field.</sourc
 <context>
     <name>Farman::ExternalAppsTab</name>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="158"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="213"/>
         <source>Custom Commands</source>
         <translation>ユーザー定義コマンド</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="161"/>
         <source>Custom user commands beyond Terminal / Editor live in settings.json. Use Import / Export to share them between machines.</source>
-        <translation>ターミナル / エディタ以外のユーザー定義コマンドは settings.json に保存される。Import / Export でマシン間で共有できる。</translation>
+        <translation type="vanished">ターミナル / エディタ以外のユーザー定義コマンドは settings.json に保存される。Import / Export でマシン間で共有できる。</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="168"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="223"/>
         <source>Save all custom (non-builtin) user commands to a JSON file</source>
         <translation>組み込みでないすべてのユーザー定義コマンドを JSON ファイルに保存する</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="173"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="228"/>
         <source>Load custom user commands from a JSON file</source>
         <translation>JSON ファイルからユーザー定義コマンドを読み込む</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="398"/>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="406"/>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="412"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="453"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="461"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="467"/>
         <source>Export Commands</source>
         <translation>コマンドをエクスポート</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="408"/>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="420"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="463"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="475"/>
         <source>JSON Files (*.json)</source>
         <translation>JSON ファイル (*.json)</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="419"/>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="426"/>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="436"/>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="444"/>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="473"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="474"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="481"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="491"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="499"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="528"/>
         <source>Import Commands</source>
         <translation>コマンドをインポート</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="399"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="454"/>
         <source>No custom commands to export. (The built-in Terminal and Editor entries are not included.)</source>
         <translation>エクスポートできるユーザー定義コマンドがありません。(組み込みのターミナル / エディタは含まれません。)</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="437"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="492"/>
         <source>The file contains no custom (non-builtin) commands.</source>
         <translation>このファイルには組み込みでないユーザー定義コマンドが含まれていません。</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="445"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="500"/>
         <source>Imported %1 command(s). How should they be applied?</source>
         <translation>%1 件のコマンドを読み込みました。どのように適用しますか?</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="446"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="501"/>
         <source>Replace</source>
         <translation>置換</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="447"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="502"/>
         <source>Append</source>
         <translation>追記</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="474"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="529"/>
         <source>Imported %1 custom command(s). They will be saved when you close Settings with OK.</source>
         <translation>%1 件のユーザー定義コマンドを取り込みました。Settings を OK で閉じると保存されます。</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="55"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="56"/>
         <source>Pick a detected installed application to fill Program / Arguments automatically. Editing any field below switches back to (Custom).</source>
         <translation>検出されたインストール済アプリを選ぶと Program / Arguments が自動入力される。下のフィールドを手動で編集すると (Custom) に戻る。</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="58"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="59"/>
         <source>Preset:</source>
         <translation>プリセット:</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="65"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="66"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="172"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="567"/>
         <source>/path/to/executable</source>
         <translation>/path/to/executable</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="68"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="69"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="175"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="570"/>
         <source>Browse for executable...</source>
         <translation>実行ファイルを参照...</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="71"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="72"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="178"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="573"/>
         <source>Program:</source>
         <translation>プログラム:</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="76"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="77"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="182"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="577"/>
         <source>Space-separated arguments. Use double quotes for arguments with spaces. Placeholders: {dir} {otherDir} {file} {files} {name} {ext}</source>
         <translation>空白区切りの引数。空白を含む場合はダブルクォートで囲む。プレースホルダ: {dir} {otherDir} {file} {files} {name} {ext}</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="79"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="80"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="185"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="580"/>
         <source>Arguments:</source>
         <translation>引数:</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="83"/>
         <source>(active pane)</source>
-        <translation>(アクティブペイン)</translation>
+        <translation type="vanished">(アクティブペイン)</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="84"/>
         <source>Working directory of the launched process. Empty = the active pane&apos;s current directory.</source>
-        <translation>起動プロセスの作業ディレクトリ。空欄の場合はアクティブペインのカレントディレクトリ。</translation>
+        <translation type="vanished">起動プロセスの作業ディレクトリ。空欄の場合はアクティブペインのカレントディレクトリ。</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="87"/>
         <source>Working Dir:</source>
-        <translation>作業ディレクトリ:</translation>
+        <translation type="vanished">作業ディレクトリ:</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="90"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="83"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="192"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="586"/>
         <source>Test launch</source>
         <translation>テスト起動</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="101"/>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="280"/>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="330"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="94"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="338"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="386"/>
         <source>Terminal</source>
         <translation>ターミナル</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="105"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="98"/>
         <source>e.g. --working-directory={dir}</source>
         <translation>例: --working-directory={dir}</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="108"/>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="283"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="101"/>
         <location filename="../src/ui/ExternalAppsTab.cpp" line="340"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="396"/>
         <source>Text Editor</source>
         <translation>テキストエディタ</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="112"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="105"/>
         <source>e.g. {file}</source>
         <translation>例: {file}</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="167"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="146"/>
+        <source>Custom User Commands</source>
+        <translation>ユーザー定義コマンド</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="147"/>
+        <source>Custom external commands shown in the Tools menu and bindable via the Keybindings tab. Each command&apos;s working directory is fixed to the active pane.</source>
+        <translation>Tools メニューに表示され、キーバインドからも呼び出せる外部コマンドを定義します。作業ディレクトリは常にアクティブペインに固定されます。</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="160"/>
+        <source>Add New Command</source>
+        <translation>新規コマンド追加</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="193"/>
+        <source>Add</source>
+        <translation>追加</translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation type="vanished">削除</translation>
+    </message>
+    <message>
+        <source>Up</source>
+        <translation type="vanished">上</translation>
+    </message>
+    <message>
+        <source>Down</source>
+        <translation type="vanished">下</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="165"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="560"/>
+        <source>Display name (shown in Tools menu)</source>
+        <translation>表示名 (Tools メニューに表示)</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="166"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="561"/>
+        <source>Name:</source>
+        <translation>名前:</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="181"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="576"/>
+        <source>e.g. {file}  /  --flag {dir}</source>
+        <translation>例: {file}  /  --flag {dir}</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="187"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="582"/>
+        <source>Show in Tools menu</source>
+        <translation>Tools メニューに表示</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="216"/>
+        <source>Share custom commands between machines via Import / Export. Built-in Terminal and Editor are not included.</source>
+        <translation>別マシンとの共有は Import / Export を使ってください。組み込みの Terminal / Editor は対象外です。</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="222"/>
         <source>Export...</source>
         <translation>エクスポート...</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="172"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="227"/>
         <source>Import...</source>
         <translation>インポート...</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="186"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="241"/>
         <source>(Custom)</source>
         <translation>(カスタム)</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="321"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="377"/>
         <source>Choose terminal executable</source>
         <translation>ターミナルの実行ファイルを選択</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="325"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="381"/>
         <source>Choose editor executable</source>
         <translation>エディタの実行ファイルを選択</translation>
     </message>
     <message>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="334"/>
-        <location filename="../src/ui/ExternalAppsTab.cpp" line="344"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="390"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="400"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="619"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="712"/>
         <source>Test launch failed</source>
         <translation>テスト起動に失敗しました</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="553"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="641"/>
+        <source>(Unnamed)</source>
+        <translation>(名前なし)</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="587"/>
+        <source>Update</source>
+        <translation>更新</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="588"/>
+        <source>Delete</source>
+        <translation>削除</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="720"/>
+        <source>Add Command</source>
+        <translation>コマンド追加</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="721"/>
+        <source>Program path is required.</source>
+        <translation>実行ファイルのパスを入力してください。</translation>
+    </message>
+    <message>
+        <source>New command</source>
+        <translation type="vanished">新しいコマンド</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="643"/>
+        <source>Remove Command</source>
+        <translation>コマンド削除</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="644"/>
+        <source>Remove user command &quot;%1&quot;?</source>
+        <translation>ユーザー定義コマンド &quot;%1&quot; を削除しますか?</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="604"/>
+        <location filename="../src/ui/ExternalAppsTab.cpp" line="697"/>
+        <source>Choose program executable</source>
+        <translation>実行ファイルを選択</translation>
     </message>
 </context>
 <context>
@@ -3767,22 +3884,22 @@ This will discard all custom keybindings.</source>
 <context>
     <name>Farman::SettingsDialog</name>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="52"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="53"/>
         <source>Settings</source>
         <translation>設定</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="102"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="112"/>
         <source>1. General</source>
         <translation>1. 全般</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="103"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="113"/>
         <source>2. Behavior</source>
         <translation>2. 動作</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="104"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="114"/>
         <source>3. Appearance</source>
         <translation>3. 外観</translation>
     </message>
@@ -3791,7 +3908,7 @@ This will discard all custom keybindings.</source>
         <translation type="vanished">4. ビュアー</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="106"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="116"/>
         <source>5. Keybindings</source>
         <translation>5. キーバインド</translation>
     </message>
@@ -3804,37 +3921,37 @@ This will discard all custom keybindings.</source>
         <translation type="vanished">6. キーバインド</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="105"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="115"/>
         <source>4. External Apps</source>
         <translation>4. 外部アプリ</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="165"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="175"/>
         <source>Reset All Settings...</source>
         <translation>全設定をリセット...</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="167"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="177"/>
         <source>Reset every setting (except keybindings) to its default value.</source>
         <translation>すべての設定 (キーバインドを除く) をデフォルト値に戻します。</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="221"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="231"/>
         <source>Language Changed</source>
         <translation>言語が変更されました</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="222"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="232"/>
         <source>Restart farman now to apply the new language?</source>
         <translation>新しい言語を反映するために farman を再起動しますか?</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="255"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="265"/>
         <source>Reset All Settings</source>
         <translation>全設定をリセット</translation>
     </message>
     <message>
-        <location filename="../src/ui/SettingsDialog.cpp" line="256"/>
+        <location filename="../src/ui/SettingsDialog.cpp" line="266"/>
         <source>Reset all settings to their default values?
 Keybindings are not affected.</source>
         <translation>すべての設定をデフォルトに戻しますか?
@@ -4574,7 +4691,7 @@ External: ファイル毎に独立したウィンドウを開く (複数並べ�
     <message>
         <location filename="../src/settings/PresetIO.cpp" line="53"/>
         <source>Wrong file type: expected &apos;%1&apos;, got &apos;%2&apos;</source>
-        <translation>ファイルタイプが不正です: '%1' を想定していましたが '%2' でした</translation>
+        <translation>ファイルタイプが不正です: &apos;%1&apos; を想定していましたが &apos;%2&apos; でした</translation>
     </message>
     <message>
         <location filename="../src/settings/PresetIO.cpp" line="58"/>
@@ -4589,7 +4706,7 @@ External: ファイル毎に独立したウィンドウを開く (複数並べ�
     <message>
         <location filename="../src/settings/PresetIO.cpp" line="141"/>
         <source>Missing &apos;bindings&apos; array</source>
-        <translation>'bindings' 配列がありません</translation>
+        <translation>&apos;bindings&apos; 配列がありません</translation>
     </message>
     <message>
         <location filename="../src/settings/PresetIO.cpp" line="171"/>
@@ -4599,7 +4716,7 @@ External: ファイル毎に独立したウィンドウを開く (複数並べ�
     <message>
         <location filename="../src/settings/PresetIO.cpp" line="213"/>
         <source>Theme file must contain at least one of &apos;light&apos; or &apos;dark&apos;</source>
-        <translation>テーマファイルは 'light' または 'dark' を最低 1 つ含む必要があります</translation>
+        <translation>テーマファイルは &apos;light&apos; または &apos;dark&apos; を最低 1 つ含む必要があります</translation>
     </message>
     <message>
         <location filename="../src/settings/PresetIO.cpp" line="220"/>
@@ -4609,7 +4726,7 @@ External: ファイル毎に独立したウィンドウを開く (複数並べ�
     <message>
         <location filename="../src/settings/PresetIO.cpp" line="246"/>
         <source>Missing &apos;commands&apos; array</source>
-        <translation>'commands' 配列がありません</translation>
+        <translation>&apos;commands&apos; 配列がありません</translation>
     </message>
     <message>
         <location filename="../src/settings/PresetIO.cpp" line="257"/>

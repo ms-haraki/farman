@@ -5,8 +5,10 @@
 #include "settings/Settings.h"
 #include "keybinding/CommandRegistry.h"
 #include "keybinding/ICommand.h"
+#include "keybinding/KeyBindingManager.h"
 
 #include <QDebug>
+#include <QSet>
 
 namespace Farman {
 
@@ -30,6 +32,12 @@ void UserCommandManager::sync() {
     registerOne(cmd);
   }
 
+  // ユーザー定義コマンドが削除されたとき、それを指していたキーバインドが
+  // 残ったままになると settings.json にオーファンが溜まり続ける (Keybindings
+  // タブの UI からは CommandRegistry に居ない ID は見えないため、手動で
+  // 消すことも不可能)。sync の都度ここで掃除する。
+  cleanupOrphanedKeybindings();
+
   qDebug() << "UserCommandManager: synced" << m_commands.size() << "user commands";
   emit userCommandsChanged();
 }
@@ -44,6 +52,32 @@ void UserCommandManager::clearRegistered() {
     if (c && c->id().startsWith(QStringLiteral("user.cmd."))) {
       registry.unregisterCommand(c->id());
     }
+  }
+}
+
+void UserCommandManager::cleanupOrphanedKeybindings() {
+  // 現存する user.cmd.* ID の集合
+  QSet<QString> validIds;
+  for (const UserCommand& c : m_commands) {
+    if (c.id.startsWith(QStringLiteral("user.cmd."))) {
+      validIds.insert(c.id);
+    }
+  }
+
+  auto& km = KeyBindingManager::instance();
+  const QMap<QKeySequence, QString> all = km.allBindings();
+  bool changed = false;
+  for (auto it = all.cbegin(); it != all.cend(); ++it) {
+    const QString& cmdId = it.value();
+    if (cmdId.startsWith(QStringLiteral("user.cmd.")) && !validIds.contains(cmdId)) {
+      km.unbind(it.key());
+      changed = true;
+      qDebug() << "UserCommandManager: removed orphan keybinding"
+               << it.key().toString() << "→" << cmdId;
+    }
+  }
+  if (changed) {
+    km.saveToSettings();
   }
 }
 

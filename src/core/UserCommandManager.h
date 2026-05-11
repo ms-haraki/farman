@@ -59,6 +59,11 @@ private:
   // 1 件を CommandRegistry に登録する。
   void registerOne(const UserCommand& cmd);
 
+  // 削除済みのユーザー定義コマンド (= sync 後の m_commands に居ない user.cmd.*)
+  // を参照しているキーバインドを KeyBindingManager から取り除き、保存する。
+  // sync() の末尾から呼ばれる。
+  void cleanupOrphanedKeybindings();
+
   PaneContext        currentContext() const;
 
   ContextProvider    m_contextProvider;

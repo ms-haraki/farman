@@ -4,10 +4,13 @@
 #include "core/UserCommand.h"
 #include "core/AppPresets.h"
 
-class QLineEdit;
-class QToolButton;
-class QPushButton;
+class QCheckBox;
 class QComboBox;
+class QGroupBox;
+class QLineEdit;
+class QPushButton;
+class QToolButton;
+class QVBoxLayout;
 
 namespace Farman {
 
@@ -37,6 +40,13 @@ private slots:
   // 組み込み 2 件は OS 依存なので対象外 (Import の Replace モードでも保持)。
   void onExportCommands();
   void onImportCommands();
+
+  // ユーザー定義コマンドの「新規コマンド追加」フォーム (SPEC.md L681)。
+  // 既存コマンドの編集 UI は各コマンドごとの QGroupBox に動的生成され、
+  // ボタンの connect も lambda 内で完結する (per-row slot を持たない)。
+  void onAddCommandClicked();          // 「追加」: 新規コマンドをモデルへ
+  void onAddCommandTestClicked();      // 「テスト起動」: フォーム値で transient 実行
+  void onAddCommandBrowseClicked();    // Program の Browse...
 
 private:
   void setupUi();
@@ -72,9 +82,52 @@ private:
   QList<AppPreset> m_terminalPresets;
   QList<AppPreset> m_editorPresets;
 
-  // Settings::userCommands() のうち builtin 以外のエントリは UI に出さないが、
-  // save() の往復で消えないようロード時に控えておき、save 時に再付加する。
+  // Settings::userCommands() のうち builtin 以外のエントリ (= ユーザー定義
+  // コマンド)。Add/Remove/編集の都度この QList を直接書き換え、save 時に
+  // builtin 2 件と合わせて Settings に流し込む。
   QList<UserCommand> m_nonBuiltinUserCommands;
+
+  // ── ユーザー定義コマンドの編集 UI ──
+  // 「既存コマンドの編集フォーム × N」を縦に並べ、末尾に「新規コマンド追加」
+  // フォーム (m_addCmdBox) を置く。外側のグループ枠は付けない (Add 用の枠と
+  // 既存コマンドの枠の二重表示を避けるため)。新規追加時は m_customRowsLayout
+  // の末尾 (= 追加フォームのすぐ上) に新しい QGroupBox を挿入する。
+  QVBoxLayout*  m_customRowsLayout   = nullptr;
+
+  // 「新規コマンド追加」フォーム本体 + 各フィールド + ボタン
+  QGroupBox*    m_addCmdBox          = nullptr;
+  QLineEdit*    m_addCmdName         = nullptr;
+  QLineEdit*    m_addCmdProgram      = nullptr;
+  QToolButton*  m_addCmdProgramBrowse= nullptr;
+  QLineEdit*    m_addCmdArgs         = nullptr;
+  QCheckBox*    m_addCmdShowInTools  = nullptr;
+  QPushButton*  m_addCmdTestButton   = nullptr;
+  QPushButton*  m_addCmdAddButton    = nullptr;
+
+  // 既存コマンド 1 件ぶんのウィジェット束。lambda の per-row connect を
+  // 配線する都合上、box (= QGroupBox*) と入力ウィジェット 4 つだけ覚える。
+  // 並び順は m_nonBuiltinUserCommands と一致 (= UI 表示順)。Update / Test
+  // 時はこのウィジェットから値を読み、id (= UserCommand.id) で
+  // m_nonBuiltinUserCommands を引き当てて更新する。
+  struct CustomCommandRow {
+    QString    id;
+    QWidget*   box              = nullptr;   // QGroupBox 実体
+    QLineEdit* nameEdit         = nullptr;
+    QLineEdit* programEdit      = nullptr;
+    QLineEdit* argsEdit         = nullptr;
+    QCheckBox* showInToolsCheck = nullptr;
+  };
+  QList<CustomCommandRow> m_customRows;
+
+  // 既存コマンド 1 件分の QGroupBox を構築し、m_customRows と
+  // m_customRowsLayout に追加。command.id をキーに lambda を配線する。
+  void buildExistingCommandRow(const UserCommand& cmd);
+  // m_customRowsLayout の中身を一旦全クリアして m_nonBuiltinUserCommands
+  // から構築し直す (loadSettings / onImportCommands 用)。
+  void rebuildCustomCommandRows();
+  // 各既存行のウィジェット内容を m_nonBuiltinUserCommands へ反映する。
+  // save() 直前に呼び、未押下の「更新」ボタンの内容も拾うようにする。
+  void flushCustomCommandRowsToModel();
 };
 
 } // namespace Farman

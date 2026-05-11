@@ -6,21 +6,23 @@
 #include "core/AppPresets.h"
 #include "utils/Dialogs.h"
 
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QFormLayout>
-#include <QGroupBox>
-#include <QLabel>
-#include <QLineEdit>
-#include <QToolButton>
-#include <QPushButton>
+#include <QCheckBox>
 #include <QComboBox>
+#include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFormLayout>
+#include <QGroupBox>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
 #include <QMessageBox>
-#include <QDir>
+#include <QPushButton>
 #include <QStandardPaths>
 #include <QStyle>
+#include <QToolButton>
+#include <QUuid>
+#include <QVBoxLayout>
 
 namespace Farman {
 
@@ -136,17 +138,75 @@ void ExternalAppsTab::setupUi() {
   connect(m_editorArgsEdit,      &QLineEdit::textEdited,
           this, &ExternalAppsTab::switchEditorToCustom);
 
-  // ─── ユーザー定義コマンドの Import / Export ───
-  // 現状この UI からは「コマンドを追加 / 編集 / 削除」する手段がないが、
-  // (SPEC.md L763 に「フェーズ 2 以降」と記載) Import / Export なら
-  // settings.json を直接編集することなく取り回しできる。組み込み 2 件
-  // (terminal / editor) は OS 依存なので対象外: Export では除外され、
-  // Import の Replace モードでも上書きされない。
+  // ─── ユーザー定義コマンド (terminal / editor 以外) の編集 UI ───
+  // 縦に「既存コマンドの編集フォーム × N」「新規コマンド追加フォーム」を直接
+  // 並べる (外側の「Custom User Commands」 GroupBox は省略)。各既存コマンド
+  // のフォームは「Test launch / Update / Delete」、追加フォームは「Test launch
+  // / Add」をボタン行に持つ。
+  // 既存コマンド行を縦に並べるレイアウト。buildExistingCommandRow() で
+  // ここに QGroupBox を 1 つずつ addWidget する。
+  m_customRowsLayout = new QVBoxLayout();
+  m_customRowsLayout->setSpacing(8);
+  mainLayout->addLayout(m_customRowsLayout);
+
+  // ── 新規コマンド追加フォーム ──
+  m_addCmdBox = new QGroupBox(tr("Add New Command"), this);
+  QFormLayout* addForm = new QFormLayout(m_addCmdBox);
+  addForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+
+  m_addCmdName = new QLineEdit(m_addCmdBox);
+  m_addCmdName->setPlaceholderText(tr("Display name (shown in Tools menu)"));
+  addForm->addRow(tr("Name:"), m_addCmdName);
+
+  QWidget* addProgramRow = new QWidget(m_addCmdBox);
+  QHBoxLayout* addProgramRowLayout = new QHBoxLayout(addProgramRow);
+  addProgramRowLayout->setContentsMargins(0, 0, 0, 0);
+  m_addCmdProgram = new QLineEdit(m_addCmdBox);
+  m_addCmdProgram->setPlaceholderText(tr("/path/to/executable"));
+  m_addCmdProgramBrowse = new QToolButton(m_addCmdBox);
+  m_addCmdProgramBrowse->setIcon(style()->standardIcon(QStyle::SP_DirOpenIcon));
+  m_addCmdProgramBrowse->setToolTip(tr("Browse for executable..."));
+  addProgramRowLayout->addWidget(m_addCmdProgram, 1);
+  addProgramRowLayout->addWidget(m_addCmdProgramBrowse);
+  addForm->addRow(tr("Program:"), addProgramRow);
+
+  m_addCmdArgs = new QLineEdit(m_addCmdBox);
+  m_addCmdArgs->setPlaceholderText(tr("e.g. {file}  /  --flag {dir}"));
+  m_addCmdArgs->setToolTip(tr(
+    "Space-separated arguments. Use double quotes for arguments with spaces. "
+    "Placeholders: {dir} {otherDir} {file} {files} {name} {ext}"));
+  addForm->addRow(tr("Arguments:"), m_addCmdArgs);
+
+  m_addCmdShowInTools = new QCheckBox(tr("Show in Tools menu"), m_addCmdBox);
+  m_addCmdShowInTools->setChecked(true);
+  addForm->addRow(QString(), m_addCmdShowInTools);
+
+  // ボタン行: [stretch] [Test launch] [Add]
+  m_addCmdTestButton = new QPushButton(tr("Test launch"), m_addCmdBox);
+  m_addCmdAddButton  = new QPushButton(tr("Add"),         m_addCmdBox);
+  QHBoxLayout* addBtnRow = new QHBoxLayout();
+  addBtnRow->setContentsMargins(0, 0, 0, 0);
+  addBtnRow->addStretch(1);
+  addBtnRow->addWidget(m_addCmdTestButton);
+  addBtnRow->addWidget(m_addCmdAddButton);
+  addForm->addRow(QString(), addBtnRow);
+
+  mainLayout->addWidget(m_addCmdBox);
+
+  connect(m_addCmdProgramBrowse, &QToolButton::clicked,
+          this, &ExternalAppsTab::onAddCommandBrowseClicked);
+  connect(m_addCmdTestButton, &QPushButton::clicked,
+          this, &ExternalAppsTab::onAddCommandTestClicked);
+  connect(m_addCmdAddButton,  &QPushButton::clicked,
+          this, &ExternalAppsTab::onAddCommandClicked);
+
+  // ─── 末尾: Import / Export ───
+  // ファイル経由でユーザー定義コマンドを取り回す。組み込み 2 件は対象外。
   QGroupBox* ioGroup = new QGroupBox(tr("Custom Commands"), this);
   QHBoxLayout* ioRow = new QHBoxLayout(ioGroup);
   QLabel* ioInfoLabel = new QLabel(
-    tr("Custom user commands beyond Terminal / Editor live in settings.json. "
-       "Use Import / Export to share them between machines."),
+    tr("Share custom commands between machines via Import / Export. "
+       "Built-in Terminal and Editor are not included."),
     this);
   ioInfoLabel->setWordWrap(true);
   ioRow->addWidget(ioInfoLabel, /*stretch*/ 1);
@@ -239,6 +299,9 @@ void ExternalAppsTab::loadSettings() {
                       m_terminalProgramEdit, m_terminalArgsEdit);
   selectMatchedPreset(m_editorPresetCombo, m_editorPresets,
                       m_editorProgramEdit, m_editorArgsEdit);
+
+  // ユーザー定義コマンド一覧を一括構築 (初期選択は先頭、なければ何も選ばない)。
+  rebuildCustomCommandRows();
 }
 
 void ExternalAppsTab::save() {
@@ -259,26 +322,67 @@ void ExternalAppsTab::save() {
     return c;
   };
 
+  // 既存コマンド行のウィジェット値を最終確定 (「更新」ボタン未押下でも
+  // OK 押下時の最新ウィジェット値を保存に反映するため)。
+  flushCustomCommandRowsToModel();
+
   QList<UserCommand> updated;
   updated.append(buildBuiltin(QStringLiteral("terminal"), tr("Terminal"),
                               m_terminalProgramEdit, m_terminalArgsEdit));
   updated.append(buildBuiltin(QStringLiteral("editor"), tr("Text Editor"),
                               m_editorProgramEdit, m_editorArgsEdit));
-  // ロード時に避けておいた非 builtin エントリを末尾に戻す。
+  // ユーザー定義コマンドを後ろに積む。
   for (const UserCommand& c : m_nonBuiltinUserCommands) updated.append(c);
   settings.setUserCommands(updated);
 }
 
 namespace {
 
+// Browse 初期ディレクトリ: OS ごとに「アプリが置いてある定番フォルダ」を返す。
+//   macOS:   /Applications  (見つからなければ ~)
+//   Windows: %ProgramFiles% → %ProgramW6432% → C:/Program Files の順で存在確認
+//   Linux:   /usr/bin       (見つからなければ ~)
+QString defaultProgramStartDir() {
+#if defined(Q_OS_MACOS)
+  if (QDir(QStringLiteral("/Applications")).exists()) return QStringLiteral("/Applications");
+#elif defined(Q_OS_WIN)
+  for (const char* var : { "ProgramW6432", "ProgramFiles", "ProgramFiles(x86)" }) {
+    const QByteArray v = qgetenv(var);
+    if (!v.isEmpty()) {
+      const QString p = QString::fromLocal8Bit(v);
+      if (QDir(p).exists()) return p;
+    }
+  }
+  if (QDir(QStringLiteral("C:/Program Files")).exists())
+    return QStringLiteral("C:/Program Files");
+#else  // Linux / Unix
+  if (QDir(QStringLiteral("/usr/bin")).exists()) return QStringLiteral("/usr/bin");
+#endif
+  return QDir::homePath();
+}
+
 void browseProgramInto(QWidget* parent, QLineEdit* target, const QString& title) {
   QString start = target->text().trimmed();
-  if (start.isEmpty() || !QFileInfo(start).exists()) {
-    start = QDir::homePath();
+  if (!start.isEmpty() && QFileInfo(start).exists()) {
+    // 既に入力済 → そのファイルのあるディレクトリから始める
+    const QFileInfo fi(start);
+    start = fi.isDir() ? fi.absoluteFilePath() : fi.absolutePath();
+  } else {
+    start = defaultProgramStartDir();
   }
   const QString selected = QFileDialog::getOpenFileName(parent, title, start);
   if (!selected.isEmpty()) {
-    target->setText(selected);
+    // macOS の native QFileDialog で .app バンドルを選ぶと
+    // "/Applications/Foo.app/" のように末尾に "/" が付くことがある。
+    // この状態だと QProcess::startDetached が起動できないので除去する。
+    // Windows でも "C:\App\" のような末尾区切りを念のため除去。
+    QString cleaned = selected;
+    while (cleaned.size() > 1 &&
+           (cleaned.endsWith(QLatin1Char('/')) ||
+            cleaned.endsWith(QLatin1Char('\\')))) {
+      cleaned.chop(1);
+    }
+    target->setText(cleaned);
   }
 }
 
@@ -454,6 +558,219 @@ void ExternalAppsTab::onImportCommands() {
                            tr("Imported %1 custom command(s). "
                               "They will be saved when you close Settings with OK.")
                              .arg(filtered.size()));
+  // 取り込んだコマンドが見えるよう一覧を再構築。
+  rebuildCustomCommandRows();
+}
+
+// ── ユーザー定義コマンドの編集 UI ──
+
+void ExternalAppsTab::rebuildCustomCommandRows() {
+  // 既存の行ウィジェットをすべて削除して m_nonBuiltinUserCommands から作り直す。
+  for (const CustomCommandRow& r : m_customRows) {
+    if (r.box) r.box->deleteLater();
+  }
+  m_customRows.clear();
+  for (const UserCommand& c : m_nonBuiltinUserCommands) {
+    buildExistingCommandRow(c);
+  }
+}
+
+void ExternalAppsTab::buildExistingCommandRow(const UserCommand& cmd) {
+  const QString id = cmd.id;
+  // タイトルは名前 (空なら "(Unnamed)")。Update 押下時に追従して書き換える。
+  auto titleFor = [this](const QString& name) {
+    return name.isEmpty() ? tr("(Unnamed)") : name;
+  };
+  QGroupBox* box = new QGroupBox(titleFor(cmd.name), this);
+  QFormLayout* form = new QFormLayout(box);
+  form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+
+  QLineEdit* nameEdit = new QLineEdit(cmd.name, box);
+  nameEdit->setPlaceholderText(tr("Display name (shown in Tools menu)"));
+  form->addRow(tr("Name:"), nameEdit);
+
+  QWidget* progRow = new QWidget(box);
+  QHBoxLayout* progRowLayout = new QHBoxLayout(progRow);
+  progRowLayout->setContentsMargins(0, 0, 0, 0);
+  QLineEdit* programEdit = new QLineEdit(cmd.program, box);
+  programEdit->setPlaceholderText(tr("/path/to/executable"));
+  QToolButton* programBrowse = new QToolButton(box);
+  programBrowse->setIcon(style()->standardIcon(QStyle::SP_DirOpenIcon));
+  programBrowse->setToolTip(tr("Browse for executable..."));
+  progRowLayout->addWidget(programEdit, 1);
+  progRowLayout->addWidget(programBrowse);
+  form->addRow(tr("Program:"), progRow);
+
+  QLineEdit* argsEdit = new QLineEdit(joinArgsTemplate(cmd.argsTemplate), box);
+  argsEdit->setPlaceholderText(tr("e.g. {file}  /  --flag {dir}"));
+  argsEdit->setToolTip(tr(
+    "Space-separated arguments. Use double quotes for arguments with spaces. "
+    "Placeholders: {dir} {otherDir} {file} {files} {name} {ext}"));
+  form->addRow(tr("Arguments:"), argsEdit);
+
+  QCheckBox* showCheck = new QCheckBox(tr("Show in Tools menu"), box);
+  showCheck->setChecked(cmd.showInToolsMenu);
+  form->addRow(QString(), showCheck);
+
+  QPushButton* testBtn   = new QPushButton(tr("Test launch"), box);
+  QPushButton* updateBtn = new QPushButton(tr("Update"),      box);
+  QPushButton* deleteBtn = new QPushButton(tr("Delete"),      box);
+  QHBoxLayout* btnRow = new QHBoxLayout();
+  btnRow->setContentsMargins(0, 0, 0, 0);
+  btnRow->addStretch(1);
+  btnRow->addWidget(testBtn);
+  btnRow->addWidget(updateBtn);
+  btnRow->addWidget(deleteBtn);
+  form->addRow(QString(), btnRow);
+
+  // 追加フォームの上に挿入する。m_customRowsLayout は m_addCmdBox とは別の
+  // レイアウトなので、末尾に追加 = 追加フォームの直上に挿入される。
+  m_customRowsLayout->addWidget(box);
+
+  // 配線
+  connect(programBrowse, &QToolButton::clicked, this,
+          [this, programEdit]() {
+    browseProgramInto(this, programEdit, tr("Choose program executable"));
+  });
+  // Test launch: 現在のフォーム値で transient 実行 (id は元のものを使い回す)
+  connect(testBtn, &QPushButton::clicked, this,
+          [this, id, nameEdit, programEdit, argsEdit, showCheck]() {
+    UserCommand c;
+    c.id              = id;
+    c.name            = nameEdit->text().trimmed();
+    c.builtin         = false;
+    c.program         = programEdit->text().trimmed();
+    c.argsTemplate    = splitArgsTemplate(argsEdit->text());
+    c.showInToolsMenu = showCheck->isChecked();
+    c.workingDirTemplate = QString();
+    QString err;
+    if (!UserCommandManager::instance().runTransient(c, &err)) {
+      QMessageBox::warning(this, tr("Test launch failed"), err);
+    }
+  });
+  // Update: フォーム値をモデルへ反映し、タイトルにも追従させる
+  connect(updateBtn, &QPushButton::clicked, this,
+          [this, id, box, titleFor, nameEdit, programEdit, argsEdit, showCheck]() {
+    for (UserCommand& cm : m_nonBuiltinUserCommands) {
+      if (cm.id == id) {
+        cm.name            = nameEdit->text().trimmed();
+        cm.program         = programEdit->text().trimmed();
+        cm.argsTemplate    = splitArgsTemplate(argsEdit->text());
+        cm.showInToolsMenu = showCheck->isChecked();
+        cm.workingDirTemplate = QString();
+        box->setTitle(titleFor(cm.name));
+        break;
+      }
+    }
+  });
+  // Delete: 確認 → モデル削除 + UI 削除
+  connect(deleteBtn, &QPushButton::clicked, this,
+          [this, id, box, nameEdit]() {
+    const QString shown = nameEdit->text().trimmed().isEmpty()
+                            ? tr("(Unnamed)")
+                            : nameEdit->text().trimmed();
+    if (QMessageBox::question(this, tr("Remove Command"),
+          tr("Remove user command \"%1\"?").arg(shown),
+          QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+        != QMessageBox::Yes) {
+      return;
+    }
+    // モデルから削除
+    for (int i = 0; i < m_nonBuiltinUserCommands.size(); ++i) {
+      if (m_nonBuiltinUserCommands[i].id == id) {
+        m_nonBuiltinUserCommands.removeAt(i);
+        break;
+      }
+    }
+    // m_customRows からも該当行を取り除く
+    for (int i = 0; i < m_customRows.size(); ++i) {
+      if (m_customRows[i].id == id) {
+        m_customRows.removeAt(i);
+        break;
+      }
+    }
+    box->setParent(nullptr);
+    box->deleteLater();
+  });
+
+  CustomCommandRow row;
+  row.id               = id;
+  row.box              = box;
+  row.nameEdit         = nameEdit;
+  row.programEdit      = programEdit;
+  row.argsEdit         = argsEdit;
+  row.showInToolsCheck = showCheck;
+  m_customRows.append(row);
+}
+
+void ExternalAppsTab::flushCustomCommandRowsToModel() {
+  // 各行の現在のウィジェット内容を、対応する m_nonBuiltinUserCommands エントリ
+  // へ書き戻す。Update ボタン未押下でも OK / Apply で内容が保存されるよう、
+  // save() の冒頭で呼ぶ。
+  for (const CustomCommandRow& r : m_customRows) {
+    for (UserCommand& cm : m_nonBuiltinUserCommands) {
+      if (cm.id == r.id) {
+        if (r.nameEdit)         cm.name            = r.nameEdit->text().trimmed();
+        if (r.programEdit)      cm.program         = r.programEdit->text().trimmed();
+        if (r.argsEdit)         cm.argsTemplate    = splitArgsTemplate(r.argsEdit->text());
+        if (r.showInToolsCheck) cm.showInToolsMenu = r.showInToolsCheck->isChecked();
+        cm.workingDirTemplate  = QString();
+        break;
+      }
+    }
+  }
+}
+
+void ExternalAppsTab::onAddCommandBrowseClicked() {
+  if (!m_addCmdProgram) return;
+  browseProgramInto(this, m_addCmdProgram, tr("Choose program executable"));
+}
+
+void ExternalAppsTab::onAddCommandTestClicked() {
+  if (!m_addCmdProgram) return;
+  UserCommand c;
+  c.id              = QStringLiteral("user.cmd.test.transient");
+  c.name            = m_addCmdName->text().trimmed();
+  c.builtin         = false;
+  c.program         = m_addCmdProgram->text().trimmed();
+  c.argsTemplate    = splitArgsTemplate(m_addCmdArgs->text());
+  c.showInToolsMenu = m_addCmdShowInTools->isChecked();
+  c.workingDirTemplate = QString();
+  QString err;
+  if (!UserCommandManager::instance().runTransient(c, &err)) {
+    QMessageBox::warning(this, tr("Test launch failed"), err);
+  }
+}
+
+void ExternalAppsTab::onAddCommandClicked() {
+  // Program が空ならエラー (名前は空でも追加させ、"(Unnamed)" として並ぶ)
+  const QString program = m_addCmdProgram->text().trimmed();
+  if (program.isEmpty()) {
+    QMessageBox::warning(this, tr("Add Command"),
+                         tr("Program path is required."));
+    return;
+  }
+  UserCommand c;
+  // ID は安定 UUID。後で Keybindings タブからショートカット割当てしたとき
+  // 名前を変えても ID は不変。
+  c.id              = QStringLiteral("user.cmd.") +
+                      QUuid::createUuid().toString(QUuid::WithoutBraces);
+  c.name            = m_addCmdName->text().trimmed();
+  c.builtin         = false;
+  c.program         = program;
+  c.argsTemplate    = splitArgsTemplate(m_addCmdArgs->text());
+  c.showInToolsMenu = m_addCmdShowInTools->isChecked();
+  c.workingDirTemplate = QString();
+
+  m_nonBuiltinUserCommands.append(c);
+  buildExistingCommandRow(c);
+
+  // 追加フォームをクリア (次の入力に備えて)。
+  m_addCmdName->clear();
+  m_addCmdProgram->clear();
+  m_addCmdArgs->clear();
+  m_addCmdShowInTools->setChecked(true);
+  m_addCmdName->setFocus();
 }
 
 } // namespace Farman
