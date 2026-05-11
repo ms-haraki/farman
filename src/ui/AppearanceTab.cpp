@@ -226,6 +226,20 @@ QWidget* AppearanceTab::buildMainPage() {
   addressRow->addStretch();
   mainLayout->addWidget(addressGroup);
 
+  // ─── Address (Archive Browsing) グループ ───
+  // アーカイブ内ブラウジング中はアドレスバー色を切替えて、ユーザーが
+  // 通常 FS と仮想 FS を視覚的に区別できるようにする。
+  QGroupBox* archiveAddressGroup = new QGroupBox(tr("Address (Archive Browsing)"), this);
+  QHBoxLayout* archiveAddressRow = new QHBoxLayout(archiveAddressGroup);
+  m_archiveAddressFgButton = makeColorButton(
+    m_archiveAddressFgValue, tr("Archive Address Foreground Color"));
+  m_archiveAddressBgButton = makeColorButton(
+    m_archiveAddressBgValue, tr("Archive Address Background Color"));
+  addPair(archiveAddressRow, tr("Foreground:"), m_archiveAddressFgButton);
+  addPair(archiveAddressRow, tr("Background:"), m_archiveAddressBgButton);
+  archiveAddressRow->addStretch();
+  mainLayout->addWidget(archiveAddressGroup);
+
   // ─── Cursor グループ: Shape / Thickness / Active / Inactive を横並び ─
   QGroupBox* cursorGroup = new QGroupBox(tr("Cursor"), this);
   QHBoxLayout* cursorRow = new QHBoxLayout(cursorGroup);
@@ -806,6 +820,10 @@ void AppearanceTab::loadFromScheme(const ColorScheme& s) {
   m_addressBgValue = s.addressBackground;
   updateColorButton(m_addressFgButton, m_addressFgValue);
   updateColorButton(m_addressBgButton, m_addressBgValue);
+  m_archiveAddressFgValue = s.archiveAddressForeground;
+  m_archiveAddressBgValue = s.archiveAddressBackground;
+  updateColorButton(m_archiveAddressFgButton, m_archiveAddressFgValue);
+  updateColorButton(m_archiveAddressBgButton, m_archiveAddressBgValue);
 
   m_cursorActiveValue   = s.cursorActiveColor;
   m_cursorInactiveValue = s.cursorInactiveColor;
@@ -887,6 +905,8 @@ void AppearanceTab::saveToScheme(ColorScheme& s) const {
 
   s.addressForeground  = m_addressFgValue;
   s.addressBackground  = m_addressBgValue;
+  s.archiveAddressForeground = m_archiveAddressFgValue;
+  s.archiveAddressBackground = m_archiveAddressBgValue;
   s.cursorActiveColor  = m_cursorActiveValue;
   s.cursorInactiveColor= m_cursorInactiveValue;
 
@@ -1176,6 +1196,8 @@ void AppearanceTab::save() {
     }
     dst.addressForeground   = src.addressForeground;
     dst.addressBackground   = src.addressBackground;
+    dst.archiveAddressForeground = src.archiveAddressForeground;
+    dst.archiveAddressBackground = src.archiveAddressBackground;
     dst.cursorActiveColor   = src.cursorActiveColor;
     dst.cursorInactiveColor = src.cursorInactiveColor;
     // ビュアー (テキスト / バイナリ / 画像)

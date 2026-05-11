@@ -58,6 +58,9 @@ struct ColorScheme {
   // アドレスバー / カーソル
   QColor  addressForeground;
   QColor  addressBackground;
+  // アーカイブ内ブラウジング中のアドレスバー色 (通常 FS と視覚的に区別する)
+  QColor  archiveAddressForeground;
+  QColor  archiveAddressBackground;
   QColor  cursorActiveColor;
   QColor  cursorInactiveColor;
 

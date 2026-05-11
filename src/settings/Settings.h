@@ -143,6 +143,11 @@ public:
   void             setAddressForeground(const QColor& c);
   QColor           addressBackground()              const;
   void             setAddressBackground(const QColor& c);
+  // アーカイブ内ブラウジング中のアドレスバー色 (通常 FS と視覚区別)
+  QColor           archiveAddressForeground()       const;
+  void             setArchiveAddressForeground(const QColor& c);
+  QColor           archiveAddressBackground()       const;
+  void             setArchiveAddressBackground(const QColor& c);
 
   // カーソル（現在行下線）のカラー
   QColor           cursorColor(bool active)         const;
@@ -403,6 +408,9 @@ private:
   // Path label & cursor colors
   QColor           m_addressForeground    = QColor(Qt::black);
   QColor           m_addressBackground    = QColor(0xE0, 0xE0, 0xE0);
+  // アーカイブ内ブラウジング時のアドレスバー色
+  QColor           m_archiveAddressForeground = QColor(Qt::black);
+  QColor           m_archiveAddressBackground = QColor(0xFF, 0xE9, 0xA8);
   QColor           m_cursorActiveColor    = QColor(Qt::black);
   QColor           m_cursorInactiveColor  = QColor(Qt::lightGray);
   CursorShape      m_cursorShape          = CursorShape::Underline;

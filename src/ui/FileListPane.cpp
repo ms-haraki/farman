@@ -270,8 +270,12 @@ void FileListPane::setupUi() {
 }
 
 void FileListPane::refreshAppearance() {
-  const QColor fg = Settings::instance().addressForeground();
-  const QColor bg = Settings::instance().addressBackground();
+  // アーカイブ内ブラウジング中は別カラーを採用 (「いま中にいる」ことの視覚提示)。
+  const bool   inArchive = m_model && m_model->isInArchiveMode();
+  const QColor fg = inArchive ? Settings::instance().archiveAddressForeground()
+                              : Settings::instance().addressForeground();
+  const QColor bg = inArchive ? Settings::instance().archiveAddressBackground()
+                              : Settings::instance().addressBackground();
   // QLineEdit はフレーム無し + 同じ padding で QLabel 風の見た目にする。
   // 編集モードに入ると QLineEdit の通常 frame が出るので視覚的にも分かる。
   const QString addressStyle = QString(
@@ -605,14 +609,21 @@ void FileListPane::onExternalDirectoryChanged() {
   // 外部からファイル/ディレクトリが追加・削除されたあと、model を再読み込み。
   // model::refresh() は beginResetModel/endResetModel を呼ぶため currentIndex
   // が無効化されるので、ファイル名ベースでカーソルを保存・復元する。
+  // ── 重要 ──
+  // 比較には Name 列の **表示テキスト** ではなく `FileItem::name()` (= 拡張子
+  // 込みのファイル名) を使う。Name 列の display は通常ファイルだと拡張子を
+  // 剥がして表示するので、"foo/" ディレクトリと "foo.zip" ファイルが
+  // 同じ親に並んでいると Name 列が両方 "foo" となり、復元時に意図しない
+  // 行 (Dirs First ソートで先に出るフォルダ) が選ばれてしまう。
   QString cursorName;
   int     cursorRow = -1;
   if (m_view) {
     const QModelIndex idx = m_view->currentIndex();
     if (idx.isValid()) {
       cursorRow = idx.row();
-      const QVariant v = m_model->data(m_model->index(idx.row(), FileListModel::Name));
-      cursorName = v.toString();
+      if (const FileItem* it = m_model->itemAt(idx)) {
+        cursorName = it->name();
+      }
     }
   }
 
@@ -625,8 +636,8 @@ void FileListPane::onExternalDirectoryChanged() {
       int target = -1;
       if (!cursorName.isEmpty()) {
         for (int r = 0; r < rows; ++r) {
-          if (m_model->data(m_model->index(r, FileListModel::Name)).toString()
-              == cursorName) {
+          const FileItem* it = m_model->itemAt(r);
+          if (it && it->name() == cursorName) {
             target = r;
             break;
           }
@@ -639,16 +650,25 @@ void FileListPane::onExternalDirectoryChanged() {
 }
 
 bool FileListPane::setPath(const QString& path) {
+  const bool wasInArchive = m_model && m_model->isInArchiveMode();
   bool result = m_model->setPath(path);
   if (result) {
     m_addressEdit->setText(m_model->currentPath());
     refreshBookmarkIndicator();
-    // 外部変更ウォッチャの監視対象を新しいパスに切り替える
+    // アーカイブモード切替に伴うアドレスバー色変更を反映
+    const bool nowInArchive = m_model->isInArchiveMode();
+    if (wasInArchive != nowInArchive) {
+      refreshAppearance();
+    }
+    // 外部変更ウォッチャの監視対象を新しいパスに切り替える。
+    // アーカイブ内 (仮想 FS) は実 FS ではないのでウォッチしない。
     if (m_dirWatcher) {
       const QStringList prev = m_dirWatcher->directories();
       if (!prev.isEmpty()) m_dirWatcher->removePaths(prev);
-      const QString cur = m_model->currentPath();
-      if (!cur.isEmpty()) m_dirWatcher->addPath(cur);
+      if (!nowInArchive) {
+        const QString cur = m_model->currentPath();
+        if (!cur.isEmpty()) m_dirWatcher->addPath(cur);
+      }
     }
     // カーソルを先頭に移動
     if (m_model->rowCount() > 0) {

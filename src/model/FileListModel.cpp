@@ -1,10 +1,15 @@
 #include "FileListModel.h"
 #include "settings/Settings.h"
+#include "core/ArchiveContext.h"
+#include "utils/ArchivePath.h"
 #include <QDir>
 #include <QFileInfo>
 #include <QColor>
 #include <QFont>
 #include <QGuiApplication>
+#include <QtConcurrent/QtConcurrentRun>
+#include <QFutureWatcher>
+#include <QEventLoop>
 #include <algorithm>
 
 namespace Farman {
@@ -42,7 +47,83 @@ QString FileListModel::currentPath() const {
   return m_currentPath;
 }
 
+QString FileListModel::archivePath() const {
+  return m_archiveContext ? m_archiveContext->archivePath : QString();
+}
+
+namespace {
+
+// アーカイブをワーカースレッドで開き、メインスレッドのイベントループを
+// 回し続けながら結果を待つ。ViewerPanel::openFile と同じパターン。
+std::shared_ptr<ArchiveContext> loadArchiveBlocking(const QString& archivePath) {
+  auto future = QtConcurrent::run(&ArchiveContext::load, archivePath);
+  QFutureWatcher<std::shared_ptr<ArchiveContext>> watcher;
+  QEventLoop loop;
+  QObject::connect(&watcher, &QFutureWatcher<std::shared_ptr<ArchiveContext>>::finished,
+                   &loop, &QEventLoop::quit);
+  watcher.setFuture(future);
+  if (!future.isFinished()) {
+    loop.exec(QEventLoop::ExcludeUserInputEvents);
+  }
+  return watcher.result();
+}
+
+} // namespace
+
 bool FileListModel::setPath(const QString& path) {
+  // ── アーカイブ内パスの判定 (`!` 区切り) ──────────
+  const auto split = ArchivePath::splitArchivePath(path);
+  if (split.valid) {
+    // アーカイブモードに入る (or 中で移動)
+    std::shared_ptr<ArchiveContext> ctx = m_archiveContext;
+    if (!ctx || ctx->archivePath != split.archivePath) {
+      // 同じアーカイブを既に開いていなければ新規ロード
+      ctx = loadArchiveBlocking(split.archivePath);
+      if (!ctx) {
+        emit loadFailed(path,
+          QStringLiteral("Failed to open archive: %1").arg(split.archivePath));
+        return false;
+      }
+    }
+    if (!ctx->isValidDirectory(split.innerPath)) {
+      emit loadFailed(path,
+        QStringLiteral("Path not found in archive: %1").arg(split.innerPath));
+      return false;
+    }
+
+    beginResetModel();
+
+    m_archiveContext   = ctx;
+    m_archiveInnerPath = split.innerPath;
+    m_currentPath      = ArchivePath::joinArchivePath(ctx->archivePath, split.innerPath);
+    m_allEntries.clear();
+    m_entries.clear();
+    m_liveFilter.clear();
+
+    // ".." はアーカイブ内のサブディレクトリでも、ルートでも必ず先頭に置く。
+    // ルートでは「アーカイブを抜けて FS に戻る」ためのもの。
+    // 親 entry は持たないので、空のダミー ArchiveEntry を使う。
+    {
+      ArchiveEntry dotdot;
+      dotdot.name          = QStringLiteral("..");
+      dotdot.pathInArchive = QStringLiteral("..");  // 表示・遷移ロジック側で特別扱い
+      dotdot.isDir         = true;
+      m_allEntries.append(std::make_shared<FileItem>(dotdot, ctx));
+    }
+
+    // innerPath 直下のエントリを列挙
+    const auto children = ctx->childrenOf(split.innerPath);
+    for (const ArchiveEntry* e : children) {
+      m_allEntries.append(std::make_shared<FileItem>(*e, ctx));
+    }
+
+    applyFilterAndSort();
+    endResetModel();
+    emit pathChanged(m_currentPath);
+    return true;
+  }
+
+  // ── 通常の FS パス ──────────
   QDir dir(path);
   if (!dir.exists() || !dir.isReadable()) {
     emit loadFailed(path, "Directory does not exist or is not readable");
@@ -50,6 +131,10 @@ bool FileListModel::setPath(const QString& path) {
   }
 
   beginResetModel();
+
+  // アーカイブモードから抜ける
+  m_archiveContext.reset();
+  m_archiveInnerPath.clear();
 
   m_currentPath = dir.absolutePath();
   m_allEntries.clear();

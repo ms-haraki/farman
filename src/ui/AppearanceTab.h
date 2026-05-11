@@ -139,6 +139,11 @@ private:
   QPushButton* m_addressBgButton = nullptr;
   QColor       m_addressFgValue;
   QColor       m_addressBgValue;
+  // アーカイブ内ブラウジング中のアドレスバー色
+  QPushButton* m_archiveAddressFgButton = nullptr;
+  QPushButton* m_archiveAddressBgButton = nullptr;
+  QColor       m_archiveAddressFgValue;
+  QColor       m_archiveAddressBgValue;
   // Cursor colors / shape
   QPushButton* m_cursorActiveButton   = nullptr;
   QPushButton* m_cursorInactiveButton = nullptr;

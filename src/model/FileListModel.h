@@ -9,6 +9,8 @@
 
 namespace Farman {
 
+class ArchiveContext;
+
 class FileListModel : public QAbstractItemModel {
   Q_OBJECT
 
@@ -93,6 +95,18 @@ public:
   // フッタに「N / M items」のような表示をするときの母数として使う。
   int totalCount() const { return m_allEntries.size(); }
 
+  // ── アーカイブ内ブラウジング ────────────────
+  // 現在ペインがアーカイブの中を表示中か否か。
+  // 書込ガード (コピー先・移動・削除等) や、ディレクトリ比較の発動可否を
+  // 判定する窓口として使う。
+  bool isInArchiveMode() const { return m_archiveContext != nullptr; }
+  // 現在開いているアーカイブの絶対パス (ローカル FS 上の元 zip)。
+  // アーカイブモード以外では空。
+  QString archivePath() const;
+  // アーカイブ内の「カレント」パス。先頭 '/' 必須、ルートは "/"。
+  // アーカイブモード以外では空。
+  QString archiveInnerPath() const { return m_archiveInnerPath; }
+
   // ── アイテムアクセス ──────────────────────
   const FileItem* itemAt(const QModelIndex& index) const;
   const FileItem* itemAt(int row) const;
@@ -159,6 +173,14 @@ private:
   bool            m_active = true;
   // 現在のペイン表示モード（サイズ・日時のフォーマット切替用）
   bool            m_singlePane = false;
+
+  // ── アーカイブ内ブラウジング ────────────────
+  // 非 null のときアーカイブモード。元 zip の全エントリメタデータを
+  // 共有保持するキャッシュ。
+  std::shared_ptr<ArchiveContext> m_archiveContext;
+  // アーカイブ内の現在ディレクトリ。先頭 '/' 必須、ルートは "/"。
+  // m_archiveContext が null のときは未使用。
+  QString                          m_archiveInnerPath;
 };
 
 } // namespace Farman

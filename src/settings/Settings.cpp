@@ -104,6 +104,9 @@ void Settings::applyDefaults() {
   // Address bar
   m_addressForeground = QColor(Qt::black);
   m_addressBackground = QColor(0xE0, 0xE0, 0xE0);
+  // アーカイブ内ブラウジング中のアドレスバー (Light テーマの既定値)
+  m_archiveAddressForeground = QColor(Qt::black);
+  m_archiveAddressBackground = QColor(0xFF, 0xE9, 0xA8);
 
   // Cursor
   m_cursorActiveColor   = QColor(Qt::black);
@@ -291,6 +294,8 @@ ColorScheme Settings::collectThemeFields() const {
   }
   s.addressForeground  = m_addressForeground;
   s.addressBackground  = m_addressBackground;
+  s.archiveAddressForeground = m_archiveAddressForeground;
+  s.archiveAddressBackground = m_archiveAddressBackground;
   s.cursorActiveColor  = m_cursorActiveColor;
   s.cursorInactiveColor= m_cursorInactiveColor;
 
@@ -333,6 +338,8 @@ void Settings::applyThemeFields(const ColorScheme& s) {
   }
   m_addressForeground  = s.addressForeground;
   m_addressBackground  = s.addressBackground;
+  m_archiveAddressForeground = s.archiveAddressForeground;
+  m_archiveAddressBackground = s.archiveAddressBackground;
   m_cursorActiveColor  = s.cursorActiveColor;
   m_cursorInactiveColor= s.cursorInactiveColor;
 
@@ -664,6 +671,10 @@ QColor Settings::addressForeground() const { return m_addressForeground; }
 void   Settings::setAddressForeground(const QColor& c) { m_addressForeground = c; }
 QColor Settings::addressBackground() const { return m_addressBackground; }
 void   Settings::setAddressBackground(const QColor& c) { m_addressBackground = c; }
+QColor Settings::archiveAddressForeground() const { return m_archiveAddressForeground; }
+void   Settings::setArchiveAddressForeground(const QColor& c) { m_archiveAddressForeground = c; }
+QColor Settings::archiveAddressBackground() const { return m_archiveAddressBackground; }
+void   Settings::setArchiveAddressBackground(const QColor& c) { m_archiveAddressBackground = c; }
 
 QColor Settings::cursorColor(bool active) const {
   return active ? m_cursorActiveColor : m_cursorInactiveColor;

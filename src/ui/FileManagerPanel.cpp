@@ -15,6 +15,7 @@
 #include "core/workers/ArchiveExtractWorker.h"
 #include "model/FileListModel.h"
 #include "core/FileItem.h"
+#include "utils/ArchivePath.h"
 #include "core/workers/CopyWorker.h"
 #include "core/workers/MoveWorker.h"
 #include "core/workers/RemoveWorker.h"
@@ -737,16 +738,35 @@ void FileManagerPanel::handleEnterKey() {
     return;
   }
 
+  // アーカイブ内ブラウジングからの ".." はアーカイブを抜けて元 FS に戻る
+  if (item->isDotDot() && model->isInArchiveMode()) {
+    handleBackspaceKey();
+    return;
+  }
+
   if (item->isDir()) {
     // ディレクトリに入る
     QString newPath = item->absolutePath();
     if (navigatePane(m_activePane, newPath)) {
       updatePathSignal();
     }
-  } else {
-    // ファイルの場合はシグナルを発行
-    emit fileActivated(item->absolutePath());
+    return;
   }
+
+  // ファイル: アーカイブ拡張子なら中に潜る (通常 FS 上のアーカイブのみ)。
+  // アーカイブ内のファイルは Phase B で一時展開してビュアー表示する。
+  if (!model->isInArchiveMode() &&
+      ArchivePath::isArchiveExtension(item->absolutePath())) {
+    const QString archiveRootPath =
+      ArchivePath::joinArchivePath(item->absolutePath(), QStringLiteral("/"));
+    if (navigatePane(m_activePane, archiveRootPath)) {
+      updatePathSignal();
+    }
+    return;
+  }
+
+  // 通常ファイル: シグナルを発行 (MainWindow がビュアーを開く)
+  emit fileActivated(item->absolutePath());
 }
 
 void FileManagerPanel::handleBackspaceKey() {
@@ -758,6 +778,59 @@ void FileManagerPanel::handleBackspaceKey() {
     return;
   }
 
+  // ── アーカイブ内ブラウジング ──────────────────
+  // アーカイブモードの場合は `!` セパレータベースで親を計算する。
+  //   - サブディレクトリにいる → 1 段親へ (まだアーカイブ内)
+  //   - ルート "/" にいる       → アーカイブを抜けて元 FS の親ディレクトリへ、
+  //                              カーソルをアーカイブファイル自身に合わせる
+  if (model->isInArchiveMode()) {
+    const QString archiveAbs    = model->archivePath();
+    const QString innerCurrent  = model->archiveInnerPath();
+    if (innerCurrent.isEmpty() || innerCurrent == QStringLiteral("/")) {
+      // アーカイブを抜ける。
+      // ".zip" を持つファイルと同名のディレクトリ ("foo.zip" と "foo/") が
+      // 並んでいる場合、name() 比較だと拡張子付きのファイル名と
+      // 拡張子無しのフォルダ名が別物なので一意に決まるはずだが、
+      // パス全体の絶対パス比較の方が確実なので absolutePath() で照合する。
+      const QString parentDir = QFileInfo(archiveAbs).absolutePath();
+      if (navigatePane(m_activePane, parentDir)) {
+        FileListModel* parentModel = pane->model();
+        for (int i = 0; i < parentModel->rowCount(); ++i) {
+          const FileItem* it = parentModel->itemAt(i);
+          if (it && it->absolutePath() == archiveAbs) {
+            const QModelIndex idx = parentModel->index(i, 0);
+            pane->view()->setCurrentIndex(idx);
+            pane->view()->scrollTo(idx, QAbstractItemView::EnsureVisible);
+            break;
+          }
+        }
+        updatePathSignal();
+      }
+    } else {
+      // アーカイブ内の親へ。子ディレクトリ名で行を探す。
+      const QString innerParent = ArchivePath::parentInnerPath(innerCurrent);
+      const QString childName   = ArchivePath::innerBaseName(innerCurrent);
+      const QString target      = ArchivePath::joinArchivePath(archiveAbs, innerParent);
+      if (navigatePane(m_activePane, target)) {
+        if (!childName.isEmpty()) {
+          FileListModel* parentModel = pane->model();
+          for (int i = 0; i < parentModel->rowCount(); ++i) {
+            const FileItem* it = parentModel->itemAt(i);
+            if (it && it->name() == childName) {
+              const QModelIndex idx = parentModel->index(i, 0);
+              pane->view()->setCurrentIndex(idx);
+              pane->view()->scrollTo(idx, QAbstractItemView::EnsureVisible);
+              break;
+            }
+          }
+        }
+        updatePathSignal();
+      }
+    }
+    return;
+  }
+
+  // ── 通常 FS ──────────────────
   // 親に戻った際にカーソルを元いた子ディレクトリに合わせる
   const QString childDirName = QFileInfo(currentPath).fileName();
 

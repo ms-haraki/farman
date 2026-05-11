@@ -78,6 +78,9 @@ ColorScheme defaultLightScheme() {
   // アドレス / カーソル
   s.addressForeground  = QColor(Qt::black);
   s.addressBackground  = QColor(0xE0, 0xE0, 0xE0);
+  // アーカイブ内: 明るい暖色 (黄系) で「いま中にいる」ことを明示
+  s.archiveAddressForeground = QColor(Qt::black);
+  s.archiveAddressBackground = QColor(0xFF, 0xE9, 0xA8);
   s.cursorActiveColor  = QColor(Qt::black);
   s.cursorInactiveColor= QColor(Qt::lightGray);
 
@@ -122,6 +125,9 @@ ColorScheme defaultDarkScheme() {
   // アドレス: 暗背景 + 明文字
   s.addressForeground  = QColor(0xE0, 0xE0, 0xE0);
   s.addressBackground  = QColor(0x30, 0x30, 0x30);
+  // アーカイブ内: 暗いオレンジ系を地色に
+  s.archiveAddressForeground = QColor(0xFF, 0xE9, 0xA8);
+  s.archiveAddressBackground = QColor(0x5A, 0x42, 0x10);
   s.cursorActiveColor  = QColor(0xE0, 0xE0, 0xE0);
   s.cursorInactiveColor= QColor(0x70, 0x70, 0x70);
 
@@ -282,6 +288,8 @@ QJsonObject colorSchemeToJson(const ColorScheme& s) {
 
   o["addressForeground"]  = colorString(s.addressForeground);
   o["addressBackground"]  = colorString(s.addressBackground);
+  o["archiveAddressForeground"] = colorString(s.archiveAddressForeground);
+  o["archiveAddressBackground"] = colorString(s.archiveAddressBackground);
   o["cursorActive"]       = colorString(s.cursorActiveColor);
   o["cursorInactive"]     = colorString(s.cursorInactiveColor);
 
@@ -345,6 +353,8 @@ void colorSchemeFromJson(const QJsonObject& o, ColorScheme& s) {
 
   readColor(o, "addressForeground", s.addressForeground);
   readColor(o, "addressBackground", s.addressBackground);
+  readColor(o, "archiveAddressForeground", s.archiveAddressForeground);
+  readColor(o, "archiveAddressBackground", s.archiveAddressBackground);
   readColor(o, "cursorActive",      s.cursorActiveColor);
   readColor(o, "cursorInactive",    s.cursorInactiveColor);
 
