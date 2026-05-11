@@ -2,7 +2,8 @@
 
 #include <QDialog>
 
-class QTabWidget;
+class QListWidget;
+class QStackedWidget;
 class QDialogButtonBox;
 class QShortcut;
 
@@ -49,7 +50,10 @@ private:
   QSize   m_currentWindowSize;
   QPoint  m_currentWindowPosition;
 
-  QTabWidget*       m_tabWidget;
+  // タブ → サイドメニュー化: 左に QListWidget でカテゴリ一覧、右に
+  // QStackedWidget で対応ページを切替表示する。
+  QListWidget*      m_sideMenu;
+  QStackedWidget*   m_stackedWidget;
   KeybindingTab*    m_keybindingTab;
   AppearanceTab*    m_appearanceTab;
   BehaviorTab*      m_behaviorTab;

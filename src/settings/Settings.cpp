@@ -1,4 +1,5 @@
 #include "Settings.h"
+#include <QApplication>
 #include <QStandardPaths>
 #include <QDir>
 #include <QFileInfo>
@@ -10,6 +11,7 @@
 #include <QDebug>
 #include <QFontDatabase>
 #include <QGuiApplication>
+#include <QPalette>
 #include <QStyleHints>
 #include <QSize>
 #include <QPoint>
@@ -22,17 +24,41 @@ Settings& Settings::instance() {
 }
 
 Settings::Settings(QObject* parent) : QObject(parent) {
-  applyDefaults();
-
-  // OS のカラースキーム変更 (Qt 6.5+) を監視。Auto モードのとき自動切替する。
-  // Qt 6.4 以下では QStyleHints::colorSchemeChanged が無いので no-op。
+  // OS のカラースキームを「私たち自身が setColorScheme で上書きする前」に
+  // 一度捕まえる。これが detectOsTheme() の真の OS 状態の起点となる。
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
   if (auto* hints = QGuiApplication::styleHints()) {
-    connect(hints, &QStyleHints::colorSchemeChanged, this, [this](Qt::ColorScheme) {
+    const Qt::ColorScheme cs = hints->colorScheme();
+    m_osColorScheme = (cs == Qt::ColorScheme::Dark) ? ThemeMode::Dark
+                                                    : ThemeMode::Light;
+  }
+#endif
+
+  applyDefaults();
+
+  // OS のカラースキーム変更 (Qt 6.5+) を監視。
+  // 注意: 私たちが setColorScheme(Light/Dark) を呼ぶときも colorSchemeChanged
+  // が発火するので、信号の値だけで「OS が変わった」とは判断できない。
+  // Auto モードのときだけ受け付け、かつ検出した OS 状態が前回と異なれば
+  // 切替えるロジックは下のとおり。
+  // m_osColorScheme は signal 経由で更新するが、この更新も「OS が変わった」
+  // 場合と「我々が setColorScheme した」場合の両方で起きうる。Auto モード時
+  // の整合だけ守れればよいので、ここでは単純に最新値で上書きする。
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+  if (auto* hints = QGuiApplication::styleHints()) {
+    connect(hints, &QStyleHints::colorSchemeChanged, this,
+            [this](Qt::ColorScheme cs) {
+      // Auto モード以外では、信号は私たちの setColorScheme による副次的な
+      // ものなので、OS 状態キャッシュを更新しない (我々のロックが OS 状態と
+      // 誤認されるのを防ぐ)。
       if (m_themeMode != ThemeMode::Auto) return;
-      const ThemeMode now = detectOsTheme();
+
+      // Auto モード時: setColorScheme(Unknown) で OS 追従にしているので、
+      // この信号は OS が真に変わったときのみ来る (はず)。
+      m_osColorScheme = (cs == Qt::ColorScheme::Dark) ? ThemeMode::Dark
+                                                      : ThemeMode::Light;
+      const ThemeMode now = m_osColorScheme;
       if (now == m_lastEffective) return;
-      // アクティブな m_ フィールドを旧スキームへ退避してから切替
       ColorScheme snapshot = collectThemeFields();
       if (m_lastEffective == ThemeMode::Light) m_lightScheme = snapshot;
       else                                     m_darkScheme  = snapshot;
@@ -250,6 +276,9 @@ void Settings::applyDefaults() {
 // 最新化する。
 ColorScheme Settings::collectThemeFields() const {
   ColorScheme s;
+  s.baseBackground     = m_baseBackground;
+  s.baseForeground     = m_baseForeground;
+  s.uiFont             = m_uiFont;
   s.listFont           = m_font;
   s.addressFont        = m_addressFont;
   s.fileListRowHeight  = m_fileListRowHeight;
@@ -290,6 +319,9 @@ ColorScheme Settings::collectThemeFields() const {
 // 渡された ColorScheme の値を m_ フィールドに流し込む。シグナルは出さない
 // (呼び出し側で settingsChanged を必要に応じて発火)。
 void Settings::applyThemeFields(const ColorScheme& s) {
+  m_baseBackground  = s.baseBackground;
+  m_baseForeground  = s.baseForeground;
+  m_uiFont          = s.uiFont;
   m_font            = s.listFont;
   m_addressFont     = s.addressFont;
   m_fileListRowHeight = s.fileListRowHeight;
@@ -324,17 +356,98 @@ void Settings::applyThemeFields(const ColorScheme& s) {
   m_binaryViewerSelectedBg  = s.binaryViewerSelectedBg;
   m_binaryViewerAddressFg   = s.binaryViewerAddressFg;
   m_binaryViewerAddressBg   = s.binaryViewerAddressBg;
+
+  // QApplication 全体のパレット + 既定フォントをスキームから派生させる。
+  //
+  // ベース 2 色 (baseBackground / baseForeground) を起点に、Window /
+  // AlternateBase / Button / Mid / Midlight / Light / Dark / Shadow 等を
+  // 線形補間 (blend) で算出。Highlight / Link は Light/Dark のどちらかで
+  // 適切なアクセント色をハードコードする。
+  if (qApp) {
+    const QColor bg = s.baseBackground.isValid() ? s.baseBackground : QColor(Qt::white);
+    const QColor fg = s.baseForeground.isValid() ? s.baseForeground : QColor(Qt::black);
+    const bool isDark = bg.lightness() < 128;
+
+    // bg と fg を t (0.0=bg, 1.0=fg) でブレンドする。
+    auto blend = [&](qreal t) -> QColor {
+      const qreal u = 1.0 - t;
+      return QColor(
+        qBound(0, int(bg.red()   * u + fg.red()   * t), 255),
+        qBound(0, int(bg.green() * u + bg.green() * 0 + fg.green() * t), 255),
+        qBound(0, int(bg.blue()  * u + fg.blue()  * t), 255));
+    };
+    // 上の式の green に bug があったので別実装に分ける (簡明性優先)。
+    auto mix = [&](qreal t) -> QColor {
+      const qreal u = 1.0 - t;
+      const int r = qBound(0, int(bg.red()   * u + fg.red()   * t), 255);
+      const int g = qBound(0, int(bg.green() * u + fg.green() * t), 255);
+      const int b = qBound(0, int(bg.blue()  * u + fg.blue()  * t), 255);
+      return QColor(r, g, b);
+    };
+    (void)blend;  // silence unused
+
+    // Qt 6.8+: QStyleHints::setColorScheme() で macOS native chrome を
+    // Light/Dark に追従させる。Auto モード時は Unknown で「OS 追従」へ戻す。
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+    if (auto* hints = QGuiApplication::styleHints()) {
+      if (m_themeMode == ThemeMode::Auto) {
+        hints->setColorScheme(Qt::ColorScheme::Unknown);
+      } else {
+        hints->setColorScheme(isDark ? Qt::ColorScheme::Dark : Qt::ColorScheme::Light);
+      }
+    }
+#endif
+
+    QPalette p;
+    // ベース 2 色 (そのまま)
+    p.setColor(QPalette::Base,              bg);
+    p.setColor(QPalette::Text,              fg);
+    p.setColor(QPalette::WindowText,        fg);
+    p.setColor(QPalette::ButtonText,        fg);
+    p.setColor(QPalette::ToolTipText,       fg);
+    // bg を少しずつ fg 方向へずらしたもの (グラデーション)
+    p.setColor(QPalette::AlternateBase,     mix(0.04));
+    p.setColor(QPalette::Window,            mix(0.06));
+    p.setColor(QPalette::ToolTipBase,       mix(0.08));
+    p.setColor(QPalette::Button,            mix(0.10));
+    p.setColor(QPalette::Midlight,          mix(0.15));
+    p.setColor(QPalette::Light,             mix(0.18));
+    p.setColor(QPalette::Mid,               mix(0.28));
+    p.setColor(QPalette::Dark,              mix(0.48));
+    // Shadow は Light テーマでは中央寄り、Dark テーマでは bg より暗く
+    // (= HSV で darker)。テーマ別に処理。
+    p.setColor(QPalette::Shadow,            isDark ? bg.darker(180) : mix(0.65));
+
+    // アクセント色 (Light/Dark で別の青系)
+    p.setColor(QPalette::BrightText,        QColor(Qt::red));
+    p.setColor(QPalette::Highlight,         isDark ? QColor(0x26, 0x4F, 0x78)
+                                                   : QColor(0x00, 0x78, 0xD7));
+    p.setColor(QPalette::HighlightedText,   QColor(Qt::white));
+    p.setColor(QPalette::Link,              isDark ? QColor(0x4D, 0xA1, 0xFF)
+                                                   : QColor(0x00, 0x66, 0xCC));
+
+    // Disabled (各 fg を bg 寄りに 40% ブレンドした薄い色)
+    p.setColor(QPalette::Disabled, QPalette::WindowText, mix(0.40));
+    p.setColor(QPalette::Disabled, QPalette::Text,       mix(0.40));
+    p.setColor(QPalette::Disabled, QPalette::ButtonText, mix(0.40));
+
+    qApp->setPalette(p);
+
+    // UI フォント (汎用ウィジェット全体に伝播)。個別 setFont() してある
+    // ウィジェット (ファイルリスト / アドレス / 各ビュアー) は影響を受けない。
+    if (s.uiFont != QFont()) {
+      qApp->setFont(s.uiFont);
+    }
+  }
 }
 
 ThemeMode Settings::detectOsTheme() const {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
-  if (auto* hints = QGuiApplication::styleHints()) {
-    const Qt::ColorScheme cs = hints->colorScheme();
-    if (cs == Qt::ColorScheme::Dark)  return ThemeMode::Dark;
-    if (cs == Qt::ColorScheme::Light) return ThemeMode::Light;
-  }
-#endif
-  return ThemeMode::Light;  // 不明 / 古い Qt → Light 扱い
+  // m_osColorScheme は constructor で OS の値を最初に捕まえてあり、
+  // その後 colorSchemeChanged シグナル経由で更新される (Auto モード時のみ)。
+  // ここで `QStyleHints::colorScheme()` を直接読んでしまうと、私たち自身が
+  // applyThemeFields 内で `setColorScheme(Light/Dark)` を呼んだ後にその値が
+  // 残ってしまい、OS 状態を取り違えるバグになる。
+  return m_osColorScheme;
 }
 
 ThemeMode Settings::themeMode() const { return m_themeMode; }
@@ -413,6 +526,14 @@ void Settings::setPathOverride(const QString& path, const PaneSettings& s) {
 void Settings::removePathOverride(const QString& path) {
   m_pathOverrides.remove(path);
 }
+
+QColor Settings::baseBackground() const     { return m_baseBackground; }
+QColor Settings::baseForeground() const     { return m_baseForeground; }
+void   Settings::setBaseBackground(const QColor& c) { m_baseBackground = c; }
+void   Settings::setBaseForeground(const QColor& c) { m_baseForeground = c; }
+
+QFont  Settings::uiFont() const             { return m_uiFont; }
+void   Settings::setUiFont(const QFont& f)  { m_uiFont = f; }
 
 QFont Settings::font() const {
   return m_font;

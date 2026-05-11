@@ -63,6 +63,19 @@ public:
   void         removePathOverride(const QString& path);
 
   // ── 表示設定 ───────────────────────────
+  // ベース色 (= UI 全体の地色 / 文字色; QPalette 派生元)。
+  // ダイアログ背景・ボタン・メニュー等、個別設定の無いウィジェットは
+  // この 2 色から計算したパレットで描画される。
+  QColor baseBackground()              const;
+  QColor baseForeground()              const;
+  void   setBaseBackground(const QColor& c);
+  void   setBaseForeground(const QColor& c);
+
+  // UI フォント (汎用ウィジェット用; QApplication::setFont() に渡される)。
+  // ファイルリスト / アドレス / 各ビュアーは個別の font 設定を保持。
+  QFont  uiFont()                      const;
+  void   setUiFont(const QFont& font);
+
   // ファイルリスト用フォント (旧名 font())
   QFont  font()                        const;
   void   setFont(const QFont& font);
@@ -340,6 +353,11 @@ public:
   ColorScheme scheme(ThemeMode which) const;
   void        setScheme(ThemeMode which, const ColorScheme& s);
 
+  // OS の現在のカラースキーム (Light/Dark) を読む。Settings に保存された
+  // m_themeMode とは独立に「いま OS は何?」を取得したいときに使う。
+  // Qt 6.5 未満や判定不能なら Light を返す。
+  ThemeMode   detectOsTheme()  const;
+
   // ── 読み書き ───────────────────────────
   void load();
   void save() const;
@@ -359,6 +377,10 @@ private:
 
   PaneSettings     m_paneSettings[static_cast<int>(PaneType::Count)];
   QMap<QString, PaneSettings> m_pathOverrides;
+  // ベース色 + UI フォント (= 個別設定外の UI 全体の地色 / フォント)
+  QColor           m_baseBackground       = QColor(Qt::white);
+  QColor           m_baseForeground       = QColor(Qt::black);
+  QFont            m_uiFont;
   QFont            m_font;
   QFont            m_addressFont;
   int              m_fileListRowHeight = 0;  // 0 = Auto
@@ -498,13 +520,18 @@ private:
   // 直前と同じならシグナル抑止できるよう)。
   mutable ThemeMode  m_lastEffective = ThemeMode::Light;
 
+  // OS が現在 Light か Dark か。Settings 構築時に
+  // `QStyleHints::colorScheme()` を一度読んで初期値とし、それ以降は
+  // colorSchemeChanged シグナル経由で更新する。`applyThemeFields()` 内で
+  // 私たちが `setColorScheme()` を呼ぶと colorScheme() の戻り値が
+  // 上書きされてしまうため、OS 状態を独立に追跡しないと
+  // detectOsTheme() が正しい結果を返せなくなる。
+  mutable ThemeMode  m_osColorScheme = ThemeMode::Light;
+
   // m_ フィールド ↔ ColorScheme のシリアライズ。private 実装ヘルパ。
   ColorScheme collectThemeFields() const;
   void        applyThemeFields(const ColorScheme& s);
 
-  // OS のカラースキーム (Light/Dark) を読み、Auto モード用に Light か
-  // Dark かを返す。Qt 6.5 未満や不明な OS では Light を返す。
-  ThemeMode   detectOsTheme() const;
 };
 
 } // namespace Farman

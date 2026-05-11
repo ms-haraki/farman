@@ -16,6 +16,8 @@
 #include <QSpinBox>
 #include <QFontDialog>
 #include <QColorDialog>
+#include <QRadioButton>
+#include <QButtonGroup>
 
 namespace Farman {
 
@@ -39,17 +41,24 @@ void AppearanceTab::setupUi() {
   QGroupBox* themeGroup = new QGroupBox(tr("Theme"), this);
   QVBoxLayout* themeOuter = new QVBoxLayout(themeGroup);
 
-  // 行 1: Mode + (currently applying: ...)
+  // 行 1: Mode (ラジオ 3 つ) + (currently applying: ...)
   QHBoxLayout* modeRow = new QHBoxLayout();
   modeRow->addWidget(new QLabel(tr("Mode:"), this));
-  m_themeModeCombo = new QComboBox(this);
-  m_themeModeCombo->addItem(tr("Auto (follow OS)"), static_cast<int>(ThemeMode::Auto));
-  m_themeModeCombo->addItem(tr("Light"),            static_cast<int>(ThemeMode::Light));
-  m_themeModeCombo->addItem(tr("Dark"),             static_cast<int>(ThemeMode::Dark));
-  m_themeModeCombo->setToolTip(
-    tr("Auto follows the operating system's appearance setting. "
-       "Editing automatically targets the currently active side."));
-  modeRow->addWidget(m_themeModeCombo);
+  m_modeAutoRadio  = new QRadioButton(tr("Auto (follow OS)"), this);
+  m_modeAutoRadio->setToolTip(tr(
+    "Auto follows the operating system's appearance setting. "
+    "Editing automatically targets the currently active side."));
+  m_modeLightRadio = new QRadioButton(tr("Light"), this);
+  m_modeDarkRadio  = new QRadioButton(tr("Dark"),  this);
+  // 排他化 (QRadioButton 同じ親で自動グルーピングされるが、明示しておく)
+  auto* modeGroup = new QButtonGroup(this);
+  modeGroup->setExclusive(true);
+  modeGroup->addButton(m_modeAutoRadio);
+  modeGroup->addButton(m_modeLightRadio);
+  modeGroup->addButton(m_modeDarkRadio);
+  modeRow->addWidget(m_modeAutoRadio);
+  modeRow->addWidget(m_modeLightRadio);
+  modeRow->addWidget(m_modeDarkRadio);
   modeRow->addSpacing(12);
 
   m_autoEffectiveLabel = new QLabel(this);
@@ -58,26 +67,25 @@ void AppearanceTab::setupUi() {
   modeRow->addStretch();
   themeOuter->addLayout(modeRow);
 
-  connect(m_themeModeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-          this, [this](int) { applyThemeModeChange(); });
+  // ラジオが ON にトグルした瞬間だけ反応する (= OFF 側のシグナルは無視)
+  auto modeRadioToggled = [this](bool on) { if (on) applyThemeModeChange(); };
+  connect(m_modeAutoRadio,  &QRadioButton::toggled, this, modeRadioToggled);
+  connect(m_modeLightRadio, &QRadioButton::toggled, this, modeRadioToggled);
+  connect(m_modeDarkRadio,  &QRadioButton::toggled, this, modeRadioToggled);
 
   // 行 2: Preset + Apply + Export + Import
   QHBoxLayout* presetRow = new QHBoxLayout();
   presetRow->addWidget(new QLabel(tr("Preset:"), this));
   m_themePresetCombo = new QComboBox(this);
   m_themePresetCombo->setMinimumWidth(200);
-  for (const auto& p : PresetIO::listBundledThemePresets()) {
-    m_themePresetCombo->addItem(p.displayName, p.resourcePath);
-  }
+  m_themePresetCombo->setToolTip(tr(
+    "Pick a bundled theme to load its colors into the current side. "
+    "Press OK to commit or Cancel to revert."));
+  // 中身は loadSettings → rebuildPresetCombo() で kind フィルタして埋める。
+  // currentIndexChanged で即時プレビュー反映 (Apply ボタンは廃止)。
+  connect(m_themePresetCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this, [this](int) { onApplyThemePreset(); });
   presetRow->addWidget(m_themePresetCombo);
-
-  m_themeApplyButton = new QPushButton(tr("Apply"), this);
-  m_themeApplyButton->setToolTip(
-    tr("Replace the current side's colors with the selected preset. "
-       "Presets that include both Light and Dark blocks update both."));
-  m_themeApplyButton->setEnabled(m_themePresetCombo->count() > 0);
-  connect(m_themeApplyButton, &QPushButton::clicked, this, &AppearanceTab::onApplyThemePreset);
-  presetRow->addWidget(m_themeApplyButton);
 
   presetRow->addSpacing(16);
   m_themeExportButton = new QPushButton(tr("Export..."), this);
@@ -119,6 +127,38 @@ void AppearanceTab::setupUi() {
     row->addWidget(w);
     row->addSpacing(12);
   };
+
+  // ─── 全般 UI グループ: 個別設定外の地色 + 文字色 + UI フォント ─────
+  // QPalette の Window / Base / Mid / Button / ... 等、個別設定で覆われない
+  // 部分は applyThemeFields() でここから線形補間して算出される。
+  QGroupBox* baseGroup = new QGroupBox(tr("UI Overall"), this);
+  baseGroup->setToolTip(tr(
+    "Default font and background/text colors for dialogs, menus, buttons, "
+    "tooltips and any other UI elements not individually themed below."));
+  QHBoxLayout* baseRow = new QHBoxLayout(baseGroup);
+
+  m_uiFontButton = new QPushButton(tr("Select Font..."), this);
+  m_uiFontButton->setToolTip(tr(
+    "Default font for dialogs, menus, buttons and other generic widgets. "
+    "File list / Address / Viewer fonts are configured separately."));
+  connect(m_uiFontButton, &QPushButton::clicked, this, [this]() {
+    bool ok = false;
+    const QFont chosen = QFontDialog::getFont(&ok, m_uiFontValue, this, tr("UI Font"));
+    if (ok) {
+      m_uiFontValue = chosen;
+      m_uiFontButton->setText(QString("%1, %2pt")
+        .arg(m_uiFontValue.family())
+        .arg(m_uiFontValue.pointSize()));
+    }
+  });
+  addPair(baseRow, tr("Font:"), m_uiFontButton);
+
+  m_baseFgButton = makeColorButton(m_baseFgValue, tr("Base Foreground Color"));
+  m_baseBgButton = makeColorButton(m_baseBgValue, tr("Base Background Color"));
+  addPair(baseRow, tr("Foreground:"), m_baseFgButton);
+  addPair(baseRow, tr("Background:"), m_baseBgButton);
+  baseRow->addStretch();
+  mainLayout->addWidget(baseGroup);
 
   // ─── Address グループ: Font / Foreground / Background を横並び ───
   QGroupBox* addressGroup = new QGroupBox(tr("Address"), this);
@@ -230,23 +270,53 @@ void AppearanceTab::setupUi() {
   activeRow->addWidget(buildStateGrid(tr("Selected State"), true,  false));
   categoryOuter->addWidget(activeGroup);
 
-  // QGroupBox 自体を checkable にして「非アクティブパネル」のタイトル左に
-  // チェックボックスを置く。チェック OFF で中身がグレーアウト + 値を使わなく
-  // なる。Settings 上は m_useInactivePaneColors と等価に扱う。
-  m_inactivePaneGroup = new QGroupBox(tr("Inactive Pane"), this);
-  m_inactivePaneGroup->setCheckable(true);
-  m_inactivePaneGroup->setToolTip(
+  // 非アクティブパネル設定:
+  //   - 外枠は普通の (non-checkable, タイトル無し) QGroupBox = 単なる枠
+  //   - 中の最初の行に QCheckBox "Inactive Pane" を置く。これが ON/OFF と
+  //     見出しを兼ね、かつ macOS native のフォーカスリング (青いハロー) を
+  //     QWidget として受け取れる
+  //   - チェック OFF 時は内部の state grid 2 つを setEnabled(false) で
+  //     グレーアウトさせる (旧 checkable QGroupBox の挙動を手で再現)
+  m_inactivePaneGroup = new QGroupBox(this);
+  QVBoxLayout* inactiveVBox = new QVBoxLayout(m_inactivePaneGroup);
+
+  m_inactivePaneCheck = new QCheckBox(tr("Inactive Pane"), this);
+  m_inactivePaneCheck->setToolTip(
     tr("Enable separate colors for the non-active pane. "
        "When off, the active colors are used for both panes."));
-  QHBoxLayout* inactiveRow = new QHBoxLayout(m_inactivePaneGroup);
-  inactiveRow->addWidget(buildStateGrid(tr("Normal State"),   false, true));
-  inactiveRow->addWidget(buildStateGrid(tr("Selected State"), true,  true));
+  inactiveVBox->addWidget(m_inactivePaneCheck);
+
+  m_inactiveNormalGrid   = buildStateGrid(tr("Normal State"),   false, true);
+  m_inactiveSelectedGrid = buildStateGrid(tr("Selected State"), true,  true);
+  QHBoxLayout* inactiveRow = new QHBoxLayout();
+  inactiveRow->addWidget(m_inactiveNormalGrid);
+  inactiveRow->addWidget(m_inactiveSelectedGrid);
+  inactiveVBox->addLayout(inactiveRow);
   categoryOuter->addWidget(m_inactivePaneGroup);
 
-  // 旧 m_useInactivePaneColorsCheck は廃止。グループのチェック状態を
-  // そのまま load/save で参照する。
+  // チェック状態に応じて内部 grid の enabled を切替える。
+  connect(m_inactivePaneCheck, &QCheckBox::toggled, this, [this](bool checked) {
+    if (m_inactiveNormalGrid)   m_inactiveNormalGrid->setEnabled(checked);
+    if (m_inactiveSelectedGrid) m_inactiveSelectedGrid->setEnabled(checked);
+  });
 
   mainLayout->addWidget(fileListGroup, /*stretch*/ 1);
+
+  // Tab 順の調整: アクティブパネルの「Selected State / Directory / Bold」
+  // (= 最後の太字チェック) の次が「Inactive Pane」の QCheckBox になるように
+  // する。デフォルトの作成順だと、Active Selected 最終セル → Inactive Normal
+  // 1 セル目に飛んでしまい、Inactive Pane の ON/OFF に辿り着くのに巻き戻し
+  // 操作が必要だった。
+  if (m_inactivePaneCheck) {
+    const int dirIdx = static_cast<int>(FileCategory::Directory);
+    auto* lastActiveCell = m_categoryRows[dirIdx].selected.boldCheck;
+    auto* firstInactiveCell =
+      m_categoryRows[static_cast<int>(FileCategory::Normal)].inactiveNormal.fgButton;
+    if (lastActiveCell && firstInactiveCell) {
+      setTabOrder(lastActiveCell,    m_inactivePaneCheck);
+      setTabOrder(m_inactivePaneCheck, firstInactiveCell);
+    }
+  }
 }
 
 void AppearanceTab::loadSettings() {
@@ -257,27 +327,38 @@ void AppearanceTab::loadSettings() {
   m_dialogDark  = settings.scheme(ThemeMode::Dark);
   m_dialogMode  = settings.themeMode();
   // 編集対象 (= 現在 effective なテーマ)
+  // Auto のときは OS を直接判定 (settings.effectiveTheme() は Settings 側の
+  // m_themeMode に依存するので、ダイアログ内で Mode を Auto に変えた直後だと
+  // まだ古いモードを参照してしまう)。
   m_dialogEditingSide = (m_dialogMode == ThemeMode::Auto)
-                          ? settings.effectiveTheme()
+                          ? settings.detectOsTheme()
                           : m_dialogMode;
 
-  // モードコンボを反映 (ハンドラを抑止して再ロードを防ぐ)
+  // モードラジオを反映 (signal を抑止して再ロードを防ぐ)
   {
-    QSignalBlocker b(m_themeModeCombo);
-    for (int i = 0; i < m_themeModeCombo->count(); ++i) {
-      if (m_themeModeCombo->itemData(i).toInt() == static_cast<int>(m_dialogMode)) {
-        m_themeModeCombo->setCurrentIndex(i);
-        break;
-      }
+    QSignalBlocker b1(m_modeAutoRadio);
+    QSignalBlocker b2(m_modeLightRadio);
+    QSignalBlocker b3(m_modeDarkRadio);
+    switch (m_dialogMode) {
+      case ThemeMode::Auto:  m_modeAutoRadio->setChecked(true);  break;
+      case ThemeMode::Light: m_modeLightRadio->setChecked(true); break;
+      case ThemeMode::Dark:  m_modeDarkRadio->setChecked(true);  break;
     }
   }
 
   // 編集対象側のスキームをウィジェットに流し込む
   loadFromScheme(currentScheme());
+  // プリセットコンボを kind フィルタ済みで再構築
+  rebuildPresetCombo();
   updateAutoEffectiveLabel();
 
   // 非アクティブペイン設定 (テーマ非依存; グローバル設定)
-  m_inactivePaneGroup->setChecked(settings.useInactivePaneColors());
+  // QCheckBox の setChecked が toggled シグナルを発火しない場合 (= 値が既に
+  // 一致) に備え、内部 grid の enable 状態は明示的にも反映しておく。
+  const bool useInactive = settings.useInactivePaneColors();
+  m_inactivePaneCheck->setChecked(useInactive);
+  if (m_inactiveNormalGrid)   m_inactiveNormalGrid->setEnabled(useInactive);
+  if (m_inactiveSelectedGrid) m_inactiveSelectedGrid->setEnabled(useInactive);
 
   // カーソル形状 / 太さ (テーマ非依存)
   for (int i = 0; i < m_cursorShapeCombo->count(); ++i) {
@@ -295,6 +376,17 @@ ColorScheme& AppearanceTab::currentScheme() {
 }
 
 void AppearanceTab::loadFromScheme(const ColorScheme& s) {
+  // ベース色 + UI フォント
+  m_baseFgValue = s.baseForeground;
+  m_baseBgValue = s.baseBackground;
+  if (m_baseFgButton) updateColorButton(m_baseFgButton, m_baseFgValue);
+  if (m_baseBgButton) updateColorButton(m_baseBgButton, m_baseBgValue);
+  m_uiFontValue = s.uiFont;
+  if (m_uiFontButton) {
+    m_uiFontButton->setText(QString("%1, %2pt")
+      .arg(m_uiFontValue.family()).arg(m_uiFontValue.pointSize()));
+  }
+
   // フォント
   m_selectedFont = s.listFont;
   m_fontButton->setText(QString("%1, %2pt").arg(m_selectedFont.family()).arg(m_selectedFont.pointSize()));
@@ -331,6 +423,9 @@ void AppearanceTab::loadFromScheme(const ColorScheme& s) {
 }
 
 void AppearanceTab::saveToScheme(ColorScheme& s) const {
+  s.baseBackground     = m_baseBgValue;
+  s.baseForeground     = m_baseFgValue;
+  s.uiFont             = m_uiFontValue;
   s.listFont           = m_selectedFont;
   s.addressFont        = m_addressFontValue;
   s.fileListRowHeight  = m_rowHeightSpin->value();
@@ -356,19 +451,65 @@ void AppearanceTab::applyThemeModeChange() {
   // 1. いまウィジェットに表示されている値を、現在編集中の側へ書き戻す
   saveToScheme(currentScheme());
 
-  // 2. コンボから新しい m_dialogMode を取得
-  m_dialogMode = static_cast<ThemeMode>(m_themeModeCombo->currentData().toInt());
+  // 2. ラジオから新しい m_dialogMode を取得
+  if      (m_modeLightRadio && m_modeLightRadio->isChecked()) m_dialogMode = ThemeMode::Light;
+  else if (m_modeDarkRadio  && m_modeDarkRadio->isChecked())  m_dialogMode = ThemeMode::Dark;
+  else                                                          m_dialogMode = ThemeMode::Auto;
 
-  // 3. 編集対象側を再決定
+  // 3. 編集対象側を再決定。Auto は OS を直接判定 (Settings の保存値ではない)。
   m_dialogEditingSide = (m_dialogMode == ThemeMode::Auto)
-                          ? Settings::instance().effectiveTheme()
+                          ? Settings::instance().detectOsTheme()
                           : m_dialogMode;
 
   // 4. 新しい編集対象のスキームをウィジェットへロード
   loadFromScheme(currentScheme());
+  // 4.5. プリセットコンボを編集対象側に合わせて再構築
+  rebuildPresetCombo();
 
   // 5. Auto のときだけ "currently: Light/Dark" 表示を更新
   updateAutoEffectiveLabel();
+}
+
+void AppearanceTab::rebuildPresetCombo() {
+  if (!m_themePresetCombo) return;
+
+  // 編集対象側を判定: Light なら "light" ブロック、Dark なら "dark" を持つ
+  // プリセットだけを並べる。両方持ちのプリセット (例: Solarized) はどちらでも残る。
+  const bool wantLight = (m_dialogEditingSide == ThemeMode::Light);
+
+  // 直前の選択 (id) を記憶しておき、再構築後に同じ id があれば復元する。
+  const QString prevId = m_themePresetCombo->currentData().toString();
+
+  QSignalBlocker block(m_themePresetCombo);
+  m_themePresetCombo->clear();
+  // 1 行目はプレースホルダ (= 何も適用しない)。
+  m_themePresetCombo->addItem(tr("(Choose a preset...)"), QString());
+
+  for (const auto& p : PresetIO::listBundledThemePresets()) {
+    // 各プリセットを読み込んで含まれているブロックを判定
+    QJsonObject obj;
+    if (!PresetIO::loadJsonFromResource(p.resourcePath, obj).ok) continue;
+    PresetIO::ThemeData data;
+    if (!PresetIO::themeFromJson(obj, data).ok) continue;
+    const bool hasLight = data.light.has_value();
+    const bool hasDark  = data.dark.has_value();
+
+    if ((wantLight && hasLight) || (!wantLight && hasDark)) {
+      m_themePresetCombo->addItem(p.displayName, p.resourcePath);
+    }
+  }
+
+  // 同じ id が残っていれば復元、無ければプレースホルダ (index 0) を選択
+  int restoreIdx = 0;
+  if (!prevId.isEmpty()) {
+    for (int i = 0; i < m_themePresetCombo->count(); ++i) {
+      if (m_themePresetCombo->itemData(i).toString() == prevId) {
+        restoreIdx = i;
+        break;
+      }
+    }
+  }
+  m_themePresetCombo->setCurrentIndex(restoreIdx);
 }
 
 void AppearanceTab::updateAutoEffectiveLabel() {
@@ -475,10 +616,11 @@ void AppearanceTab::updateColorButton(QPushButton* btn, const QColor& color) {
 }
 
 void AppearanceTab::onApplyThemePreset() {
+  // コンボの currentIndexChanged で都度呼ばれる。プレースホルダ選択時は no-op。
+  // 確認ダイアログは出さない: ダイアログ内編集なので、Cancel で破棄できる。
   if (!m_themePresetCombo || m_themePresetCombo->currentIndex() < 0) return;
-  const QString name         = m_themePresetCombo->currentText();
   const QString resourcePath = m_themePresetCombo->currentData().toString();
-  if (resourcePath.isEmpty()) return;
+  if (resourcePath.isEmpty()) return;  // "(Choose a preset...)" プレースホルダ
 
   QJsonObject obj;
   if (auto r = PresetIO::loadJsonFromResource(resourcePath, obj); !r.ok) {
@@ -488,11 +630,6 @@ void AppearanceTab::onApplyThemePreset() {
   PresetIO::ThemeData data;
   if (auto r = PresetIO::themeFromJson(obj, data); !r.ok) {
     QMessageBox::warning(this, tr("Apply Theme Preset"), r.error);
-    return;
-  }
-
-  if (!confirm(this, tr("Apply Theme Preset"),
-               tr("Replace the current theme colors with the '%1' preset?").arg(name))) {
     return;
   }
 
@@ -560,7 +697,7 @@ void AppearanceTab::save() {
   settings.setThemeMode(m_dialogMode);
 
   // 4. テーマ非依存のグローバル設定
-  settings.setUseInactivePaneColors(m_inactivePaneGroup->isChecked());
+  settings.setUseInactivePaneColors(m_inactivePaneCheck->isChecked());
   settings.setCursorShape(
     static_cast<CursorShape>(m_cursorShapeCombo->currentData().toInt()));
   settings.setCursorThickness(m_cursorThicknessSpin->value());

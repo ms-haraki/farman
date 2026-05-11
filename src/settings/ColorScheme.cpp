@@ -62,6 +62,11 @@ void fillDarkCategories(ColorScheme& s) {
 ColorScheme defaultLightScheme() {
   ColorScheme s;
 
+  // ベース色 (Light): 白背景 + 黒文字
+  s.baseBackground     = QColor(Qt::white);
+  s.baseForeground     = QColor(Qt::black);
+  s.uiFont             = defaultUiFont();
+
   // フォント / 行高
   s.listFont           = defaultUiFont();
   s.addressFont        = defaultUiFont();
@@ -104,6 +109,11 @@ ColorScheme defaultLightScheme() {
 
 ColorScheme defaultDarkScheme() {
   ColorScheme s;
+
+  // ベース色 (Dark): 暗背景 + 明文字
+  s.baseBackground     = QColor(0x1E, 0x1E, 0x1E);
+  s.baseForeground     = QColor(0xE0, 0xE0, 0xE0);
+  s.uiFont             = defaultUiFont();
 
   s.listFont           = defaultUiFont();
   s.addressFont        = defaultUiFont();
@@ -253,6 +263,11 @@ void readColor(const QJsonObject& o, const char* key, QColor& dst) {
 
 QJsonObject colorSchemeToJson(const ColorScheme& s) {
   QJsonObject o;
+  // ── ベース色 + UI フォント (新規; 旧 JSON にはフィールド無し)
+  o["baseBackground"] = colorString(s.baseBackground);
+  o["baseForeground"] = colorString(s.baseForeground);
+  o["uiFont"]         = fontToJson(s.uiFont);
+
   // ── ファイルリスト
   o["listFont"]          = fontToJson(s.listFont);
   o["addressFont"]       = fontToJson(s.addressFont);
@@ -307,6 +322,11 @@ QJsonObject colorSchemeToJson(const ColorScheme& s) {
 }
 
 void colorSchemeFromJson(const QJsonObject& o, ColorScheme& s) {
+  // ベース色 + UI フォント (新規)。フィールド未存在なら fallback を維持。
+  readColor(o, "baseBackground", s.baseBackground);
+  readColor(o, "baseForeground", s.baseForeground);
+  if (o.contains("uiFont")) s.uiFont = fontFromJson(o.value("uiFont").toObject(), s.uiFont);
+
   if (o.contains("listFont"))    s.listFont    = fontFromJson(o.value("listFont").toObject(),    s.listFont);
   if (o.contains("addressFont")) s.addressFont = fontFromJson(o.value("addressFont").toObject(), s.addressFont);
   if (o.contains("fileListRowHeight"))

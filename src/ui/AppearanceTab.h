@@ -10,6 +10,7 @@ class QPushButton;
 class QComboBox;
 class QGroupBox;
 class QCheckBox;
+class QRadioButton;
 class QGridLayout;
 class QSpinBox;
 class QLabel;
@@ -73,6 +74,14 @@ private:
   // 色ボタンにプレビュー色を反映
   void updateColorButton(QPushButton* btn, const QColor& color);
 
+  // Base (UI default) settings — 個別設定で覆われない全 UI の地色 + 文字 + フォント
+  QPushButton*   m_uiFontButton    = nullptr;
+  QFont          m_uiFontValue;
+  QPushButton*   m_baseFgButton    = nullptr;
+  QPushButton*   m_baseBgButton    = nullptr;
+  QColor         m_baseFgValue;
+  QColor         m_baseBgValue;
+
   // Font settings
   QPushButton*   m_fontButton;          // File list font
   QFont          m_selectedFont;
@@ -86,8 +95,16 @@ private:
 
   // Category colors (Normal / Hidden / Directory)
   CategoryRow m_categoryRows[static_cast<int>(FileCategory::Count)];
-  // 非アクティブパネル設定 (グループ自体が checkable で ON/OFF を兼ねる)
+  // 非アクティブパネル設定: 外枠 QGroupBox はタイトル無しの単なる枠で、
+  // 中の m_inactivePaneCheck (QCheckBox) が ON/OFF と「非アクティブパネル」
+  // 見出しを兼ねる。QCheckBox を使うのは、macOS native のフォーカスリング
+  // (青いハロー) が QGroupBox::indicator subcontrol には描画されず、実物の
+  // QWidget (= QCheckBox) にしか付かないため。
   QGroupBox*  m_inactivePaneGroup = nullptr;
+  QCheckBox*  m_inactivePaneCheck = nullptr;
+  // チェック OFF 時にグレーアウトさせる対象 (Inactive 側 state grid 2 つ)
+  QGroupBox*  m_inactiveNormalGrid   = nullptr;
+  QGroupBox*  m_inactiveSelectedGrid = nullptr;
 
   // Address bar colors
   QPushButton* m_addressFgButton = nullptr;
@@ -103,15 +120,24 @@ private:
   QSpinBox*    m_cursorThicknessSpin  = nullptr;
 
   // ── テーマ (Light / Dark) ─────────────────────
-  QComboBox*    m_themeModeCombo     = nullptr;
+  // モード切替はラジオボタン 3 つ (Auto / Light / Dark)。
+  QRadioButton* m_modeAutoRadio  = nullptr;
+  QRadioButton* m_modeLightRadio = nullptr;
+  QRadioButton* m_modeDarkRadio  = nullptr;
   // Mode = Auto のときだけ「現在 OS 側がどちらを要求しているか」を表示する。
   // Light / Dark を明示選択しているときは自明なので空文字 + 非表示にする。
   QLabel*       m_autoEffectiveLabel = nullptr;
-  // テーマプリセット / インポート / エクスポート
+  // テーマプリセット / インポート / エクスポート。プリセットコンボは
+  // 編集対象側 (Light/Dark) に応じて kind フィルタ済みの内容で再構築される。
+  // コンボ選択で即時プレビュー反映するため Apply ボタンは無し。
   QComboBox*    m_themePresetCombo   = nullptr;
-  QPushButton*  m_themeApplyButton   = nullptr;
   QPushButton*  m_themeExportButton  = nullptr;
   QPushButton*  m_themeImportButton  = nullptr;
+
+  // 編集対象側に応じてプリセットコンボを再構築する。各 JSON が持つブロック
+  // (light / dark / 両方) を見て、編集対象側に対応するブロックがあるテーマ
+  // だけ並べる (= 両方持ちのもの (Solarized) はどちらでも残る)。
+  void rebuildPresetCombo();
   // ダイアログ内でのモード設定 (OK で確定)
   ThemeMode     m_dialogMode        = ThemeMode::Auto;
   // 現在ウィジェットが表示しているのが Light か Dark か

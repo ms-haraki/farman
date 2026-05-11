@@ -25,6 +25,23 @@ namespace Farman {
 //  - useInactivePaneColors          — 機能 ON/OFF のトグル
 //  - 各種 extensions / mime / encoding / unit など viewer の挙動設定
 struct ColorScheme {
+  // ── ベース色 (= UI 全体の地色) ─────────────
+  // QPalette の Window/Base/Text/WindowText 等の派生元。
+  // ここから applyThemeFields() でグラデーション計算して
+  // Mid / Midlight / Dark / Shadow / Button / AlternateBase 等を自動算出する。
+  // 「個別設定で覆われていない部分」(ダイアログ背景、ボタン、メニュー、
+  // ツールチップ、スクロールバー、グループ枠、…) のすべてがこの 2 色から決まる。
+  QColor  baseBackground;
+  QColor  baseForeground;
+
+  // ── UI フォント (汎用ウィジェット用) ──────────
+  // QApplication::setFont() に流し込むフォント。これが指定されると、
+  // 個別に setFont() されていない全ウィジェット (= ダイアログのラベル、
+  // ボタン、メニュー、ツールチップ等) がこのフォントで描画される。
+  // ファイルリスト / アドレスバー / 各ビュアーは個別の font 設定を保持する
+  // ので影響を受けない。
+  QFont   uiFont;
+
   // ── ファイルリスト ─────────────────────────
   QFont   listFont;       // ファイル一覧
   QFont   addressFont;    // アドレスバー (各ペイン上部)

@@ -13,14 +13,16 @@
 #include <QComboBox>
 #include <QDebug>
 #include <QDialogButtonBox>
+#include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
 #include <QProcess>
 #include <QPushButton>
 #include <QShortcut>
 #include <QSpinBox>
-#include <QTabWidget>
+#include <QStackedWidget>
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <cstdlib>
@@ -33,7 +35,8 @@ SettingsDialog::SettingsDialog(const QString& leftCurrentPath,
                                const QPoint&  currentWindowPosition,
                                QWidget* parent)
   : QDialog(parent)
-  , m_tabWidget(nullptr)
+  , m_sideMenu(nullptr)
+  , m_stackedWidget(nullptr)
   , m_keybindingTab(nullptr)
   , m_appearanceTab(nullptr)
   , m_behaviorTab(nullptr)
@@ -49,13 +52,37 @@ SettingsDialog::SettingsDialog(const QString& leftCurrentPath,
 
 void SettingsDialog::setupUi() {
   setWindowTitle(tr("Settings"));
-  resize(800, 600);
+  resize(900, 600);  // サイドメニュー分を加味してやや横長に
 
+  // メインは上下 2 段: 上 = サイドメニュー + ページ、下 = ボタン行
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
-  // Tab widget
-  m_tabWidget = new QTabWidget(this);
+  // ── サイドメニュー + 右ペイン (QStackedWidget) ──
+  QHBoxLayout* contentLayout = new QHBoxLayout();
+  contentLayout->setSpacing(8);
 
+  m_sideMenu = new QListWidget(this);
+  m_sideMenu->setFixedWidth(160);
+  m_sideMenu->setFocusPolicy(Qt::StrongFocus);
+  // 選択行のスタイル:
+  //   - :active = サイドメニューがアクティブ (フォーカス有) → palette(highlight)
+  //   - :!active = フォーカスが右側ペインへ移った → palette(mid) の薄い色
+  // サイドメニュー自体 (QListWidget) の背景には触らない。padding は項目余白。
+  m_sideMenu->setStyleSheet(QStringLiteral(
+    "QListWidget::item { padding: 6px 8px; }"
+    "QListWidget::item:selected:active { "
+        "background-color: palette(highlight); "
+        "color: palette(highlighted-text); }"
+    "QListWidget::item:selected:!active { "
+        "background-color: palette(mid); "
+        "color: palette(window-text); }"
+  ));
+  contentLayout->addWidget(m_sideMenu);
+
+  m_stackedWidget = new QStackedWidget(this);
+  contentLayout->addWidget(m_stackedWidget, /*stretch*/ 1);
+
+  // ── 各ページ生成 ──
   m_keybindingTab   = new KeybindingTab(this);
   m_appearanceTab   = new AppearanceTab(this);
   m_behaviorTab     = new BehaviorTab(this);
@@ -65,17 +92,28 @@ void SettingsDialog::setupUi() {
   m_viewersTab      = new ViewersTab(this);
   m_externalAppsTab = new ExternalAppsTab(this);
 
-  // 外部アプリの設定はキーバインドと密結合 (T / E などのキーが指す先) なので、
+  // ページとメニュー項目を 1:1 で並べる。順序は旧 TabWidget と同じ。
+  // 外部アプリはキーバインドと密結合 (T / E などのキーが指す先) なので
   // Keybindings の直前に並べる。
-  m_tabWidget->addTab(m_generalTab,      tr("1. General"));
-  m_tabWidget->addTab(m_behaviorTab,     tr("2. Behavior"));
-  m_tabWidget->addTab(m_appearanceTab,   tr("3. Appearance"));
-  m_tabWidget->addTab(m_viewersTab,      tr("4. Viewers"));
-  m_tabWidget->addTab(m_externalAppsTab, tr("5. External Apps"));
-  m_tabWidget->addTab(m_keybindingTab,   tr("6. Keybindings"));
+  auto addPage = [this](QWidget* page, const QString& label) {
+    m_sideMenu->addItem(label);
+    m_stackedWidget->addWidget(page);
+  };
+  addPage(m_generalTab,      tr("1. General"));
+  addPage(m_behaviorTab,     tr("2. Behavior"));
+  addPage(m_appearanceTab,   tr("3. Appearance"));
+  addPage(m_viewersTab,      tr("4. Viewers"));
+  addPage(m_externalAppsTab, tr("5. External Apps"));
+  addPage(m_keybindingTab,   tr("6. Keybindings"));
+
+  m_sideMenu->setCurrentRow(0);
+  connect(m_sideMenu, &QListWidget::currentRowChanged,
+          m_stackedWidget, &QStackedWidget::setCurrentIndex);
+
+  mainLayout->addLayout(contentLayout, /*stretch*/ 1);
 
   // macOS の System Settings → 「キーボード」→「キーボードナビゲーション」に
-  // 依存させたくないので、各タブ内の操作対象ウィジェットに対して明示的に
+  // 依存させたくないので、各ページ内の操作対象ウィジェットに対して明示的に
   // StrongFocus を設定する。Tab キーで全項目を辿れるようにするのが目的。
   const QList<QWidget*> tabRoots = {
     m_generalTab, m_behaviorTab, m_appearanceTab, m_viewersTab,
@@ -92,46 +130,28 @@ void SettingsDialog::setupUi() {
     }
   }
 
-  // Info label for keyboard shortcuts
-  int tabCount = m_tabWidget->count();
-  QLabel* infoLabel = new QLabel(tr("Use Alt+number to switch tabs, or Ctrl+Tab/Ctrl+Shift+Tab"), this);
-  QFont infoFont = infoLabel->font();
-  infoFont.setPointSize(infoFont.pointSize() - 1);
-  infoLabel->setFont(infoFont);
-  infoLabel->setStyleSheet("color: palette(mid); padding: 4px;");
-  mainLayout->addWidget(infoLabel);
-
-  mainLayout->addWidget(m_tabWidget);
-
-  // Setup keyboard shortcuts for tab switching
-  // Alt+1 through Alt+9 for direct tab access (up to 9 tabs)
+  // Alt+1 〜 Alt+9 でカテゴリ直接ジャンプ
   const QList<Qt::Key> numberKeys = {
     Qt::Key_1, Qt::Key_2, Qt::Key_3, Qt::Key_4, Qt::Key_5,
     Qt::Key_6, Qt::Key_7, Qt::Key_8, Qt::Key_9
   };
-
-  for (int i = 0; i < qMin(tabCount, numberKeys.size()); ++i) {
+  const int pageCount = m_sideMenu->count();
+  for (int i = 0; i < qMin(pageCount, numberKeys.size()); ++i) {
     QShortcut* shortcut = new QShortcut(QKeySequence(Qt::ALT | numberKeys[i]), this);
-    // Capture i by value to avoid lambda capture issues
     connect(shortcut, &QShortcut::activated, [this, i]() {
-      m_tabWidget->setCurrentIndex(i);
+      m_sideMenu->setCurrentRow(i);
     });
   }
-
-  // Ctrl+Tab for next tab
+  // Ctrl+Tab / Ctrl+Shift+Tab で前後カテゴリへ
   QShortcut* shortcutNext = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Tab), this);
   connect(shortcutNext, &QShortcut::activated, [this]() {
-    int currentIndex = m_tabWidget->currentIndex();
-    int nextIndex = (currentIndex + 1) % m_tabWidget->count();
-    m_tabWidget->setCurrentIndex(nextIndex);
+    int n = m_sideMenu->count();
+    if (n > 0) m_sideMenu->setCurrentRow((m_sideMenu->currentRow() + 1) % n);
   });
-
-  // Ctrl+Shift+Tab for previous tab
   QShortcut* shortcutPrev = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Tab), this);
   connect(shortcutPrev, &QShortcut::activated, [this]() {
-    int currentIndex = m_tabWidget->currentIndex();
-    int prevIndex = (currentIndex - 1 + m_tabWidget->count()) % m_tabWidget->count();
-    m_tabWidget->setCurrentIndex(prevIndex);
+    int n = m_sideMenu->count();
+    if (n > 0) m_sideMenu->setCurrentRow((m_sideMenu->currentRow() - 1 + n) % n);
   });
 
   // OK/Cancel/Apply buttons + 全設定リセット (キーバインドを除く)
@@ -228,7 +248,7 @@ void SettingsDialog::onApply() {
 void SettingsDialog::onClearBinding() {
   qDebug() << "SettingsDialog::onClearBinding()";
   // Only work if Keybindings tab is active
-  if (m_tabWidget->currentWidget() == m_keybindingTab) {
+  if (m_stackedWidget->currentWidget() == m_keybindingTab) {
     m_keybindingTab->clearCurrentBinding();
   }
 }
@@ -253,14 +273,14 @@ void SettingsDialog::onResetAllSettings() {
 void SettingsDialog::onResetToDefaults() {
   qDebug() << "SettingsDialog::onResetToDefaults()";
   // Only work if Keybindings tab is active
-  if (m_tabWidget->currentWidget() == m_keybindingTab) {
+  if (m_stackedWidget->currentWidget() == m_keybindingTab) {
     m_keybindingTab->resetToDefaults();
   }
 }
 
 void SettingsDialog::keyPressEvent(QKeyEvent* event) {
   // Only process shortcuts when Keybindings tab is active
-  if (m_tabWidget->currentWidget() == m_keybindingTab) {
+  if (m_stackedWidget->currentWidget() == m_keybindingTab) {
     // Ctrl+D (Cmd+D on macOS) for Clear Binding
     if ((event->modifiers() & Qt::ControlModifier) && event->key() == Qt::Key_D) {
       qDebug() << "Ctrl+D pressed via keyPressEvent";
