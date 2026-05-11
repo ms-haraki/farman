@@ -10,7 +10,11 @@ class BinaryViewerWindow : public QMainWindow {
   Q_OBJECT
 
 public:
-  explicit BinaryViewerWindow(const QString& filePath, QWidget* parent = nullptr);
+  // filePath は実際にディスクから読むパス。displayPath はタイトルに使うパス。
+  // 空のときは filePath をそのまま使う (アーカイブ内エントリ展開時のみ別物)。
+  explicit BinaryViewerWindow(const QString& filePath,
+                              const QString& displayPath = {},
+                              QWidget* parent = nullptr);
   ~BinaryViewerWindow() override = default;
 
 protected:
@@ -19,6 +23,7 @@ protected:
 
 private:
   QString     m_filePath;
+  QString     m_displayPath;
   BinaryView* m_view;
 };
 

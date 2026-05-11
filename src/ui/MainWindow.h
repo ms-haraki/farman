@@ -31,15 +31,18 @@ protected:
   void closeEvent(QCloseEvent* event) override;
 
 private slots:
-  void onFileActivated(const QString& filePath);
+  void onFileActivated(const QString& filePath, const QString& displayPath);
   void onSettingsChanged();
 
 private:
   void setupUi();
   void showFileManager();
-  void showViewer(const QString& filePath);
+  // displayPath: 空ならステータス・タイトルに filePath をそのまま使う。
+  // アーカイブ内エントリ一時展開時のみ別物 (= "<archive>!/<inner>") を渡す。
+  void showViewer(const QString& filePath, const QString& displayPath = {});
   // ビュアーを呼び出し側で固定して開く（任意ビュアー機能から使う）
-  void showViewerWith(const QString& filePath, ViewerPanel::ViewerKind kind);
+  void showViewerWith(const QString& filePath, ViewerPanel::ViewerKind kind,
+                      const QString& displayPath = {});
   void showSettingsDialog();
   void registerCommands();
   void createMenus();

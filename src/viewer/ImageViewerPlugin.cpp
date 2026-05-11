@@ -7,7 +7,7 @@ QWidget* ImageViewerPlugin::createViewer(
   const QString& filePath,
   QWidget* parent)
 {
-  auto* window = new ImageViewerWindow(filePath, parent);
+  auto* window = new ImageViewerWindow(filePath, QString(), parent);
   window->setAttribute(Qt::WA_DeleteOnClose);
   window->show();
   return window;

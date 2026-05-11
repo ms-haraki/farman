@@ -163,7 +163,8 @@ ViewerPanel::ViewerKind ViewerPanel::resolveAuto(const QString& filePath) {
   return ViewerKind::Binary;
 }
 
-bool ViewerPanel::openFile(const QString& filePath, ViewerKind kind) {
+bool ViewerPanel::openFile(const QString& filePath, ViewerKind kind,
+                           const QString& displayPath) {
   if (filePath.isEmpty()) {
     return false;
   }
@@ -173,22 +174,26 @@ bool ViewerPanel::openFile(const QString& filePath, ViewerKind kind) {
     return false;
   }
 
+  // ステータス・currentFilePath として記録する「表示用パス」。
+  // displayPath が空ならディスク上のパス (filePath) をそのまま使う。
+  const QString pathForStatus = displayPath.isEmpty() ? filePath : displayPath;
+
   // ロード前にプレースホルダを出して 1 回再描画させる。
-  // (実際のロードは同期的なので、ロード中の動的更新はないが、空白で
-  // フリーズしているように見えるのを防ぐ)
-  showLoadingState(filePath);
+  showLoadingState(pathForStatus);
   QApplication::setOverrideCursor(Qt::WaitCursor);
 
   // Auto は resolveAuto() に委譲してから個別の openXxxFile に振る。
+  // 拡張子 / MIME ルーティングは「表示用パス」を尊重 (アーカイブ内エントリの
+  // 元拡張子で振り分けたいので)。
   if (kind == ViewerKind::Auto) {
-    kind = resolveAuto(filePath);
+    kind = resolveAuto(pathForStatus);
   }
 
   bool ok = false;
   switch (kind) {
-    case ViewerKind::Text:   ok = openTextFile(filePath);   break;
-    case ViewerKind::Image:  ok = openImageFile(filePath);  break;
-    case ViewerKind::Binary: ok = openBinaryFile(filePath); break;
+    case ViewerKind::Text:   ok = openTextFile(filePath, pathForStatus);   break;
+    case ViewerKind::Image:  ok = openImageFile(filePath, pathForStatus);  break;
+    case ViewerKind::Binary: ok = openBinaryFile(filePath, pathForStatus); break;
     case ViewerKind::Auto:   /* unreachable */ break;
   }
 
@@ -242,7 +247,7 @@ T waitForFutureWithEventLoop(QFuture<T> future) {
 
 } // namespace
 
-bool ViewerPanel::openTextFile(const QString& filePath) {
+bool ViewerPanel::openTextFile(const QString& filePath, const QString& displayPath) {
   auto future = QtConcurrent::run(&TextView::prepareLoad,
                                    filePath,
                                    m_textView->currentUserEncoding());
@@ -252,13 +257,13 @@ bool ViewerPanel::openTextFile(const QString& filePath) {
   m_textView->applyPreparedLoad(p);
   m_stack->setCurrentWidget(m_textView);
   setFocusProxy(m_textView);
-  m_currentFilePath = filePath;
-  emit fileOpened(filePath);
-  emit viewerStatusChanged(filePath, m_textView->statusInfo());
+  m_currentFilePath = displayPath;
+  emit fileOpened(displayPath);
+  emit viewerStatusChanged(displayPath, m_textView->statusInfo());
   return true;
 }
 
-bool ViewerPanel::openImageFile(const QString& filePath) {
+bool ViewerPanel::openImageFile(const QString& filePath, const QString& displayPath) {
   auto future = QtConcurrent::run(&ImageView::prepareLoad, filePath);
   ImageView::PreparedLoad p = waitForFutureWithEventLoop(future);
   if (!p.ok) return false;
@@ -266,13 +271,13 @@ bool ViewerPanel::openImageFile(const QString& filePath) {
   m_imageView->applyPreparedLoad(p);
   m_stack->setCurrentWidget(m_imageView);
   setFocusProxy(m_imageView);
-  m_currentFilePath = filePath;
-  emit fileOpened(filePath);
-  emit viewerStatusChanged(filePath, m_imageView->statusInfo());
+  m_currentFilePath = displayPath;
+  emit fileOpened(displayPath);
+  emit viewerStatusChanged(displayPath, m_imageView->statusInfo());
   return true;
 }
 
-bool ViewerPanel::openBinaryFile(const QString& filePath) {
+bool ViewerPanel::openBinaryFile(const QString& filePath, const QString& displayPath) {
   auto future = QtConcurrent::run(&BinaryView::prepareLoad,
                                    filePath,
                                    m_binaryView->currentUnit(),
@@ -284,9 +289,9 @@ bool ViewerPanel::openBinaryFile(const QString& filePath) {
   m_binaryView->applyPreparedLoad(p);
   m_stack->setCurrentWidget(m_binaryView);
   setFocusProxy(m_binaryView);
-  m_currentFilePath = filePath;
-  emit fileOpened(filePath);
-  emit viewerStatusChanged(filePath, m_binaryView->statusInfo());
+  m_currentFilePath = displayPath;
+  emit fileOpened(displayPath);
+  emit viewerStatusChanged(displayPath, m_binaryView->statusInfo());
   return true;
 }
 

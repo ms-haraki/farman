@@ -10,7 +10,12 @@ class TextViewerWindow : public QMainWindow {
   Q_OBJECT
 
 public:
-  explicit TextViewerWindow(const QString& filePath, QWidget* parent = nullptr);
+  // filePath は実際にディスクから読むパス。displayPath は表示 (タイトル) に
+  // 使うパス。アーカイブ内エントリ展開時のみ displayPath が "<archive>!/<inner>"。
+  // displayPath が空なら filePath をそのまま使う。
+  explicit TextViewerWindow(const QString& filePath,
+                            const QString& displayPath = {},
+                            QWidget* parent = nullptr);
   ~TextViewerWindow() override = default;
 
 protected:
@@ -22,7 +27,8 @@ private:
   void setupUi();
   void loadFile();
 
-  QString    m_filePath;
+  QString    m_filePath;     // ディスク上のパス (load 用)
+  QString    m_displayPath;  // タイトルに出すパス (表示用)
   TextView*  m_textView;
 };
 

@@ -10,7 +10,11 @@ class ImageViewerWindow : public QMainWindow {
   Q_OBJECT
 
 public:
-  explicit ImageViewerWindow(const QString& filePath, QWidget* parent = nullptr);
+  // filePath は実際にディスクから読むパス。displayPath はタイトルに使うパス。
+  // 空のときは filePath をそのまま使う (アーカイブ内エントリ展開時のみ別物)。
+  explicit ImageViewerWindow(const QString& filePath,
+                             const QString& displayPath = {},
+                             QWidget* parent = nullptr);
   ~ImageViewerWindow() override = default;
 
 protected:
@@ -25,6 +29,7 @@ private:
   void fitWindowToImage();
 
   QString    m_filePath;
+  QString    m_displayPath;
   ImageView* m_imageView = nullptr;
 };
 

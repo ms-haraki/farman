@@ -41,6 +41,14 @@ public:
   // または entries の中にそれを prefix とするエントリがあるか。
   bool isValidDirectory(const QString& innerDir) const;
 
+  // ── 1 エントリ展開 (Phase B) ──────────────────
+  // archivePath を libarchive で開き直し、entryPath (= ArchiveEntry の
+  // pathInArchive、先頭 '/' なし形式) に該当する 1 エントリの内容を destPath
+  // に書き出す。destPath の親ディレクトリは必要に応じて作成。
+  // 戻り値: 成功 true。libarchive はランダムアクセスできないので、エントリ
+  // 発見まで先頭から逐次読みする (大きなアーカイブでは線形時間)。
+  bool extractEntryTo(const QString& entryPath, const QString& destPath) const;
+
 private:
   // pathInArchive をディレクトリ正規形に整える内部ヘルパ:
   //   "/" → ""

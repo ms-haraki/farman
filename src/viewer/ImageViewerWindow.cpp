@@ -12,16 +12,19 @@
 
 namespace Farman {
 
-ImageViewerWindow::ImageViewerWindow(const QString& filePath, QWidget* parent)
+ImageViewerWindow::ImageViewerWindow(const QString& filePath,
+                                     const QString& displayPath,
+                                     QWidget* parent)
   : QMainWindow(parent)
   , m_filePath(filePath)
+  , m_displayPath(displayPath.isEmpty() ? filePath : displayPath)
 {
   setupUi();
   loadImage();
 }
 
 void ImageViewerWindow::setupUi() {
-  QFileInfo fileInfo(m_filePath);
+  QFileInfo fileInfo(m_displayPath);
   setWindowTitle(QString("Image Viewer - %1").arg(fileInfo.fileName()));
 
   QWidget* centralWidget = new QWidget(this);

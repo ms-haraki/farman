@@ -1,5 +1,7 @@
 #include "ArchiveContext.h"
 
+#include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <archive.h>
 #include <archive_entry.h>
@@ -142,6 +144,70 @@ QList<const ArchiveEntry*> ArchiveContext::childrenOf(const QString& innerDir) c
     }
   }
   return out;
+}
+
+bool ArchiveContext::extractEntryTo(const QString& entryPath,
+                                    const QString& destPath) const {
+  // 親ディレクトリを確保
+  QFileInfo destInfo(destPath);
+  if (!QDir().mkpath(destInfo.absolutePath())) return false;
+
+  struct archive* a = archive_read_new();
+  archive_read_support_format_all(a);
+  archive_read_support_filter_all(a);
+
+#ifdef Q_OS_WIN
+  const int openResult = archive_read_open_filename_w(a, asWChar(archivePath), 64 * 1024);
+#else
+  const int openResult = archive_read_open_filename(
+    a, archivePath.toUtf8().constData(), 64 * 1024);
+#endif
+  if (openResult != ARCHIVE_OK) {
+    archive_read_free(a);
+    return false;
+  }
+
+  bool found = false;
+  bool ok    = false;
+  struct archive_entry* entry = nullptr;
+  while (true) {
+    const int r = archive_read_next_header(a, &entry);
+    if (r == ARCHIVE_EOF) break;
+    if (r < ARCHIVE_WARN) break;
+    if (r < ARCHIVE_OK)  continue;
+
+    const QString name = readEntryPath(entry);
+    if (name != entryPath) continue;
+
+    found = true;
+    QFile out(destPath);
+    if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate)) break;
+
+    bool writeOk = true;
+    const void* buf = nullptr;
+    size_t      sz  = 0;
+    la_int64_t  off = 0;
+    while (true) {
+      const int rr = archive_read_data_block(a, &buf, &sz, &off);
+      if (rr == ARCHIVE_EOF) break;
+      if (rr < ARCHIVE_OK)  { writeOk = false; break; }
+      const qint64 written = out.write(reinterpret_cast<const char*>(buf), sz);
+      if (written < 0 || static_cast<size_t>(written) != sz) {
+        writeOk = false; break;
+      }
+    }
+    out.close();
+    ok = writeOk;
+    break;
+  }
+
+  archive_read_close(a);
+  archive_read_free(a);
+  if (!found || !ok) {
+    QFile::remove(destPath);
+    return false;
+  }
+  return true;
 }
 
 bool ArchiveContext::isValidDirectory(const QString& innerDir) const {

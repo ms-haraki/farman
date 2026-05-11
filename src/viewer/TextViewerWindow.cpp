@@ -8,9 +8,12 @@
 
 namespace Farman {
 
-TextViewerWindow::TextViewerWindow(const QString& filePath, QWidget* parent)
+TextViewerWindow::TextViewerWindow(const QString& filePath,
+                                   const QString& displayPath,
+                                   QWidget* parent)
   : QMainWindow(parent)
   , m_filePath(filePath)
+  , m_displayPath(displayPath.isEmpty() ? filePath : displayPath)
   , m_textView(nullptr)
 {
   setupUi();
@@ -18,7 +21,7 @@ TextViewerWindow::TextViewerWindow(const QString& filePath, QWidget* parent)
 }
 
 void TextViewerWindow::setupUi() {
-  QFileInfo fileInfo(m_filePath);
+  QFileInfo fileInfo(m_displayPath);
   setWindowTitle(QString("Text Viewer - %1").arg(fileInfo.fileName()));
 
   QWidget* centralWidget = new QWidget(this);

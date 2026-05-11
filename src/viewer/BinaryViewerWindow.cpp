@@ -9,12 +9,15 @@
 
 namespace Farman {
 
-BinaryViewerWindow::BinaryViewerWindow(const QString& filePath, QWidget* parent)
+BinaryViewerWindow::BinaryViewerWindow(const QString& filePath,
+                                       const QString& displayPath,
+                                       QWidget* parent)
   : QMainWindow(parent)
   , m_filePath(filePath)
+  , m_displayPath(displayPath.isEmpty() ? filePath : displayPath)
   , m_view(nullptr)
 {
-  QFileInfo fileInfo(filePath);
+  QFileInfo fileInfo(m_displayPath);
   setWindowTitle(QString("Binary Viewer - %1").arg(fileInfo.fileName()));
 
   QWidget* central = new QWidget(this);

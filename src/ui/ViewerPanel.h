@@ -25,7 +25,15 @@ public:
   ~ViewerPanel() override;
 
   // ファイルを開く（kind=Auto のとき Settings の対応表に従って自動判定）
-  bool openFile(const QString& filePath, ViewerKind kind = ViewerKind::Auto);
+  //   filePath:    実際に読み込むディスク上のファイルパス (= 実体)
+  //   kind:        強制ビュアー種別 (Auto なら自動判定)
+  //   displayPath: ステータスバー / シグナルに出す「ユーザーから見たパス」。
+  //                空のときは filePath をそのまま使う。アーカイブ内のファイルを
+  //                一時展開して開くケースで、ユーザーには "/path/x.zip!/inner"
+  //                を見せ、内部の load は temp パスから行う、という用途に使う。
+  bool openFile(const QString& filePath,
+                ViewerKind     kind        = ViewerKind::Auto,
+                const QString& displayPath = QString());
 
   // 拡張子 / MIME のルーティングだけを抜き出した静的ヘルパ。Auto を渡すと
   // 内部の判定で Text / Image / Binary のいずれかに解決して返す。
@@ -48,9 +56,12 @@ signals:
 
 private:
   void setupUi();
-  bool openTextFile(const QString& filePath);
-  bool openImageFile(const QString& filePath);
-  bool openBinaryFile(const QString& filePath);
+  // 第二引数は「ステータス・currentFilePath として記録する表示用パス」。
+  // load 自体は filePath (1 つ目) から行う。両者は通常同じ値だが、
+  // アーカイブ内のファイルを一時展開して開く場合だけ別物になる。
+  bool openTextFile(const QString& filePath, const QString& displayPath);
+  bool openImageFile(const QString& filePath, const QString& displayPath);
+  bool openBinaryFile(const QString& filePath, const QString& displayPath);
   // ロード中表示に切り替え、ファイル名・サイズを書き込んで再描画する。
   // 同期的なロードに入る前に呼ぶと、ユーザーには「読み込み中…」が見える。
   void showLoadingState(const QString& filePath);

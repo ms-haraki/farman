@@ -15,6 +15,8 @@
 #include "core/workers/ArchiveExtractWorker.h"
 #include "model/FileListModel.h"
 #include "core/FileItem.h"
+#include "core/ArchiveContext.h"
+#include "core/ArchiveEntry.h"
 #include "utils/ArchivePath.h"
 #include "core/workers/CopyWorker.h"
 #include "core/workers/MoveWorker.h"
@@ -22,6 +24,7 @@
 #include "settings/Settings.h"
 #include "utils/Dialogs.h"
 #include <QAbstractItemView>
+#include <QCryptographicHash>
 #include <QDesktopServices>
 #include <QDir>
 #include <QFileDialog>
@@ -30,6 +33,7 @@
 #include <QLocale>
 #include <QMessageBox>
 #include <QSplitter>
+#include <QTemporaryDir>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QKeyEvent>
@@ -754,7 +758,6 @@ void FileManagerPanel::handleEnterKey() {
   }
 
   // ファイル: アーカイブ拡張子なら中に潜る (通常 FS 上のアーカイブのみ)。
-  // アーカイブ内のファイルは Phase B で一時展開してビュアー表示する。
   if (!model->isInArchiveMode() &&
       ArchivePath::isArchiveExtension(item->absolutePath())) {
     const QString archiveRootPath =
@@ -762,6 +765,45 @@ void FileManagerPanel::handleEnterKey() {
     if (navigatePane(m_activePane, archiveRootPath)) {
       updatePathSignal();
     }
+    return;
+  }
+
+  // アーカイブ内のファイル: 一時ファイルに展開してビュアーで開く (Phase B)。
+  // 一時ファイルはセッション一時ディレクトリ (QTemporaryDir) 配下に置き、
+  // アプリ終了時に丸ごと削除する (= QTemporaryDir のデストラクタに任せる)。
+  // 同じエントリを再度開いた場合は既存ファイルを上書き再展開する (シンプル化)。
+  if (model->isInArchiveMode() && !item->isDir()) {
+    const ArchiveEntry* ae = item->archiveEntry();
+    const ArchiveContext* ctx = model->archiveContext();
+    if (!ae || !ctx) return;
+
+    // セッション一時ディレクトリ (アプリ生存中だけ存在、終了時に削除)。
+    static QTemporaryDir sessionTempDir(
+      QDir::tempPath() + QStringLiteral("/farman-arch-XXXXXX"));
+    if (!sessionTempDir.isValid()) {
+      Logger::instance().error(
+        tr("Failed to create temp directory for archive extract"));
+      return;
+    }
+
+    // アーカイブごとに sub directory を作っておく (複数アーカイブ並行表示時の
+    // パス衝突回避 + ファイル名・パス階層をなるべく保存して viewer に渡す)。
+    const QByteArray hash = QCryptographicHash::hash(
+      ctx->archivePath.toUtf8(), QCryptographicHash::Sha1).toHex().left(8);
+    const QString tempPath = sessionTempDir.path()
+      + QStringLiteral("/") + QString::fromLatin1(hash)
+      + QStringLiteral("/") + ae->pathInArchive;
+
+    if (!ctx->extractEntryTo(ae->pathInArchive, tempPath)) {
+      Logger::instance().error(
+        tr("Failed to extract '%1' from archive").arg(ae->pathInArchive));
+      return;
+    }
+    Logger::instance().info(
+      tr("Extracted archive entry to temp: %1").arg(ae->pathInArchive));
+    // 表示用パスはアーカイブ内パス "<archive>!/<inner>" にする (ステータス
+    // バーやビュアーのタイトルに一時パスが見えるのを避ける)。
+    emit fileActivated(tempPath, item->absolutePath());
     return;
   }
 

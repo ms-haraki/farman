@@ -7,7 +7,7 @@ QWidget* BinaryViewerPlugin::createViewer(
   const QString& filePath,
   QWidget* parent)
 {
-  auto* window = new BinaryViewerWindow(filePath, parent);
+  auto* window = new BinaryViewerWindow(filePath, QString(), parent);
   window->setAttribute(Qt::WA_DeleteOnClose);
   window->show();
   return window;

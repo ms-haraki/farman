@@ -264,11 +264,15 @@ void MainWindow::showFileManager() {
   }
 }
 
-void MainWindow::showViewer(const QString& filePath) {
-  showViewerWith(filePath, ViewerPanel::ViewerKind::Auto);
+void MainWindow::showViewer(const QString& filePath, const QString& displayPath) {
+  showViewerWith(filePath, ViewerPanel::ViewerKind::Auto, displayPath);
 }
 
-void MainWindow::showViewerWith(const QString& filePath, ViewerPanel::ViewerKind kind) {
+void MainWindow::showViewerWith(const QString& filePath, ViewerPanel::ViewerKind kind,
+                                const QString& displayPath) {
+  // 表示用パス: 指定なしなら filePath をそのまま使う。
+  // (外部ビュアーウィンドウのタイトルにも反映)
+  const QString shownPath = displayPath.isEmpty() ? filePath : displayPath;
   // ビュアー表示モード (Inline / External) によって振り分ける。
   // External 時は独立 QMainWindow を起こす。Inline 時は従来通り内蔵パネル。
   const ViewerMode mode = Settings::instance().viewerMode();
@@ -298,13 +302,13 @@ void MainWindow::showViewerWith(const QString& filePath, ViewerPanel::ViewerKind
     QMainWindow* w = nullptr;
     switch (effective) {
       case ViewerPanel::ViewerKind::Text:
-        w = new TextViewerWindow(filePath, this);
+        w = new TextViewerWindow(filePath, shownPath, this);
         break;
       case ViewerPanel::ViewerKind::Image:
-        w = new ImageViewerWindow(filePath, this);
+        w = new ImageViewerWindow(filePath, shownPath, this);
         break;
       case ViewerPanel::ViewerKind::Binary:
-        w = new BinaryViewerWindow(filePath, this);
+        w = new BinaryViewerWindow(filePath, shownPath, this);
         break;
       case ViewerPanel::ViewerKind::Auto:
         /* unreachable */ break;
@@ -345,7 +349,7 @@ void MainWindow::showViewerWith(const QString& filePath, ViewerPanel::ViewerKind
   m_viewerPanel->setFocus();
   updateStatusBar();
 
-  if (!m_viewerPanel->openFile(filePath, kind)) {
+  if (!m_viewerPanel->openFile(filePath, kind, displayPath)) {
     // 失敗時はファイルマネージャパネルへ戻す
     showFileManager();
   }
@@ -408,8 +412,9 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
   QMainWindow::keyPressEvent(event);
 }
 
-void MainWindow::onFileActivated(const QString& filePath) {
-  showViewer(filePath);
+void MainWindow::onFileActivated(const QString& filePath,
+                                 const QString& displayPath) {
+  showViewer(filePath, displayPath);
 }
 
 

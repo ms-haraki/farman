@@ -98,7 +98,13 @@ public:
 
 signals:
   void pathChanged(const QString& leftPath, const QString& rightPath);
-  void fileActivated(const QString& filePath);
+  // ファイルを開く要求。
+  //   filePath:    実際にディスクから読むパス
+  //   displayPath: ステータス・タイトルに出す表示用パス。空のときは filePath
+  //                をそのまま使う。アーカイブ内エントリの一時展開ケースで
+  //                "/path/x.zip!/inner" を見せたい場合のみ別物になる。
+  void fileActivated(const QString& filePath,
+                     const QString& displayPath = QString());
   // ステータスバー連携用: アクティブペインのフォーカス中ファイルの絶対パス。
   // 何も選択されていない場合は空文字列。
   void activeFocusedPathChanged(const QString& path);

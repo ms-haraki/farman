@@ -106,6 +106,9 @@ public:
   // アーカイブ内の「カレント」パス。先頭 '/' 必須、ルートは "/"。
   // アーカイブモード以外では空。
   QString archiveInnerPath() const { return m_archiveInnerPath; }
+  // 現在開いているアーカイブのメタデータキャッシュ。
+  // アーカイブモード以外は nullptr。raw pointer は呼び出し中のみ有効。
+  const ArchiveContext* archiveContext() const { return m_archiveContext.get(); }
 
   // ── アイテムアクセス ──────────────────────
   const FileItem* itemAt(const QModelIndex& index) const;
