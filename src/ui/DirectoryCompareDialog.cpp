@@ -45,9 +45,9 @@ void DirectoryCompareDialog::setupUi(const QString& leftPath, const QString& rig
   granLayout->addWidget(m_radioHash);
   main->addWidget(granGroup);
 
-  // 再帰 (Phase B 以降、現状 disabled)
-  m_recursiveCheck = new QCheckBox(tr("Recurse into subdirectories (Phase B, not yet implemented)"), this);
-  m_recursiveCheck->setEnabled(false);
+  // 再帰: 同名サブディレクトリの中身を再帰的に比較し、ディレクトリエントリの
+  // DiffStatus に集約結果 (Same / Differ) を反映する。
+  m_recursiveCheck = new QCheckBox(tr("Recurse into subdirectories"), this);
   main->addWidget(m_recursiveCheck);
 
   // OK / Cancel
