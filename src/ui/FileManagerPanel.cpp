@@ -1965,6 +1965,15 @@ void FileManagerPanel::openSortFilterDialog() {
                          ? settings.pathOverride(path)
                          : settings.paneSettings(m_activePane);
 
+  // ダイアログ表示前のカーソル位置 (= ファイル名) を覚えておく。
+  // ソート / フィルタを適用すると beginResetModel/endResetModel で currentIndex が
+  // クリアされるため、適用後に同名行へカーソルを戻す。フィルタで非表示になった
+  // 場合は復元できないので先頭 (".." 行) に置く。
+  QString savedCursorName;
+  if (const FileItem* it = pane->model()->itemAt(pane->view()->currentIndex())) {
+    savedCursorName = it->name();
+  }
+
   SortFilterDialog dialog(path, initial, alreadySaved, this);
   if (dialog.exec() != QDialog::Accepted) {
     return;
@@ -2000,6 +2009,24 @@ void FileManagerPanel::openSortFilterDialog() {
   }
   if (section >= 0) {
     pane->view()->horizontalHeader()->setSortIndicator(section, result.sortOrder);
+  }
+
+  // カーソル復元: 適用後の (filter + sort 後の) m_entries から同名行を探す。
+  // 見つかれば setCurrentIndex + scrollTo、見つからなければ先頭に置く。
+  if (model->rowCount() > 0) {
+    int targetRow = 0;
+    if (!savedCursorName.isEmpty()) {
+      for (int i = 0; i < model->rowCount(); ++i) {
+        const FileItem* it = model->itemAt(i);
+        if (it && it->name() == savedCursorName) {
+          targetRow = i;
+          break;
+        }
+      }
+    }
+    const QModelIndex idx = model->index(targetRow, 0);
+    pane->view()->setCurrentIndex(idx);
+    pane->view()->scrollTo(idx, QAbstractItemView::EnsureVisible);
   }
 
   pane->refreshSortFilterStatus();
