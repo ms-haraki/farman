@@ -201,9 +201,14 @@ QWidget* AppearanceTab::buildMainPage() {
   baseRow->addStretch();
   mainLayout->addWidget(baseGroup);
 
-  // ─── Address グループ: Font / Foreground / Background を横並び ───
+  // ─── Address グループ ───
+  // 通常 FS のアドレスバーと、アーカイブ内ブラウジング時のアドレスバー色を
+  // 1 つのグループに集約。
+  // 1 行目: Font (共通) と Normal の色設定を並列。
+  // 2 行目: Archive の色設定。Normal の列 (通常: / 文字色: / 背景色:) と
+  //         縦に揃えたいので QGridLayout を 1 枚使う。
   QGroupBox* addressGroup = new QGroupBox(tr("Address"), this);
-  QHBoxLayout* addressRow = new QHBoxLayout(addressGroup);
+  QGridLayout* addressGrid = new QGridLayout(addressGroup);
 
   m_addressFontButton = new QPushButton(tr("Select Font..."), this);
   m_addressFontButton->setToolTip(tr("Choose the font for the address bar above each pane"));
@@ -217,43 +222,64 @@ QWidget* AppearanceTab::buildMainPage() {
         .arg(m_addressFontValue.pointSize()));
     }
   });
-  addPair(addressRow, tr("Font:"), m_addressFontButton);
 
   m_addressFgButton = makeColorButton(m_addressFgValue, tr("Address Foreground Color"));
   m_addressBgButton = makeColorButton(m_addressBgValue, tr("Address Background Color"));
-  addPair(addressRow, tr("Foreground:"), m_addressFgButton);
-  addPair(addressRow, tr("Background:"), m_addressBgButton);
-  addressRow->addStretch();
-  mainLayout->addWidget(addressGroup);
-
-  // ─── Address (Archive Browsing) グループ ───
-  // アーカイブ内ブラウジング中はアドレスバー色を切替えて、ユーザーが
-  // 通常 FS と仮想 FS を視覚的に区別できるようにする。
-  QGroupBox* archiveAddressGroup = new QGroupBox(tr("Address (Archive Browsing)"), this);
-  QHBoxLayout* archiveAddressRow = new QHBoxLayout(archiveAddressGroup);
   m_archiveAddressFgButton = makeColorButton(
     m_archiveAddressFgValue, tr("Archive Address Foreground Color"));
   m_archiveAddressBgButton = makeColorButton(
     m_archiveAddressBgValue, tr("Archive Address Background Color"));
-  addPair(archiveAddressRow, tr("Foreground:"), m_archiveAddressFgButton);
-  addPair(archiveAddressRow, tr("Background:"), m_archiveAddressBgButton);
-  archiveAddressRow->addStretch();
-  mainLayout->addWidget(archiveAddressGroup);
+
+  // 列構成: [0]Font: [1]Fontボタン [2]通常: / アーカイブ: [3]文字色: [4]色 [5]背景色: [6]色 [7]余白
+  int addrRow = 0;
+  // 1 行目: Font + Normal の色
+  addressGrid->addWidget(new QLabel(tr("Font:"),       this), addrRow, 0);
+  addressGrid->addWidget(m_addressFontButton,                addrRow, 1);
+  addressGrid->addWidget(new QLabel(tr("Normal:"),     this), addrRow, 2);
+  addressGrid->addWidget(new QLabel(tr("Foreground:"), this), addrRow, 3);
+  addressGrid->addWidget(m_addressFgButton,                  addrRow, 4);
+  addressGrid->addWidget(new QLabel(tr("Background:"), this), addrRow, 5);
+  addressGrid->addWidget(m_addressBgButton,                  addrRow, 6);
+  ++addrRow;
+  // 2 行目: Archive の色 (Font 側 [0]/[1] は空)
+  addressGrid->addWidget(new QLabel(tr("Archive:"),    this), addrRow, 2);
+  addressGrid->addWidget(new QLabel(tr("Foreground:"), this), addrRow, 3);
+  addressGrid->addWidget(m_archiveAddressFgButton,           addrRow, 4);
+  addressGrid->addWidget(new QLabel(tr("Background:"), this), addrRow, 5);
+  addressGrid->addWidget(m_archiveAddressBgButton,           addrRow, 6);
+  addressGrid->setColumnStretch(7, 1);
+
+  mainLayout->addWidget(addressGroup);
 
   // ─── Directory Compare グループ ───
   // ディレクトリ比較モード中の差分着色 (Differ / OnlyHere)。
   // Same は専用色を持たず通常のカテゴリ色を使う。
+  // QGridLayout で列を共有させて、左ラベル (差分あり / このペインのみ) と、
+  // 続く「文字色: ▣ 背景色: ▣」のカラムを縦に揃える。
   QGroupBox* compareGroup = new QGroupBox(tr("Directory Compare"), this);
-  QHBoxLayout* compareRow = new QHBoxLayout(compareGroup);
+  QGridLayout* compareGrid = new QGridLayout(compareGroup);
   m_compareDifferFgButton   = makeColorButton(m_compareDifferFgValue,   tr("Differ Foreground Color"));
   m_compareDifferBgButton   = makeColorButton(m_compareDifferBgValue,   tr("Differ Background Color"));
   m_compareOnlyHereFgButton = makeColorButton(m_compareOnlyHereFgValue, tr("Only-Here Foreground Color"));
   m_compareOnlyHereBgButton = makeColorButton(m_compareOnlyHereBgValue, tr("Only-Here Background Color"));
-  addPair(compareRow, tr("Differ FG:"),    m_compareDifferFgButton);
-  addPair(compareRow, tr("Differ BG:"),    m_compareDifferBgButton);
-  addPair(compareRow, tr("Only-Here FG:"), m_compareOnlyHereFgButton);
-  addPair(compareRow, tr("Only-Here BG:"), m_compareOnlyHereBgButton);
-  compareRow->addStretch();
+
+  // 列構成: [0]カテゴリラベル [1]文字色: [2]色ボタン [3]背景色: [4]色ボタン
+  //         [5]右側余白用 stretch
+  int row = 0;
+  compareGrid->addWidget(new QLabel(tr("Differ:"),    this),       row, 0);
+  compareGrid->addWidget(new QLabel(tr("Foreground:"), this),      row, 1);
+  compareGrid->addWidget(m_compareDifferFgButton,                  row, 2);
+  compareGrid->addWidget(new QLabel(tr("Background:"), this),      row, 3);
+  compareGrid->addWidget(m_compareDifferBgButton,                  row, 4);
+  ++row;
+  compareGrid->addWidget(new QLabel(tr("Only-Here:"),  this),      row, 0);
+  compareGrid->addWidget(new QLabel(tr("Foreground:"), this),      row, 1);
+  compareGrid->addWidget(m_compareOnlyHereFgButton,                row, 2);
+  compareGrid->addWidget(new QLabel(tr("Background:"), this),      row, 3);
+  compareGrid->addWidget(m_compareOnlyHereBgButton,                row, 4);
+  // 右側に余白を確保して左寄せ表示にする
+  compareGrid->setColumnStretch(5, 1);
+
   mainLayout->addWidget(compareGroup);
 
   // ─── Cursor グループ: Shape / Thickness / Active / Inactive を横並び ─
