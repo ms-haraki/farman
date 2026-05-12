@@ -121,7 +121,14 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     // View
     // ディレクトリ比較。"=" は「左右が一致するかを見比べる」操作の語感に合い、
     // 既存の単キーバインドと衝突しない。
-    { QKeySequence(Qt::Key_Equal), "view.compare_directories" },
+    // JIS / US でレイアウトが違うため、Qt が届ける可能性のあるキーシーケンスを
+    // 全部登録する: US 配列の "=" 単押し / Shift+Equal / JIS の Shift+- (Minus) /
+    // 物理キーが "+" / "Plus" として届く環境。help.shortcuts の "?" 対応と同じ
+    // パターン。
+    { QKeySequence(Qt::Key_Equal),                   "view.compare_directories" },
+    { QKeySequence(Qt::SHIFT | Qt::Key_Equal),       "view.compare_directories" },
+    { QKeySequence(Qt::SHIFT | Qt::Key_Minus),       "view.compare_directories" },
+    { QKeySequence(Qt::Key_Plus),                    "view.compare_directories" },
     { QKeySequence(Qt::Key_V), "view.file" },
     // 任意ビュアー選択ポップアップ。Enter / Return の両方をバインド。
     { QKeySequence(Qt::CTRL | Qt::Key_Return),  "view.choose"  },
@@ -216,6 +223,9 @@ void KeyBindingManager::loadFromSettings() {
   // (vim 流に揃えるため)。同上、強制リセット。
   // version < 14: view.compare_directories ("=") を新規追加。既存バインドは
   // 保持されるが、空いている "=" キーをデフォルトとして補完する。
+  // version < 15: view.compare_directories のレイアウト対応を強化。Key_Equal
+  // 単押しに加えて Shift+Equal / Shift+Minus (JIS) / Key_Plus も同じコマンドに
+  // 紐付けるよう default に追加。既存バインドは保持。
   if (version < 13) {
     qDebug() << "KeyBindingManager: migrating bindings from version" << version;
     loadDefaults();
@@ -274,7 +284,7 @@ void KeyBindingManager::saveToSettings() const {
 
   QJsonObject root;
   root["bindings"] = bindings;
-  root["version"] = 14;
+  root["version"] = 15;
 
   QJsonDocument doc(root);
   QString jsonData = QString::fromUtf8(doc.toJson(QJsonDocument::Indented));

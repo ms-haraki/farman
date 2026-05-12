@@ -2185,6 +2185,15 @@ void FileManagerPanel::startDirectoryCompare() {
   const QString leftPath  = m_leftPane->currentPath();
   const QString rightPath = m_rightPane->currentPath();
 
+  // 左右が同じディレクトリを開いていたら比較しても全件 Same になるだけなので
+  // 早期 return。両ペインのパスを QDir::cleanPath で正規化して比較する
+  // (末尾スラッシュや "/foo/./bar" のような表記揺れを吸収するため)。
+  if (QDir::cleanPath(leftPath) == QDir::cleanPath(rightPath)) {
+    QMessageBox::warning(this, tr("Cannot compare"),
+      tr("Both panes are showing the same directory; nothing to compare."));
+    return;
+  }
+
   DirectoryCompareDialog dlg(leftPath, rightPath, this);
   if (dlg.exec() != QDialog::Accepted) return;
   m_compareOptions = dlg.options();

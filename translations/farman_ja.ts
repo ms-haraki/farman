@@ -2520,6 +2520,7 @@ What would you like to do?</source>
     <message>
         <location filename="../src/ui/FileManagerPanel.cpp" line="2174"/>
         <location filename="../src/ui/FileManagerPanel.cpp" line="2180"/>
+        <location filename="../src/ui/FileManagerPanel.cpp" line="2192"/>
         <source>Cannot compare</source>
         <translation>比較できません</translation>
     </message>
@@ -2534,7 +2535,12 @@ What would you like to do?</source>
         <translation>ディレクトリ比較には 2 ペインが必要です。</translation>
     </message>
     <message>
-        <location filename="../src/ui/FileManagerPanel.cpp" line="2207"/>
+        <location filename="../src/ui/FileManagerPanel.cpp" line="2193"/>
+        <source>Both panes are showing the same directory; nothing to compare.</source>
+        <translation>左右のペインが同じディレクトリを表示しています。比較する必要がありません。</translation>
+    </message>
+    <message>
+        <location filename="../src/ui/FileManagerPanel.cpp" line="2216"/>
         <source>Directory compare done: %1 ↔ %2 (%3 / %4 items)</source>
         <translation>ディレクトリ比較完了: %1 ↔ %2 (左 %3 / 右 %4 件)</translation>
     </message>

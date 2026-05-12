@@ -1363,6 +1363,15 @@ void MainWindow::createMainToolBar() {
     QSignalBlocker b(compareAct);
     compareAct->setChecked(on);
   });
+  // クリック時、Qt は triggered の前に checkable QAction を自動でトグルする。
+  // startDirectoryCompare はモーダルダイアログを出すので、ユーザーが Esc 等で
+  // キャンセルすると directoryCompareChanged が発火せず、チェック状態だけ
+  // ずれてしまう (ボタンが押下中の見た目のまま残る)。コマンド実行 *後* に
+  // 「実際のモード状態」と照合して同期し直す。
+  connect(compareAct, &QAction::triggered, this, [this, compareAct]() {
+    QSignalBlocker b(compareAct);
+    compareAct->setChecked(m_fileManagerPanel->isDirectoryCompareActive());
+  });
 
   QAction* logAct = addBtn("view.toggle_log", tr("Log"),
                            QStringLiteral("log.svg"));
