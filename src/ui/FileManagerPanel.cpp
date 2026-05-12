@@ -285,9 +285,12 @@ void FileManagerPanel::applyPathSortFilter(PaneType paneType) {
 }
 
 bool FileManagerPanel::navigatePane(PaneType paneType, const QString& path) {
-  // ディレクトリ比較モード中にパス遷移されたら自動 OFF
-  // (左右の比較対象がズレるため。design: directory-comparison.md)
-  if (m_compareMode) {
+  // ディレクトリ比較モード中にパス遷移されたら自動 OFF。
+  // ただし Sync Browse が ON の場合は、反対ペインも追従するので比較関係が
+  // 維持される (同名サブツリーを並行に walk して差分を見る使い方)。
+  // その場合は maybeSyncFollow が完了後に recompareIfActive を呼んで overlay を
+  // 新しいペアで更新する。
+  if (m_compareMode && !m_syncBrowseEnabled && !m_syncBrowseInProgress) {
     Logger::instance().info(tr("Directory compare: disabled (navigation)"));
     stopDirectoryCompare();
   }
@@ -355,6 +358,12 @@ void FileManagerPanel::maybeSyncFollow(PaneType navigatedPane,
     Logger::instance().info(
       QStringLiteral("Sync Browse: disabled (target not found: %1)").arg(target));
     setSyncBrowseEnabled(false);
+    // 比較モードも同時に OFF にしないと、左ペインだけ overlay が消えて右だけ
+    // 残るような不整合状態になる。
+    if (m_compareMode) {
+      Logger::instance().info(tr("Directory compare: disabled (sync browse target missing)"));
+      stopDirectoryCompare();
+    }
 
     // 通知ダイアログ (Settings で抑制可)。ダイアログ内の「次回以降表示しない」
     // チェックを ON にすると、その瞬間 Settings を更新して以後表示しなくなる。
@@ -377,6 +386,22 @@ void FileManagerPanel::maybeSyncFollow(PaneType navigatedPane,
   m_syncBrowseInProgress = true;
   navigatePane(otherType, target);
   m_syncBrowseInProgress = false;
+
+  // 同期追従が成功したので、比較モード中なら新しい左右ペアで再比較。
+  // 「対応するサブツリーを階層ごとに歩いて差分を見る」運用を成立させる。
+  if (m_compareMode) {
+    // ただし追従の結果、左右が同一ディレクトリになった場合は比較する意味が
+    // 無いので自動解除 (startDirectoryCompare の同パスガードと同じ理屈)。
+    const QString lp = QDir::cleanPath(m_leftPane->currentPath());
+    const QString rp = QDir::cleanPath(m_rightPane->currentPath());
+    if (lp == rp) {
+      Logger::instance().info(
+        tr("Directory compare: disabled (panes converged to same directory)"));
+      stopDirectoryCompare();
+    } else {
+      recompareIfActive();
+    }
+  }
 }
 
 void FileManagerPanel::setSyncBrowseEnabled(bool enabled) {
@@ -1358,6 +1383,10 @@ void FileManagerPanel::copySelectedFiles() {
 
     // Restore focus to active pane
     activePane()->view()->setFocus();
+
+    // 比較モード中ならファイル操作後に再比較して overlay を最新化する。
+    // (setPath で overlay 自体は保持されるが、内容は古いままなので。)
+    recompareIfActive();
   });
 
   worker->start();
@@ -1490,6 +1519,10 @@ void FileManagerPanel::moveSelectedFiles() {
 
     // Restore focus to active pane
     activePane()->view()->setFocus();
+
+    // 比較モード中ならファイル操作後に再比較して overlay を最新化する。
+    // (setPath で overlay 自体は保持されるが、内容は古いままなので。)
+    recompareIfActive();
   });
 
   worker->start();
@@ -1598,6 +1631,10 @@ void FileManagerPanel::deleteSelectedFiles() {
 
     // Restore focus to active pane
     activePane()->view()->setFocus();
+
+    // 比較モード中ならファイル操作後に再比較して overlay を最新化する。
+    // (setPath で overlay 自体は保持されるが、内容は古いままなので。)
+    recompareIfActive();
   });
 
   worker->start();
@@ -2259,6 +2296,74 @@ void FileManagerPanel::stopDirectoryCompare() {
   m_rightPane->model()->clearCompareOverlay();
   m_compareMode = false;
   emit directoryCompareChanged(false);
+}
+
+// ── 比較状態に基づく選択補助 ────────────────────────────────────
+// 比較モード中、ユーザーが既存の c / d / m 等を「特定の差分グループだけ」に
+// 適用したいときに、対象行を一発で選択する。Plan A: 一括同期ボタンではなく
+// 普通のファイラ操作 (Space + c など) を選り好みできるようにする方針。
+void FileManagerPanel::selectCompareDiffer() {
+  if (!m_compareMode) return;
+  const int n = activePane()->model()->selectByCompareStatus(DiffStatus::Differ);
+  Logger::instance().info(
+    tr("Compare select: Differ rows (%1 newly selected)").arg(n));
+}
+
+void FileManagerPanel::selectCompareOnlyHere() {
+  if (!m_compareMode) return;
+  const int n = activePane()->model()->selectByCompareStatus(DiffStatus::OnlyHere);
+  Logger::instance().info(
+    tr("Compare select: Only-Here rows (%1 newly selected)").arg(n));
+}
+
+void FileManagerPanel::recompareIfActive() {
+  if (!m_compareMode) return;
+  if (m_leftPane->model()->isInArchiveMode() ||
+      m_rightPane->model()->isInArchiveMode()) {
+    return;  // 念のため (アーカイブ入った場合は navigatePane で既に解除されている)
+  }
+  const QString leftPath  = m_leftPane->currentPath();
+  const QString rightPath = m_rightPane->currentPath();
+  auto* worker = new DirectoryCompareWorker(leftPath, rightPath, m_compareOptions, this);
+  connect(worker, &WorkerBase::finished, this,
+    [this, worker](bool ok) {
+      if (!ok) { worker->deleteLater(); return; }
+      const CompareResult result = worker->result();
+      m_leftPane->model()->setCompareOverlay(result.left);
+      m_rightPane->model()->setCompareOverlay(result.right);
+      m_compareMode = true;  // setCompareOverlay は内部で m_compareMode=true にする
+      emit directoryCompareChanged(true);
+      worker->deleteLater();
+    });
+  worker->start();
+}
+
+void FileManagerPanel::selectCompareNewer() {
+  if (!m_compareMode) return;
+  FileListPane*  pane      = activePane();
+  FileListPane*  otherPane = (m_activePane == PaneType::Left) ? m_rightPane : m_leftPane;
+  FileListModel* model     = pane->model();
+  const QString  selfDir   = pane->currentPath();
+  const QString  otherDir  = otherPane->currentPath();
+  const CompareOverlay& ov = model->compareOverlay();
+
+  int selected = 0;
+  for (int i = 0; i < model->rowCount(); ++i) {
+    const FileItem* it = model->itemAt(i);
+    if (!it || it->isDotDot()) continue;
+    auto ovi = ov.constFind(it->name());
+    if (ovi == ov.cend() || ovi.value() != DiffStatus::Differ) continue;
+    const QFileInfo selfInfo (selfDir  + QStringLiteral("/") + it->name());
+    const QFileInfo otherInfo(otherDir + QStringLiteral("/") + it->name());
+    const qint64 st = selfInfo.lastModified().toSecsSinceEpoch();
+    const qint64 ot = otherInfo.lastModified().toSecsSinceEpoch();
+    if (st > ot && !it->isSelected()) {
+      model->setSelected(i, true);
+      ++selected;
+    }
+  }
+  Logger::instance().info(
+    tr("Compare select: Newer-than-other rows (%1 newly selected)").arg(selected));
 }
 
 } // namespace Farman

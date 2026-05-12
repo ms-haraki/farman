@@ -93,15 +93,24 @@ bool FileListModel::setPath(const QString& path) {
 
     beginResetModel();
 
+    // 同パスへの "refresh" は overlay を保持する (コピー後など)
+    const QString newCurrentPath =
+      ArchivePath::joinArchivePath(ctx->archivePath, split.innerPath);
+    const bool isRefresh = (newCurrentPath == m_currentPath);
+
     m_archiveContext   = ctx;
     m_archiveInnerPath = split.innerPath;
-    m_currentPath      = ArchivePath::joinArchivePath(ctx->archivePath, split.innerPath);
+    m_currentPath      = newCurrentPath;
     m_allEntries.clear();
     m_entries.clear();
     m_liveFilter.clear();
-    // ディレクトリ切替で比較モードは自動解除 (design: directory-comparison.md)。
-    m_compareMode = false;
-    m_compareOverlay.clear();
+    // 別ディレクトリへの切替で比較モードは自動解除 (design:
+    // directory-comparison.md)。同パス refresh ではユーザーが意図的に
+    // モードを継続している (copy 後の更新等) ので残す。
+    if (!isRefresh) {
+      m_compareMode = false;
+      m_compareOverlay.clear();
+    }
 
     // ".." はアーカイブ内のサブディレクトリでも、ルートでも必ず先頭に置く。
     // ルートでは「アーカイブを抜けて FS に戻る」ためのもの。
@@ -135,16 +144,24 @@ bool FileListModel::setPath(const QString& path) {
 
   beginResetModel();
 
+  // 同パスへの "refresh" は overlay を保持する (コピー後など)
+  const QString newCurrentPath = dir.absolutePath();
+  const bool isRefresh = (newCurrentPath == m_currentPath) && !m_archiveContext;
+
   // アーカイブモードから抜ける
   m_archiveContext.reset();
   m_archiveInnerPath.clear();
 
-  m_currentPath = dir.absolutePath();
+  m_currentPath = newCurrentPath;
   m_allEntries.clear();
   m_entries.clear();
-  // ディレクトリ切替で比較モードは自動解除 (design: directory-comparison.md)。
-  m_compareMode = false;
-  m_compareOverlay.clear();
+  // 別ディレクトリへの切替で比較モードは自動解除 (design:
+  // directory-comparison.md)。同パス refresh では残す (copy/move/delete 完了後
+  // の更新で着色を失わないように)。
+  if (!isRefresh) {
+    m_compareMode = false;
+    m_compareOverlay.clear();
+  }
   // 即時フィルタはディレクトリを切り替えたタイミングで自動的にクリアする。
   // 「フィルタが残ったまま別ディレクトリに移ると勝手に絞り込まれる」のを避ける。
   // FileListPane 側のフィルタバーも liveFilterChanged シグナルで同期する。
@@ -270,6 +287,27 @@ void FileListModel::clearCompareOverlay() {
       index(m_entries.size() - 1, ColumnCount - 1),
       { Qt::ForegroundRole, Qt::BackgroundRole });
   }
+}
+
+int FileListModel::selectByCompareStatus(DiffStatus s) {
+  if (!m_compareMode || m_compareOverlay.isEmpty()) return 0;
+  int selected = 0;
+  for (auto& entry : m_entries) {
+    if (entry->isDotDot()) continue;
+    auto it = m_compareOverlay.constFind(entry->name());
+    if (it == m_compareOverlay.cend()) continue;
+    if (it.value() != s) continue;
+    if (!entry->isSelected()) {
+      entry->setSelected(true);
+      ++selected;
+    }
+  }
+  if (selected > 0) {
+    emit dataChanged(
+      index(0, 0),
+      index(m_entries.size() - 1, ColumnCount - 1));
+  }
+  return selected;
 }
 
 const FileItem* FileListModel::itemAt(const QModelIndex& index) const {

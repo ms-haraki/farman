@@ -235,12 +235,16 @@ void MainWindow::setupUi() {
 }
 
 void MainWindow::updateWindowTitle() {
-  // 同期ブラウズが ON のときだけサフィックス "[Sync]" を付ける。
-  // ユーザーがメニューを開かなくてもタイトルバーで状態が分かるようにするため。
-  const bool syncOn = m_fileManagerPanel && m_fileManagerPanel->isSyncBrowseEnabled();
-  const QString title = syncOn
-    ? m_windowTitleBase + QStringLiteral(" — [Sync]")
-    : m_windowTitleBase;
+  // 同期ブラウズ / ディレクトリ比較が ON のときはタイトルバーにサフィックスを
+  // 付けて、ユーザーがメニューを開かなくても現在のモードが分かるようにする。
+  const bool syncOn    = m_fileManagerPanel && m_fileManagerPanel->isSyncBrowseEnabled();
+  const bool compareOn = m_fileManagerPanel && m_fileManagerPanel->isDirectoryCompareActive();
+  QStringList tags;
+  if (syncOn)    tags << tr("Sync");
+  if (compareOn) tags << tr("Compare");
+  const QString title = tags.isEmpty()
+    ? m_windowTitleBase
+    : (m_windowTitleBase + QStringLiteral(" — [") + tags.join(QStringLiteral("] [")) + QStringLiteral("]"));
   setWindowTitle(title);
 }
 
@@ -934,6 +938,40 @@ void MainWindow::registerCommands() {
        "highlight the differences. Press again to clear.")
   ));
 
+  // 比較中、差分グループ別にアクティブペインの行をまとめて選択する補助。
+  // 選択後は既存の c / d / m などで操作する想定 (一括同期ではなく、ユーザーが
+  // Space で個別に除外できる選り好み可能なフロー)。
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "compare.select_differ",
+    tr("Select Differ rows"),
+    [this]() {
+      if (m_fileManagerPanel) m_fileManagerPanel->selectCompareDiffer();
+    },
+    "view",
+    tr("In compare mode, add rows that differ between the two panes to the "
+       "active pane's selection.")
+  ));
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "compare.select_only_here",
+    tr("Select Only-Here rows"),
+    [this]() {
+      if (m_fileManagerPanel) m_fileManagerPanel->selectCompareOnlyHere();
+    },
+    "view",
+    tr("In compare mode, add rows that exist only in the active pane to "
+       "its selection.")
+  ));
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "compare.select_newer",
+    tr("Select Newer-Than-Other rows"),
+    [this]() {
+      if (m_fileManagerPanel) m_fileManagerPanel->selectCompareNewer();
+    },
+    "view",
+    tr("In compare mode, add Differ rows whose mtime is newer than the "
+       "matching file in the other pane.")
+  ));
+
   // ショートカット一覧の表示トグル (`?` キー)
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "help.shortcuts",
@@ -1116,8 +1154,15 @@ void MainWindow::createMenus() {
   // ディレクトリ比較。モード ON 中はチェックマーク + ステータスバーに状態表示。
   m_compareAction = addCmd(viewMenu, "view.compare_directories", tr("Compare Directories..."));
   m_compareAction->setCheckable(true);
+  // 比較選択補助は比較モード中のみ意味があるので、モード OFF 時は disabled。
+  QAction* selDifferAct   = addCmd(viewMenu, "compare.select_differ",    tr("Select Differ rows"));
+  QAction* selOnlyHereAct = addCmd(viewMenu, "compare.select_only_here", tr("Select Only-Here rows"));
+  QAction* selNewerAct    = addCmd(viewMenu, "compare.select_newer",     tr("Select Newer-Than-Other rows"));
+  selDifferAct->setEnabled(false);
+  selOnlyHereAct->setEnabled(false);
+  selNewerAct->setEnabled(false);
   connect(m_fileManagerPanel, &FileManagerPanel::directoryCompareChanged,
-          this, [this](bool active) {
+          this, [this, selDifferAct, selOnlyHereAct, selNewerAct](bool active) {
     if (m_compareAction) {
       QSignalBlocker blocker(m_compareAction);
       m_compareAction->setChecked(active);
@@ -1125,6 +1170,10 @@ void MainWindow::createMenus() {
     if (m_statusCompareLabel) {
       m_statusCompareLabel->setText(active ? tr("Compare: ON") : QString());
     }
+    selDifferAct->setEnabled(active);
+    selOnlyHereAct->setEnabled(active);
+    selNewerAct->setEnabled(active);
+    updateWindowTitle();
   });
   viewMenu->addSeparator();
   addCmd(viewMenu, "view.file", tr("View File"));

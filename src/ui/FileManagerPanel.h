@@ -76,6 +76,21 @@ public:
   void stopDirectoryCompare();
   bool isDirectoryCompareActive() const { return m_compareMode; }
 
+  // 比較モード中、アクティブペインで条件に合う行をまとめて選択する補助:
+  //   Differ:    両側にあるが内容が違う行
+  //   OnlyHere:  このペインにしか無い行
+  //   Newer:     Differ で、自ペインの mtime が反対ペインの同名ファイルより新しい
+  // 既存の選択は維持 (累積) する。.. は対象外。比較モード OFF / 該当 0 件のときは
+  // no-op だがログに記録。選択後は既存の c / d / m などで普通に操作可能。
+  void selectCompareDiffer();
+  void selectCompareOnlyHere();
+  void selectCompareNewer();
+
+  // 比較モード中だった場合、現在のオプションで再比較ワーカーを走らせて
+  // overlay を最新化する。コピー / 移動 / 削除完了後に呼ぶことで、
+  // 操作によって解消した差分行が即 Same 化する。比較モード OFF なら no-op。
+  void recompareIfActive();
+
   // アクティブペインのソート・フィルタ編集ダイアログを開く
   void openSortFilterDialog();
 

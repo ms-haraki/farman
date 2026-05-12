@@ -118,6 +118,15 @@ public:
   void setCompareOverlay(const CompareOverlay& overlay);
   void clearCompareOverlay();
   bool inCompareMode() const { return m_compareMode; }
+  // 現在のオーバーレイ参照。FileManagerPanel が "Newer" 等の複合条件で
+  // 行を走査するときに使う (反対ペインの mtime と組み合わせて判定するため)。
+  const CompareOverlay& compareOverlay() const { return m_compareOverlay; }
+
+  // 比較モード中、overlay 上で指定 DiffStatus に該当する行を選択状態にする
+  // (累積、既存の選択は維持)。クリアしてから選び直したい場合は呼び出し側で
+  // 事前に setSelectedAll(false) を呼ぶ。".." は対象外。
+  // 比較モード OFF / overlay 空のときは no-op。戻り値は新たに選択した行数。
+  int selectByCompareStatus(DiffStatus s);
 
   // ── アイテムアクセス ──────────────────────
   const FileItem* itemAt(const QModelIndex& index) const;
