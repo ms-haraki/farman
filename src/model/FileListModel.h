@@ -2,6 +2,7 @@
 
 #include "types.h"
 #include "core/FileItem.h"
+#include "core/DirectoryCompare.h"
 #include <QAbstractItemModel>
 #include <QFileSystemWatcher>
 #include <QFileIconProvider>
@@ -110,6 +111,14 @@ public:
   // アーカイブモード以外は nullptr。raw pointer は呼び出し中のみ有効。
   const ArchiveContext* archiveContext() const { return m_archiveContext.get(); }
 
+  // ── ディレクトリ比較オーバーレイ ──────────────
+  // 名前 → DiffStatus の overlay を取り込むと比較モードに入り、ファイル行の
+  // 背景/前景色を「Differ」「OnlyHere」用テーマ色に上書きする。
+  // overlay 空 + 比較モード OFF が通常状態。
+  void setCompareOverlay(const CompareOverlay& overlay);
+  void clearCompareOverlay();
+  bool inCompareMode() const { return m_compareMode; }
+
   // ── アイテムアクセス ──────────────────────
   const FileItem* itemAt(const QModelIndex& index) const;
   const FileItem* itemAt(int row) const;
@@ -184,6 +193,12 @@ private:
   // アーカイブ内の現在ディレクトリ。先頭 '/' 必須、ルートは "/"。
   // m_archiveContext が null のときは未使用。
   QString                          m_archiveInnerPath;
+
+  // ── ディレクトリ比較オーバーレイ ──────────────
+  // m_compareMode が true のとき m_compareOverlay の各エントリの DiffStatus を
+  // 参照して背景色 / 前景色を上書きする。setPath / navigatePane で OFF に戻す。
+  bool                             m_compareMode = false;
+  CompareOverlay                   m_compareOverlay;
 };
 
 } // namespace Farman

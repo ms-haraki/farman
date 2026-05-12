@@ -107,6 +107,11 @@ void Settings::applyDefaults() {
   // アーカイブ内ブラウジング中のアドレスバー (Light テーマの既定値)
   m_archiveAddressForeground = QColor(Qt::black);
   m_archiveAddressBackground = QColor(0xFF, 0xE9, 0xA8);
+  // ディレクトリ比較の着色 (Light テーマの既定値)
+  m_compareDifferForeground   = QColor(Qt::black);
+  m_compareDifferBackground   = QColor(0xFF, 0xD8, 0xA8);
+  m_compareOnlyHereForeground = QColor(Qt::black);
+  m_compareOnlyHereBackground = QColor(0xC8, 0xE6, 0xB4);
 
   // Cursor
   m_cursorActiveColor   = QColor(Qt::black);
@@ -296,6 +301,10 @@ ColorScheme Settings::collectThemeFields() const {
   s.addressBackground  = m_addressBackground;
   s.archiveAddressForeground = m_archiveAddressForeground;
   s.archiveAddressBackground = m_archiveAddressBackground;
+  s.compareDifferForeground   = m_compareDifferForeground;
+  s.compareDifferBackground   = m_compareDifferBackground;
+  s.compareOnlyHereForeground = m_compareOnlyHereForeground;
+  s.compareOnlyHereBackground = m_compareOnlyHereBackground;
   s.cursorActiveColor  = m_cursorActiveColor;
   s.cursorInactiveColor= m_cursorInactiveColor;
 
@@ -340,6 +349,10 @@ void Settings::applyThemeFields(const ColorScheme& s) {
   m_addressBackground  = s.addressBackground;
   m_archiveAddressForeground = s.archiveAddressForeground;
   m_archiveAddressBackground = s.archiveAddressBackground;
+  m_compareDifferForeground   = s.compareDifferForeground;
+  m_compareDifferBackground   = s.compareDifferBackground;
+  m_compareOnlyHereForeground = s.compareOnlyHereForeground;
+  m_compareOnlyHereBackground = s.compareOnlyHereBackground;
   m_cursorActiveColor  = s.cursorActiveColor;
   m_cursorInactiveColor= s.cursorInactiveColor;
 
@@ -675,6 +688,14 @@ QColor Settings::archiveAddressForeground() const { return m_archiveAddressForeg
 void   Settings::setArchiveAddressForeground(const QColor& c) { m_archiveAddressForeground = c; }
 QColor Settings::archiveAddressBackground() const { return m_archiveAddressBackground; }
 void   Settings::setArchiveAddressBackground(const QColor& c) { m_archiveAddressBackground = c; }
+QColor Settings::compareDifferForeground() const { return m_compareDifferForeground; }
+void   Settings::setCompareDifferForeground(const QColor& c) { m_compareDifferForeground = c; }
+QColor Settings::compareDifferBackground() const { return m_compareDifferBackground; }
+void   Settings::setCompareDifferBackground(const QColor& c) { m_compareDifferBackground = c; }
+QColor Settings::compareOnlyHereForeground() const { return m_compareOnlyHereForeground; }
+void   Settings::setCompareOnlyHereForeground(const QColor& c) { m_compareOnlyHereForeground = c; }
+QColor Settings::compareOnlyHereBackground() const { return m_compareOnlyHereBackground; }
+void   Settings::setCompareOnlyHereBackground(const QColor& c) { m_compareOnlyHereBackground = c; }
 
 QColor Settings::cursorColor(bool active) const {
   return active ? m_cursorActiveColor : m_cursorInactiveColor;

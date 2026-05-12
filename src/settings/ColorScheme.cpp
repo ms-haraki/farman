@@ -84,6 +84,12 @@ ColorScheme defaultLightScheme() {
   s.cursorActiveColor  = QColor(Qt::black);
   s.cursorInactiveColor= QColor(Qt::lightGray);
 
+  // ディレクトリ比較 (Light)
+  s.compareDifferForeground   = QColor(Qt::black);
+  s.compareDifferBackground   = QColor(0xFF, 0xD8, 0xA8);  // 薄いオレンジ
+  s.compareOnlyHereForeground = QColor(Qt::black);
+  s.compareOnlyHereBackground = QColor(0xC8, 0xE6, 0xB4);  // 薄い緑
+
   // テキストビュアー
   s.textViewerFont          = defaultMonospaceFont();
   s.textViewerNormalFg      = QColor(Qt::black);
@@ -130,6 +136,12 @@ ColorScheme defaultDarkScheme() {
   s.archiveAddressBackground = QColor(0x5A, 0x42, 0x10);
   s.cursorActiveColor  = QColor(0xE0, 0xE0, 0xE0);
   s.cursorInactiveColor= QColor(0x70, 0x70, 0x70);
+
+  // ディレクトリ比較 (Dark)
+  s.compareDifferForeground   = QColor(0xFF, 0xE0, 0xB0);
+  s.compareDifferBackground   = QColor(0x5A, 0x3A, 0x10);   // 暗いオレンジ
+  s.compareOnlyHereForeground = QColor(0xC8, 0xE6, 0xB4);
+  s.compareOnlyHereBackground = QColor(0x1F, 0x4A, 0x20);   // 暗い緑
 
   // テキストビュアー (Solarized Dark 寄りの色)
   s.textViewerFont          = defaultMonospaceFont();
@@ -290,6 +302,10 @@ QJsonObject colorSchemeToJson(const ColorScheme& s) {
   o["addressBackground"]  = colorString(s.addressBackground);
   o["archiveAddressForeground"] = colorString(s.archiveAddressForeground);
   o["archiveAddressBackground"] = colorString(s.archiveAddressBackground);
+  o["compareDifferForeground"]   = colorString(s.compareDifferForeground);
+  o["compareDifferBackground"]   = colorString(s.compareDifferBackground);
+  o["compareOnlyHereForeground"] = colorString(s.compareOnlyHereForeground);
+  o["compareOnlyHereBackground"] = colorString(s.compareOnlyHereBackground);
   o["cursorActive"]       = colorString(s.cursorActiveColor);
   o["cursorInactive"]     = colorString(s.cursorInactiveColor);
 
@@ -355,6 +371,10 @@ void colorSchemeFromJson(const QJsonObject& o, ColorScheme& s) {
   readColor(o, "addressBackground", s.addressBackground);
   readColor(o, "archiveAddressForeground", s.archiveAddressForeground);
   readColor(o, "archiveAddressBackground", s.archiveAddressBackground);
+  readColor(o, "compareDifferForeground",   s.compareDifferForeground);
+  readColor(o, "compareDifferBackground",   s.compareDifferBackground);
+  readColor(o, "compareOnlyHereForeground", s.compareOnlyHereForeground);
+  readColor(o, "compareOnlyHereBackground", s.compareOnlyHereBackground);
   readColor(o, "cursorActive",      s.cursorActiveColor);
   readColor(o, "cursorInactive",    s.cursorInactiveColor);
 

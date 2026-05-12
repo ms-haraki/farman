@@ -3,6 +3,7 @@
 #include <QWidget>
 #include "types.h"
 #include "core/DirectoryHistory.h"
+#include "core/DirectoryCompare.h"
 
 class QSplitter;
 class QKeyEvent;
@@ -68,6 +69,13 @@ public:
   void createArchive();
   void extractArchive();
 
+  // ── ディレクトリ比較 ─────────────────────
+  // 左右ペインのカレントディレクトリを突き合わせて、結果を両ペインに着色表示する。
+  // モード ON 中は m_compareMode == true。ペイン遷移で自動 OFF。
+  void startDirectoryCompare();
+  void stopDirectoryCompare();
+  bool isDirectoryCompareActive() const { return m_compareMode; }
+
   // アクティブペインのソート・フィルタ編集ダイアログを開く
   void openSortFilterDialog();
 
@@ -112,6 +120,9 @@ signals:
   void activeSummaryChanged(const QString& summary);
   // 同期ブラウズの ON/OFF が切り替わったとき (UI 更新トリガ)。
   void syncBrowseChanged(bool enabled);
+  // ディレクトリ比較モードの ON/OFF が切り替わったとき (メニュー・ステータス
+  // バーの UI 更新トリガ)。
+  void directoryCompareChanged(bool active);
   // 1 / 2 ペインモードが切り替わったとき (ツールバーのトグル状態同期に使う)。
   void singlePaneModeChanged(bool single);
   // ログペインの表示が切り替わったとき (同上)。
@@ -166,6 +177,12 @@ private:
 
   DirectoryHistory m_leftHistory;
   DirectoryHistory m_rightHistory;
+
+  // ── ディレクトリ比較 ─────────────────────
+  // モード ON のとき左右両ペインに DiffStatus 着色が乗る。
+  // ペイン遷移 (navigatePane) で自動 OFF。
+  bool             m_compareMode = false;
+  CompareOptions   m_compareOptions;
 };
 
 } // namespace Farman

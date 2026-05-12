@@ -78,6 +78,7 @@ qt_add_executable(farman
   src/ui/PropertiesDialog.cpp
   src/ui/CreateArchiveDialog.cpp
   src/ui/ExtractArchiveDialog.cpp
+  src/ui/DirectoryCompareDialog.cpp
   src/ui/ClickableLabel.cpp
   src/core/FileItem.cpp
   src/core/BookmarkManager.cpp
@@ -101,6 +102,7 @@ qt_add_executable(farman
   src/core/workers/ArchiveCreateWorker.cpp
   src/core/workers/ArchiveExtractWorker.cpp
   src/core/workers/ArchiveExtractEntriesWorker.cpp
+  src/core/workers/DirectoryCompareWorker.cpp
   src/model/FileListModel.cpp
   src/viewer/ViewerDispatcher.cpp
   src/viewer/TextView.cpp

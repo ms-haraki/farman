@@ -240,6 +240,22 @@ QWidget* AppearanceTab::buildMainPage() {
   archiveAddressRow->addStretch();
   mainLayout->addWidget(archiveAddressGroup);
 
+  // ─── Directory Compare グループ ───
+  // ディレクトリ比較モード中の差分着色 (Differ / OnlyHere)。
+  // Same は専用色を持たず通常のカテゴリ色を使う。
+  QGroupBox* compareGroup = new QGroupBox(tr("Directory Compare"), this);
+  QHBoxLayout* compareRow = new QHBoxLayout(compareGroup);
+  m_compareDifferFgButton   = makeColorButton(m_compareDifferFgValue,   tr("Differ Foreground Color"));
+  m_compareDifferBgButton   = makeColorButton(m_compareDifferBgValue,   tr("Differ Background Color"));
+  m_compareOnlyHereFgButton = makeColorButton(m_compareOnlyHereFgValue, tr("Only-Here Foreground Color"));
+  m_compareOnlyHereBgButton = makeColorButton(m_compareOnlyHereBgValue, tr("Only-Here Background Color"));
+  addPair(compareRow, tr("Differ FG:"),    m_compareDifferFgButton);
+  addPair(compareRow, tr("Differ BG:"),    m_compareDifferBgButton);
+  addPair(compareRow, tr("Only-Here FG:"), m_compareOnlyHereFgButton);
+  addPair(compareRow, tr("Only-Here BG:"), m_compareOnlyHereBgButton);
+  compareRow->addStretch();
+  mainLayout->addWidget(compareGroup);
+
   // ─── Cursor グループ: Shape / Thickness / Active / Inactive を横並び ─
   QGroupBox* cursorGroup = new QGroupBox(tr("Cursor"), this);
   QHBoxLayout* cursorRow = new QHBoxLayout(cursorGroup);
@@ -824,6 +840,14 @@ void AppearanceTab::loadFromScheme(const ColorScheme& s) {
   m_archiveAddressBgValue = s.archiveAddressBackground;
   updateColorButton(m_archiveAddressFgButton, m_archiveAddressFgValue);
   updateColorButton(m_archiveAddressBgButton, m_archiveAddressBgValue);
+  m_compareDifferFgValue   = s.compareDifferForeground;
+  m_compareDifferBgValue   = s.compareDifferBackground;
+  m_compareOnlyHereFgValue = s.compareOnlyHereForeground;
+  m_compareOnlyHereBgValue = s.compareOnlyHereBackground;
+  updateColorButton(m_compareDifferFgButton,   m_compareDifferFgValue);
+  updateColorButton(m_compareDifferBgButton,   m_compareDifferBgValue);
+  updateColorButton(m_compareOnlyHereFgButton, m_compareOnlyHereFgValue);
+  updateColorButton(m_compareOnlyHereBgButton, m_compareOnlyHereBgValue);
 
   m_cursorActiveValue   = s.cursorActiveColor;
   m_cursorInactiveValue = s.cursorInactiveColor;
@@ -907,6 +931,10 @@ void AppearanceTab::saveToScheme(ColorScheme& s) const {
   s.addressBackground  = m_addressBgValue;
   s.archiveAddressForeground = m_archiveAddressFgValue;
   s.archiveAddressBackground = m_archiveAddressBgValue;
+  s.compareDifferForeground   = m_compareDifferFgValue;
+  s.compareDifferBackground   = m_compareDifferBgValue;
+  s.compareOnlyHereForeground = m_compareOnlyHereFgValue;
+  s.compareOnlyHereBackground = m_compareOnlyHereBgValue;
   s.cursorActiveColor  = m_cursorActiveValue;
   s.cursorInactiveColor= m_cursorInactiveValue;
 
@@ -1198,6 +1226,10 @@ void AppearanceTab::save() {
     dst.addressBackground   = src.addressBackground;
     dst.archiveAddressForeground = src.archiveAddressForeground;
     dst.archiveAddressBackground = src.archiveAddressBackground;
+    dst.compareDifferForeground   = src.compareDifferForeground;
+    dst.compareDifferBackground   = src.compareDifferBackground;
+    dst.compareOnlyHereForeground = src.compareOnlyHereForeground;
+    dst.compareOnlyHereBackground = src.compareOnlyHereBackground;
     dst.cursorActiveColor   = src.cursorActiveColor;
     dst.cursorInactiveColor = src.cursorInactiveColor;
     // ビュアー (テキスト / バイナリ / 画像)

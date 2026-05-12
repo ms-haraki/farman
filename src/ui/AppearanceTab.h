@@ -144,6 +144,15 @@ private:
   QPushButton* m_archiveAddressBgButton = nullptr;
   QColor       m_archiveAddressFgValue;
   QColor       m_archiveAddressBgValue;
+  // ディレクトリ比較カラー (Differ / OnlyHere)
+  QPushButton* m_compareDifferFgButton    = nullptr;
+  QPushButton* m_compareDifferBgButton    = nullptr;
+  QPushButton* m_compareOnlyHereFgButton  = nullptr;
+  QPushButton* m_compareOnlyHereBgButton  = nullptr;
+  QColor       m_compareDifferFgValue;
+  QColor       m_compareDifferBgValue;
+  QColor       m_compareOnlyHereFgValue;
+  QColor       m_compareOnlyHereBgValue;
   // Cursor colors / shape
   QPushButton* m_cursorActiveButton   = nullptr;
   QPushButton* m_cursorInactiveButton = nullptr;

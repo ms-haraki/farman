@@ -99,6 +99,9 @@ bool FileListModel::setPath(const QString& path) {
     m_allEntries.clear();
     m_entries.clear();
     m_liveFilter.clear();
+    // ディレクトリ切替で比較モードは自動解除 (design: directory-comparison.md)。
+    m_compareMode = false;
+    m_compareOverlay.clear();
 
     // ".." はアーカイブ内のサブディレクトリでも、ルートでも必ず先頭に置く。
     // ルートでは「アーカイブを抜けて FS に戻る」ためのもの。
@@ -139,6 +142,9 @@ bool FileListModel::setPath(const QString& path) {
   m_currentPath = dir.absolutePath();
   m_allEntries.clear();
   m_entries.clear();
+  // ディレクトリ切替で比較モードは自動解除 (design: directory-comparison.md)。
+  m_compareMode = false;
+  m_compareOverlay.clear();
   // 即時フィルタはディレクトリを切り替えたタイミングで自動的にクリアする。
   // 「フィルタが残ったまま別ディレクトリに移ると勝手に絞り込まれる」のを避ける。
   // FileListPane 側のフィルタバーも liveFilterChanged シグナルで同期する。
@@ -240,6 +246,29 @@ void FileListModel::setLiveFilter(const QString& text) {
     beginResetModel();
     applyFilterAndSort();
     endResetModel();
+  }
+}
+
+void FileListModel::setCompareOverlay(const CompareOverlay& overlay) {
+  m_compareOverlay = overlay;
+  m_compareMode    = true;
+  if (!m_entries.isEmpty()) {
+    emit dataChanged(
+      index(0, 0),
+      index(m_entries.size() - 1, ColumnCount - 1),
+      { Qt::ForegroundRole, Qt::BackgroundRole });
+  }
+}
+
+void FileListModel::clearCompareOverlay() {
+  if (!m_compareMode && m_compareOverlay.isEmpty()) return;
+  m_compareOverlay.clear();
+  m_compareMode = false;
+  if (!m_entries.isEmpty()) {
+    emit dataChanged(
+      index(0, 0),
+      index(m_entries.size() - 1, ColumnCount - 1),
+      { Qt::ForegroundRole, Qt::BackgroundRole });
   }
 }
 
@@ -528,10 +557,21 @@ QVariant FileListModel::data(const QModelIndex& index, int role) const {
     }
   }
   else if (role == Qt::BackgroundRole) {
+    // Selected が最優先。次にディレクトリ比較の Differ/OnlyHere。最後に
+    // カテゴリの通常色 (Hidden/Dir/Normal)。
     FileCategory cat = item->isHidden() ? FileCategory::Hidden
                      : item->isDir()    ? FileCategory::Directory
                                         : FileCategory::Normal;
     const bool inactive = !m_active && Settings::instance().useInactivePaneColors();
+    if (!item->isSelected() && m_compareMode && !item->isDotDot()) {
+      auto it = m_compareOverlay.constFind(item->name());
+      if (it != m_compareOverlay.cend() && it.value() != DiffStatus::Same) {
+        const QColor bg = (it.value() == DiffStatus::Differ)
+          ? Settings::instance().compareDifferBackground()
+          : Settings::instance().compareOnlyHereBackground();
+        if (bg.isValid()) return bg;
+      }
+    }
     const QColor bg = Settings::instance().categoryColor(cat, item->isSelected(), inactive).background;
     if (bg.isValid()) return bg;
   }
@@ -540,6 +580,15 @@ QVariant FileListModel::data(const QModelIndex& index, int role) const {
                      : item->isDir()    ? FileCategory::Directory
                                         : FileCategory::Normal;
     const bool inactive = !m_active && Settings::instance().useInactivePaneColors();
+    if (!item->isSelected() && m_compareMode && !item->isDotDot()) {
+      auto it = m_compareOverlay.constFind(item->name());
+      if (it != m_compareOverlay.cend() && it.value() != DiffStatus::Same) {
+        const QColor fg = (it.value() == DiffStatus::Differ)
+          ? Settings::instance().compareDifferForeground()
+          : Settings::instance().compareOnlyHereForeground();
+        if (fg.isValid()) return fg;
+      }
+    }
     const QColor fg = Settings::instance().categoryColor(cat, item->isSelected(), inactive).foreground;
     if (fg.isValid()) return fg;
   }

@@ -66,9 +66,14 @@ private:
   QLabel*      m_statusPathLabel        = nullptr;
   QLabel*      m_statusSummaryLabel     = nullptr;
   QLabel*      m_statusSyncBrowseLabel  = nullptr;
+  // ディレクトリ比較モード中のインジケータ ("Compare: SizeMtime" 等)。
+  // OFF 時は空文字列 (= 何も出ない)。
+  QLabel*      m_statusCompareLabel     = nullptr;
 
   // View メニューの Sync Browse トグル項目 (FileManagerPanel 状態と同期)。
   QAction*     m_syncBrowseAction = nullptr;
+  // View メニューの Compare Directories... 項目 (チェックマークで状態同期)。
+  QAction*     m_compareAction = nullptr;
 
   // ウィンドウタイトルのベース部分 (例: "farman 0.9.0")。Sync Browse が ON
   // のときにサフィックス "[Sync]" を追加するため、再構築用に保持しておく。

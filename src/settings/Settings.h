@@ -149,6 +149,16 @@ public:
   QColor           archiveAddressBackground()       const;
   void             setArchiveAddressBackground(const QColor& c);
 
+  // ディレクトリ比較の差分着色 (Differ / OnlyHere)
+  QColor           compareDifferForeground()        const;
+  void             setCompareDifferForeground(const QColor& c);
+  QColor           compareDifferBackground()        const;
+  void             setCompareDifferBackground(const QColor& c);
+  QColor           compareOnlyHereForeground()      const;
+  void             setCompareOnlyHereForeground(const QColor& c);
+  QColor           compareOnlyHereBackground()      const;
+  void             setCompareOnlyHereBackground(const QColor& c);
+
   // カーソル（現在行下線）のカラー
   QColor           cursorColor(bool active)         const;
   void             setCursorColor(bool active, const QColor& c);
@@ -411,6 +421,11 @@ private:
   // アーカイブ内ブラウジング時のアドレスバー色
   QColor           m_archiveAddressForeground = QColor(Qt::black);
   QColor           m_archiveAddressBackground = QColor(0xFF, 0xE9, 0xA8);
+  // ディレクトリ比較の着色 (Light の既定値)
+  QColor           m_compareDifferForeground   = QColor(Qt::black);
+  QColor           m_compareDifferBackground   = QColor(0xFF, 0xD8, 0xA8);
+  QColor           m_compareOnlyHereForeground = QColor(Qt::black);
+  QColor           m_compareOnlyHereBackground = QColor(0xC8, 0xE6, 0xB4);
   QColor           m_cursorActiveColor    = QColor(Qt::black);
   QColor           m_cursorInactiveColor  = QColor(Qt::lightGray);
   CursorShape      m_cursorShape          = CursorShape::Underline;

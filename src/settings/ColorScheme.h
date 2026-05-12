@@ -64,6 +64,15 @@ struct ColorScheme {
   QColor  cursorActiveColor;
   QColor  cursorInactiveColor;
 
+  // ── ディレクトリ比較 ───────────────────────
+  // Differ:   両側にあるが内容が違う行
+  // OnlyHere: このペインにしかない行
+  // Same は専用色を持たず、通常のカテゴリ色をそのまま使う
+  QColor  compareDifferForeground;
+  QColor  compareDifferBackground;
+  QColor  compareOnlyHereForeground;
+  QColor  compareOnlyHereBackground;
+
   // ── テキストビュアー ───────────────────────
   QFont   textViewerFont;
   QColor  textViewerNormalFg;

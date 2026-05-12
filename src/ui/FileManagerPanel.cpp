@@ -14,6 +14,8 @@
 #include "core/workers/ArchiveCreateWorker.h"
 #include "core/workers/ArchiveExtractWorker.h"
 #include "core/workers/ArchiveExtractEntriesWorker.h"
+#include "core/workers/DirectoryCompareWorker.h"
+#include "DirectoryCompareDialog.h"
 #include "model/FileListModel.h"
 #include "core/FileItem.h"
 #include "core/ArchiveContext.h"
@@ -283,6 +285,12 @@ void FileManagerPanel::applyPathSortFilter(PaneType paneType) {
 }
 
 bool FileManagerPanel::navigatePane(PaneType paneType, const QString& path) {
+  // ディレクトリ比較モード中にパス遷移されたら自動 OFF
+  // (左右の比較対象がズレるため。design: directory-comparison.md)
+  if (m_compareMode) {
+    Logger::instance().info(tr("Directory compare: disabled (navigation)"));
+    stopDirectoryCompare();
+  }
   FileListPane* pane = (paneType == PaneType::Left) ? m_leftPane : m_rightPane;
   FileListModel* model = pane->model();
   auto& settings = Settings::instance();
@@ -2153,6 +2161,68 @@ void FileManagerPanel::renameItem() {
   }
 
   srcPane->view()->setFocus();
+}
+
+// ── ディレクトリ比較 ────────────────────────────────────────────
+// 左右ペインのカレントを突き合わせ、結果オーバーレイを各 model に流し込んで
+// 着色表示する。Phase A スコープ: NameOnly / SizeMtime のみ、非再帰、表示のみ。
+// 同期操作 (差分コピー等) は Phase C で別途追加予定。
+void FileManagerPanel::startDirectoryCompare() {
+  // アーカイブモード中は対象にできない (libarchive エントリは QDir で読めない)
+  if (m_leftPane->model()->isInArchiveMode() ||
+      m_rightPane->model()->isInArchiveMode()) {
+    QMessageBox::warning(this, tr("Cannot compare"),
+      tr("Directory compare is not available while one of the panes is "
+         "browsing an archive."));
+    return;
+  }
+  if (m_singlePaneMode) {
+    QMessageBox::warning(this, tr("Cannot compare"),
+      tr("Directory compare requires two panes."));
+    return;
+  }
+
+  const QString leftPath  = m_leftPane->currentPath();
+  const QString rightPath = m_rightPane->currentPath();
+
+  DirectoryCompareDialog dlg(leftPath, rightPath, this);
+  if (dlg.exec() != QDialog::Accepted) return;
+  m_compareOptions = dlg.options();
+
+  // 比較は QDir 列挙ベースで NameOnly/SizeMtime なら瞬時。Hash 粒度や再帰
+  // (Phase B 以降) を入れたタイミングで進捗ダイアログを足す予定。今は同期実行。
+  auto* worker = new DirectoryCompareWorker(leftPath, rightPath, m_compareOptions, this);
+  connect(worker, &WorkerBase::finished, this,
+    [this, worker, leftPath, rightPath](bool ok) {
+      if (!ok) {
+        worker->deleteLater();
+        return;
+      }
+      const CompareResult result = worker->result();
+      m_leftPane->model()->setCompareOverlay(result.left);
+      m_rightPane->model()->setCompareOverlay(result.right);
+      m_compareMode = true;
+      emit directoryCompareChanged(true);
+      Logger::instance().info(
+        tr("Directory compare done: %1 ↔ %2 (%3 / %4 items)")
+          .arg(leftPath, rightPath)
+          .arg(result.left.size())
+          .arg(result.right.size()));
+      worker->deleteLater();
+    });
+  worker->start();
+}
+
+void FileManagerPanel::stopDirectoryCompare() {
+  if (!m_compareMode &&
+      m_leftPane->model()->inCompareMode() == false &&
+      m_rightPane->model()->inCompareMode() == false) {
+    return;
+  }
+  m_leftPane->model()->clearCompareOverlay();
+  m_rightPane->model()->clearCompareOverlay();
+  m_compareMode = false;
+  emit directoryCompareChanged(false);
 }
 
 } // namespace Farman

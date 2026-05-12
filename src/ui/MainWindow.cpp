@@ -208,7 +208,11 @@ void MainWindow::setupUi() {
   // 件数の左隣に置くと「いま何モードか」をパスから視線を逸らさず確認できる。
   m_statusSyncBrowseLabel = new QLabel(this);
   m_statusSyncBrowseLabel->setObjectName(QStringLiteral("syncBrowseLabel"));
+  // ディレクトリ比較モードのインジケータ。OFF 時は空文字列で何も表示しない。
+  m_statusCompareLabel = new QLabel(this);
+  m_statusCompareLabel->setObjectName(QStringLiteral("compareLabel"));
   statusBar()->addWidget(m_statusPathLabel, /*stretch*/ 1);
+  statusBar()->addPermanentWidget(m_statusCompareLabel);
   statusBar()->addPermanentWidget(m_statusSyncBrowseLabel);
   statusBar()->addPermanentWidget(m_statusSummaryLabel);
 
@@ -911,6 +915,25 @@ void MainWindow::registerCommands() {
     tr("Toggle between in-window viewer panel and separate viewer windows.")
   ));
 
+  // ディレクトリ比較: 左右ペインの内容差分を着色表示するモードに入る。
+  // モード ON 中はもう一度同じコマンドを実行すると OFF (トグル動作)。
+  // ペイン遷移時は自動 OFF (FileManagerPanel::navigatePane 側で stop を呼ぶ)。
+  registry.registerCommand(std::make_shared<LambdaCommand>(
+    "view.compare_directories",
+    tr("Compare Directories..."),
+    [this]() {
+      if (!m_fileManagerPanel) return;
+      if (m_fileManagerPanel->isDirectoryCompareActive()) {
+        m_fileManagerPanel->stopDirectoryCompare();
+      } else {
+        m_fileManagerPanel->startDirectoryCompare();
+      }
+    },
+    "view",
+    tr("Compare the contents of the two panes' current directories and "
+       "highlight the differences. Press again to clear.")
+  ));
+
   // ショートカット一覧の表示トグル (`?` キー)
   registry.registerCommand(std::make_shared<LambdaCommand>(
     "help.shortcuts",
@@ -1090,6 +1113,19 @@ void MainWindow::createMenus() {
   // 単発同期 (1 回だけアクティブ → 反対側 / 反対側 → アクティブ)
   addCmd(viewMenu, "pane.sync_other_to_active", tr("Sync Other Pane to Active"));
   addCmd(viewMenu, "pane.sync_active_to_other", tr("Sync Active Pane to Other"));
+  // ディレクトリ比較。モード ON 中はチェックマーク + ステータスバーに状態表示。
+  m_compareAction = addCmd(viewMenu, "view.compare_directories", tr("Compare Directories..."));
+  m_compareAction->setCheckable(true);
+  connect(m_fileManagerPanel, &FileManagerPanel::directoryCompareChanged,
+          this, [this](bool active) {
+    if (m_compareAction) {
+      QSignalBlocker blocker(m_compareAction);
+      m_compareAction->setChecked(active);
+    }
+    if (m_statusCompareLabel) {
+      m_statusCompareLabel->setText(active ? tr("Compare: ON") : QString());
+    }
+  });
   viewMenu->addSeparator();
   addCmd(viewMenu, "view.file", tr("View File"));
   addCmd(viewMenu, "view.choose", tr("Open With Viewer..."));
