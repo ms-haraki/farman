@@ -1352,6 +1352,18 @@ void MainWindow::createMainToolBar() {
     syncBrowseAct->setChecked(on);
   });
 
+  // ディレクトリ比較トグル。コマンドは「ON ↔ OFF」のトグルなので checkable に
+  // して、現在の比較モード状態を反映させる。
+  QAction* compareAct = addBtn("view.compare_directories", tr("Compare Directories"),
+                               QStringLiteral("compare-directories.svg"));
+  compareAct->setCheckable(true);
+  compareAct->setChecked(m_fileManagerPanel->isDirectoryCompareActive());
+  connect(m_fileManagerPanel, &FileManagerPanel::directoryCompareChanged,
+          this, [compareAct](bool on) {
+    QSignalBlocker b(compareAct);
+    compareAct->setChecked(on);
+  });
+
   QAction* logAct = addBtn("view.toggle_log", tr("Log"),
                            QStringLiteral("log.svg"));
   logAct->setCheckable(true);

@@ -119,6 +119,9 @@ QList<QPair<QKeySequence, QString>> defaultBindingList() {
     { QKeySequence(Qt::ALT   | Qt::Key_Enter),  "file.properties" },
 
     // View
+    // ディレクトリ比較。"=" は「左右が一致するかを見比べる」操作の語感に合い、
+    // 既存の単キーバインドと衝突しない。
+    { QKeySequence(Qt::Key_Equal), "view.compare_directories" },
     { QKeySequence(Qt::Key_V), "view.file" },
     // 任意ビュアー選択ポップアップ。Enter / Return の両方をバインド。
     { QKeySequence(Qt::CTRL | Qt::Key_Return),  "view.choose"  },
@@ -211,6 +214,8 @@ void KeyBindingManager::loadFromSettings() {
   // version < 12: view.quick_filter (Ctrl+I) を新規追加。同上。
   // version < 13: view.quick_filter のデフォルトを Ctrl+I → bare `/` に変更
   // (vim 流に揃えるため)。同上、強制リセット。
+  // version < 14: view.compare_directories ("=") を新規追加。既存バインドは
+  // 保持されるが、空いている "=" キーをデフォルトとして補完する。
   if (version < 13) {
     qDebug() << "KeyBindingManager: migrating bindings from version" << version;
     loadDefaults();
@@ -269,7 +274,7 @@ void KeyBindingManager::saveToSettings() const {
 
   QJsonObject root;
   root["bindings"] = bindings;
-  root["version"] = 13;
+  root["version"] = 14;
 
   QJsonDocument doc(root);
   QString jsonData = QString::fromUtf8(doc.toJson(QJsonDocument::Indented));
