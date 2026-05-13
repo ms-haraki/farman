@@ -5,6 +5,7 @@
 #include <QHash>
 #include <QList>
 #include <QString>
+#include <atomic>
 #include <memory>
 
 namespace Farman {
@@ -27,8 +28,19 @@ public:
   // libarchive で archivePath を開いて全エントリのメタデータを列挙する。
   // 失敗時は nullptr。
   // **本メソッドは同期 I/O**。UI スレッドから呼ぶ場合は呼び出し側で
-  // QtConcurrent + イベントループで包むこと (Phase A は MVP として同期呼び出し)。
-  static std::shared_ptr<ArchiveContext> load(const QString& archivePath);
+  // QtConcurrent + イベントループで包むこと。
+  //
+  // errorOut (任意): nullptr 以外を渡すと、失敗時に翻訳済みエラーメッセージ
+  //   ("Encrypted archive (not supported)" 等) が書き込まれる。
+  // cancelFlag (任意): nullptr 以外を渡すと、エントリ列挙の各反復で値を確認
+  //   し、true ならその場で打ち切って nullptr を返す (errorOut は cancel メッセージ)。
+  // entriesRead (任意): nullptr 以外を渡すと、エントリ 1 件処理するごとに ++ する。
+  //   UI スレッド側で QTimer + QProgressDialog 経由で「N entries read」表示に使える。
+  static std::shared_ptr<ArchiveContext> load(
+    const QString&         archivePath,
+    QString*               errorOut    = nullptr,
+    std::atomic<bool>*     cancelFlag  = nullptr,
+    std::atomic<int>*      entriesRead = nullptr);
 
   // ── クエリ ────────────────────────────────────
   // innerDir は "/" (ルート) または "/foo" / "/foo/bar" の形式。

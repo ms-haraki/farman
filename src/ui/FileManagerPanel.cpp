@@ -298,6 +298,16 @@ bool FileManagerPanel::navigatePane(PaneType paneType, const QString& path) {
   FileListModel* model = pane->model();
   auto& settings = Settings::instance();
 
+  // setSortSettings / setAttrFilter / setNameFilters は beginResetModel /
+  // endResetModel を起こすので currentIndex が無効化される。setPath が失敗
+  // すると古いディレクトリの内容のまま戻ってくるが、currentIndex は無くなる
+  // ため、ユーザーから「カーソルが消えた」ように見える。失敗時の復元用に
+  // 現在のカーソル名を保存しておく。
+  QString savedCursorName;
+  if (const FileItem* it = model->itemAt(pane->view()->currentIndex())) {
+    savedCursorName = it->name();
+  }
+
   PaneSettings s = settings.hasPathOverride(path)
                    ? settings.pathOverride(path)
                    : settings.paneSettings(paneType);
@@ -320,6 +330,16 @@ bool FileManagerPanel::navigatePane(PaneType paneType, const QString& path) {
       .arg(pane->currentPath()));
     // 同期ブラウズが有効ならもう一方のペインに同じ相対変化を適用する。
     maybeSyncFollow(paneType, oldPath, pane->currentPath());
+  } else if (!savedCursorName.isEmpty()) {
+    // setPath が失敗 → 古いディレクトリの内容で残るが currentIndex が無いので
+    // 元のファイル名で復元する。
+    for (int i = 0; i < model->rowCount(); ++i) {
+      const FileItem* it = model->itemAt(i);
+      if (it && it->name() == savedCursorName) {
+        pane->view()->setCurrentIndex(model->index(i, 0));
+        break;
+      }
+    }
   }
   return ok;
 }
@@ -799,6 +819,21 @@ void FileManagerPanel::handleEnterKey() {
       ArchivePath::joinArchivePath(item->absolutePath(), QStringLiteral("/"));
     if (navigatePane(m_activePane, archiveRootPath)) {
       updatePathSignal();
+    } else {
+      // open 失敗 (パスワード付き / フォーマット非対応 / キャンセル等)。
+      // FileListModel が lastLoadError に詳細メッセージを残しているので、
+      // それを使ったエラーダイアログを出してユーザーに知らせる。
+      const QString reason = model->lastLoadError();
+      QMessageBox::warning(this, tr("Cannot Open Archive"),
+        reason.isEmpty() ? tr("Failed to open archive: %1").arg(item->absolutePath())
+                         : reason);
+      Logger::instance().warn(
+        tr("Archive open failed: %1 (%2)")
+          .arg(item->absolutePath(), reason));
+      // ProgressDialog → QMessageBox を経由するとファイルリストから focus が
+      // 外れて、currentIndex は残っていてもカーソル行のハイライトが描画され
+      // なくなる。明示的に focus を戻す。
+      pane->view()->setFocus();
     }
     return;
   }

@@ -1,5 +1,6 @@
 #include "ArchiveContext.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -56,7 +57,11 @@ QString ArchiveContext::normalizeDirKey(const QString& innerDir) {
   return k;
 }
 
-std::shared_ptr<ArchiveContext> ArchiveContext::load(const QString& archivePath) {
+std::shared_ptr<ArchiveContext> ArchiveContext::load(
+  const QString&         archivePath,
+  QString*               errorOut,
+  std::atomic<bool>*     cancelFlag,
+  std::atomic<int>*      entriesRead) {
   auto ctx = std::make_shared<ArchiveContext>();
   ctx->archivePath  = archivePath;
   ctx->archiveMtime = QFileInfo(archivePath).lastModified();
@@ -71,16 +76,48 @@ std::shared_ptr<ArchiveContext> ArchiveContext::load(const QString& archivePath)
   const int openResult = archive_read_open_filename(a, archivePath.toUtf8().constData(), 64 * 1024);
 #endif
   if (openResult != ARCHIVE_OK) {
+    if (errorOut) {
+      *errorOut = QObject::tr("Failed to open archive: %1")
+                    .arg(QString::fromUtf8(archive_error_string(a)));
+    }
+    archive_read_free(a);
+    return nullptr;
+  }
+
+  // パスワード付きアーカイブの早期検出。zip 中央ディレクトリのフラグから
+  // 0 件 / >0 件 / 不明 の 3 状態で返る (tar は format 上「不明」を返す)。
+  // >0 のときは v1.0 では非対応 (SPEC.md L457) なので拒否する。
+  if (archive_read_has_encrypted_entries(a) > 0) {
+    if (errorOut) {
+      *errorOut = QObject::tr("Archive is password-protected (not supported).");
+    }
     archive_read_free(a);
     return nullptr;
   }
 
   struct archive_entry* entry = nullptr;
   while (true) {
+    // キャンセル要求のチェック (大きいアーカイブの中断用)
+    if (cancelFlag && cancelFlag->load()) {
+      if (errorOut) *errorOut = QObject::tr("Archive load cancelled.");
+      archive_read_close(a);
+      archive_read_free(a);
+      return nullptr;
+    }
     const int r = archive_read_next_header(a, &entry);
     if (r == ARCHIVE_EOF) break;
     if (r < ARCHIVE_WARN) break;  // 致命エラー
     if (r < ARCHIVE_OK)  continue; // 警告は黙って流す
+
+    // パスワード付き検出 (フォーマットが直接答えない tar 等のフォールバック)
+    if (archive_entry_is_encrypted(entry)) {
+      if (errorOut) {
+        *errorOut = QObject::tr("Archive is password-protected (not supported).");
+      }
+      archive_read_close(a);
+      archive_read_free(a);
+      return nullptr;
+    }
 
     const QString path = readEntryPath(entry);
     if (path.isEmpty()) continue;  // ルート自身などはスキップ
@@ -109,6 +146,7 @@ std::shared_ptr<ArchiveContext> ArchiveContext::load(const QString& archivePath)
 #endif
 
     ctx->entries.insert(path, e);
+    if (entriesRead) entriesRead->fetch_add(1, std::memory_order_relaxed);
 
     // 親ディレクトリのエントリが明示されていないアーカイブのために、
     // 親パスから順次「合成ディレクトリ」エントリを作る (zip でよくある)。

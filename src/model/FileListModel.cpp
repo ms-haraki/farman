@@ -2,15 +2,19 @@
 #include "settings/Settings.h"
 #include "core/ArchiveContext.h"
 #include "utils/ArchivePath.h"
+#include <QApplication>
 #include <QDir>
 #include <QFileInfo>
 #include <QColor>
 #include <QFont>
 #include <QGuiApplication>
+#include <QProgressDialog>
+#include <QTimer>
 #include <QtConcurrent/QtConcurrentRun>
 #include <QFutureWatcher>
 #include <QEventLoop>
 #include <algorithm>
+#include <atomic>
 
 namespace Farman {
 
@@ -55,8 +59,41 @@ namespace {
 
 // アーカイブをワーカースレッドで開き、メインスレッドのイベントループを
 // 回し続けながら結果を待つ。ViewerPanel::openFile と同じパターン。
-std::shared_ptr<ArchiveContext> loadArchiveBlocking(const QString& archivePath) {
-  auto future = QtConcurrent::run(&ArchiveContext::load, archivePath);
+//
+// 巨大アーカイブ対応: 500ms 超のロードでは indeterminate QProgressDialog が
+// 自動表示され、ユーザーは Cancel ボタンで打ち切れる。 ArchiveContext::load
+// は cancelFlag / entriesRead のポインタを受け取り、各エントリ反復で確認する。
+// errorOut にはパスワード付き検出・キャンセル・open 失敗のメッセージが書き込まれる。
+std::shared_ptr<ArchiveContext> loadArchiveBlocking(const QString& archivePath,
+                                                    QString* errorOut) {
+  // ロード中の進捗ダイアログ。setMinimumDuration(500ms) により、500ms 以内に
+  // 完了する小さなアーカイブでは表示されず、ちらつきが起きない。
+  QProgressDialog progress(
+    QObject::tr("Reading archive: %1").arg(QFileInfo(archivePath).fileName()),
+    QObject::tr("Cancel"),
+    0, 0,
+    QApplication::activeWindow());
+  progress.setWindowModality(Qt::WindowModal);
+  progress.setMinimumDuration(500);
+
+  std::atomic<bool> cancelFlag{false};
+  std::atomic<int>  entriesRead{0};
+  QObject::connect(&progress, &QProgressDialog::canceled,
+                   [&cancelFlag]() { cancelFlag.store(true); });
+
+  // 100ms ごとに「N entries read」表示を更新するタイマー (indeterminate でも
+  // 数字が動くと「進んでいる」のが分かる)。
+  QTimer labelTimer;
+  labelTimer.setInterval(100);
+  QObject::connect(&labelTimer, &QTimer::timeout, &progress, [&]() {
+    const int n = entriesRead.load(std::memory_order_relaxed);
+    progress.setLabelText(QObject::tr("Reading archive: %1 (%2 entries)")
+      .arg(QFileInfo(archivePath).fileName()).arg(n));
+  });
+  labelTimer.start();
+
+  auto future = QtConcurrent::run(&ArchiveContext::load,
+    archivePath, errorOut, &cancelFlag, &entriesRead);
   QFutureWatcher<std::shared_ptr<ArchiveContext>> watcher;
   QEventLoop loop;
   QObject::connect(&watcher, &QFutureWatcher<std::shared_ptr<ArchiveContext>>::finished,
@@ -65,12 +102,15 @@ std::shared_ptr<ArchiveContext> loadArchiveBlocking(const QString& archivePath) 
   if (!future.isFinished()) {
     loop.exec(QEventLoop::ExcludeUserInputEvents);
   }
+  labelTimer.stop();
+  progress.close();
   return watcher.result();
 }
 
 } // namespace
 
 bool FileListModel::setPath(const QString& path) {
+  m_lastLoadError.clear();
   // ── アーカイブ内パスの判定 (`!` 区切り) ──────────
   const auto split = ArchivePath::splitArchivePath(path);
   if (split.valid) {
@@ -78,16 +118,19 @@ bool FileListModel::setPath(const QString& path) {
     std::shared_ptr<ArchiveContext> ctx = m_archiveContext;
     if (!ctx || ctx->archivePath != split.archivePath) {
       // 同じアーカイブを既に開いていなければ新規ロード
-      ctx = loadArchiveBlocking(split.archivePath);
+      QString loadErr;
+      ctx = loadArchiveBlocking(split.archivePath, &loadErr);
       if (!ctx) {
-        emit loadFailed(path,
-          QStringLiteral("Failed to open archive: %1").arg(split.archivePath));
+        m_lastLoadError = loadErr.isEmpty()
+          ? tr("Failed to open archive: %1").arg(split.archivePath)
+          : loadErr;
+        emit loadFailed(path, m_lastLoadError);
         return false;
       }
     }
     if (!ctx->isValidDirectory(split.innerPath)) {
-      emit loadFailed(path,
-        QStringLiteral("Path not found in archive: %1").arg(split.innerPath));
+      m_lastLoadError = tr("Path not found in archive: %1").arg(split.innerPath);
+      emit loadFailed(path, m_lastLoadError);
       return false;
     }
 

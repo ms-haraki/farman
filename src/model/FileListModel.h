@@ -128,6 +128,11 @@ public:
   // 比較モード OFF / overlay 空のときは no-op。戻り値は新たに選択した行数。
   int selectByCompareStatus(DiffStatus s);
 
+  // 直近の setPath で失敗した際のユーザー向けエラーメッセージ。成功時 or
+  // 一度も失敗していない時は空文字。アーカイブ open 失敗 (パスワード付き /
+  // フォーマット非対応 / キャンセル) の理由を呼び出し側に伝えるための窓口。
+  QString lastLoadError() const { return m_lastLoadError; }
+
   // ── アイテムアクセス ──────────────────────
   const FileItem* itemAt(const QModelIndex& index) const;
   const FileItem* itemAt(int row) const;
@@ -208,6 +213,9 @@ private:
   // 参照して背景色 / 前景色を上書きする。setPath / navigatePane で OFF に戻す。
   bool                             m_compareMode = false;
   CompareOverlay                   m_compareOverlay;
+
+  // 直近の setPath 失敗時のエラーメッセージ (アーカイブ open 失敗等)
+  QString                          m_lastLoadError;
 };
 
 } // namespace Farman
