@@ -1759,3 +1759,17 @@ Last checked: 2026-05-10 09:42
 - **CHANGELOG.md** — リリースのタイミングで導入 (現状はコミットログで代用)。
 - **CONTRIBUTING.md** — 外部 contributor が現れた時に整備。
 - **screenshot / GIF demo** を README に貼る — ある程度 UI が安定してから。
+
+### 機能拡張系
+
+- **アーカイブ作成オプション** — 現状 `CreateArchiveDialog` はフォーマット /
+  出力先 / ファイル名のみ。読み取り側の password 対応 (`ArchiveContext::password`)
+  と対称になるよう、作成時の追加オプションを後日整える:
+  - **パスワード (= 暗号化)**: libarchive `archive_write_set_passphrase` + 形式別
+    オプション (`zip:encryption=aes256` / `zip:encryption=zipcrypto`)
+  - **圧縮レベル** (0〜9): `archive_write_set_filter_option` で gzip/bzip2/xz/zip
+    の deflate レベルを指定
+  - **暗号化方式** (AES-256 / ZipCrypto): zip 形式のみ
+  - **パス文字コード** (Shift_JIS / UTF-8): Windows 旧 zip との互換性。要件が
+    出たら追加
+  - **Solid 圧縮 / Volume splitting**: 7z 作成サポート自体が無いので大きく後回し
