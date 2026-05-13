@@ -78,7 +78,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # ──────── Qt 本体 ────────
       # CMakeLists.txt の find_package(Qt6 ... Core5Compat ...) に対応するため
@@ -227,7 +227,7 @@ jobs:
       #   Linux:   farman-x86_64.AppImage      (AppImage 単体)
       #   Windows: build/Release/              (DLL 同梱ディレクトリ全体)
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_path }}
