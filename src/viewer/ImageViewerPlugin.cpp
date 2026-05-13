@@ -3,9 +3,9 @@
 
 namespace Farman {
 
-QWidget* ImageViewerPlugin::createViewer(
-  const QString& filePath,
-  QWidget* parent)
+QWidget* ImageViewerPlugin::createViewer(const QString&       filePath,
+                                         QWidget*             parent,
+                                         const PluginContext& /*ctx*/)
 {
   auto* window = new ImageViewerWindow(filePath, QString(), parent);
   window->setAttribute(Qt::WA_DeleteOnClose);

@@ -1,32 +1,71 @@
 #pragma once
 
-#include <QWidget>
+#include <QString>
 #include <QStringList>
+#include <QWidget>
 #include <QtPlugin>
 
 namespace Farman {
 
+// プラグインがアプリ本体側の情報を必要とした時の窓口。
+//
+// **将来拡張用のスロット**: v1.0 時点ではほぼ空に近いが、フィールド追加は
+// 構造体ベースで ABI 互換 (バイナリ互換は失われるが、ヘッダを更新して
+// 再ビルドすれば済む)。「createViewer の引数を増やす」のような署名変更を
+// 避けるため、追加情報はすべてここに足す形にする。
+//
+// 値渡しせず const 参照で渡すこと。プラグイン側はメンバの読み取りのみ。
+struct PluginContext {
+  // 呼び出し時の farman アプリのバージョン文字列 (例 "0.9.0")。
+  // プラグインが「自分は farman 1.x 以降が必要」のような互換性判定をするために。
+  QString farmanVersion;
+
+  // 将来追加候補:
+  //   - QObject* logger;        // Logger インスタンスへの参照
+  //   - QSettings* settings;    // プラグイン自身の設定保存先
+  //   - QString configDir;      // プラグイン固有のキャッシュ / 設定ディレクトリ
+  //   - QWidget* mainWindow;    // モーダルダイアログの親に使う等
+  // 構造体メンバの追加は ABI 互換ではないが、再コンパイルで対応可。
+  // プラグイン作者には「PluginContext のサイズは固定でない」ことを明示する。
+};
+
+// ビュアープラグインのインターフェース。
+// IID は `com.farman.IViewerPlugin/<major>.<minor>` 形式。互換性のない変更時に
+// メジャー番号を上げ、Dispatcher で両方のバージョンを試すことで段階移行する。
 class IViewerPlugin {
 public:
   virtual ~IViewerPlugin() = default;
 
-  // プラグイン識別情報
+  // ── プラグイン識別情報 ─────────────────────────
   virtual QString     pluginId()   const = 0;  // "text_viewer"
   virtual QString     pluginName() const = 0;  // "テキストビュアー"
   virtual int         priority()   const { return 0; }  // 高いほど優先
 
-  // 対応ファイルの宣言
+  // ── 対応ファイルの宣言 ─────────────────────────
   virtual QStringList supportedExtensions() const = 0;  // {"txt","log","cpp"}
   virtual QStringList supportedMimeTypes()  const = 0;  // {"text/plain"}
 
-  // このファイルを開けるか（より細かい判定が必要な場合にoverride）
+  // このファイルを開けるか (より細かい判定が必要な場合に override)
   virtual bool canHandle(const QString& filePath) const;
 
-  // ビュアーウィジェット生成（呼び出し元がownershipを持つ）
-  virtual QWidget* createViewer(
-    const QString& filePath,
-    QWidget*       parent = nullptr
-  ) = 0;
+  // ── ライフサイクル (任意 override) ──────────────
+  // プラグインロード直後に 1 回だけ呼ばれる。
+  // 失敗時は false を返す (Dispatcher は登録を取り消す)。default 実装は何もしない。
+  virtual bool initialize(const PluginContext& /*ctx*/) { return true; }
+  // プラグインアンロード前に 1 回だけ呼ばれる。
+  virtual void shutdown() {}
+
+  // ── 機能宣言 (任意 override) ────────────────────
+  // 将来のフィーチャー判定用。例: {"thumbnail", "async_load", "search"}.
+  // 純粋仮想を追加せずに新機能の有無を見分けられるようにする。
+  virtual QStringList capabilities() const { return {}; }
+
+  // ── ビュアー生成 ──────────────────────────────
+  // 呼び出し元がウィジェットの ownership を持つ。
+  // ctx には farman 本体側の参照情報が入る (将来拡張)。
+  virtual QWidget* createViewer(const QString&       filePath,
+                                QWidget*             parent,
+                                const PluginContext& ctx) = 0;
 };
 
 } // namespace Farman

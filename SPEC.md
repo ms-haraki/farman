@@ -1045,27 +1045,47 @@ BinaryView では `setPlainText` 前後で `AddressHighlighter` を一時的に
   設定 (PDF のページ表示モード、CSV の区切り文字、Office のレンダリング
   バックエンド等) を Settings に持たせる。
 
-### プラグインシステム *（未配線）*
+### プラグインシステム
 
-- 動的ライブラリ（.dylib / .dll / .so）として実装
-- インターフェース: `IViewerPlugin`
-  - `supportedExtensions()` / `supportedMimeTypes()` で対応拡張子・MIME を宣言
-  - `canHandle(filePath)` でカスタム判定
-  - `createViewer(filePath, parent)` でビュアーウィジェットを生成
-  - `priority()` で複数プラグインが重複したときの優先度
-- **コード上の現状**: `ViewerDispatcher::loadPlugins(QDir)` は QPluginLoader で
-  指定ディレクトリ配下の `.so` / `.dylib` / `.dll` を読み込んで
-  `IViewerPlugin` を `registerPlugin()` する実装が既にある (= 動的ロード経路は
-  動く)。しかし **どこからも呼び出していない**ので、実質的に組み込み 3 種
-  (TextViewer / ImageViewer / BinaryViewer) しかロードされない。
-- **未実装の作業**:
-  - プラグインディレクトリ (例: `~/Library/Application Support/farman/plugins`、
-    Linux なら `~/.config/farman/plugins`) を Settings 等で指定できるようにし、
-    起動時に `loadPlugins()` を呼ぶ配線。
-  - サンプルプラグインの作成 (CMake から別ターゲットとしてビルド)。
-- 上記「追加ビュアー」を組み込みで実装するか、プラグインとして外出しに
-  するかは、ライブラリ依存の重さで判断する (PDF は組み込み寄り、Office
-  は外部依存が大きいのでプラグイン寄りが妥当)。
+**v1.0 ステータス**: 内部アーキテクチャとしての基盤コードはツリーに残して
+あるが、**外部公開はしない**。理由: 仕様 / ABI を実利用で検証できていない
+段階で API を見せると、後方互換維持で身動きが取れなくなる。組み込み 3 ビュアー
+(Text / Image / Binary) は `IViewerPlugin` 実装として登録されており、内部的
+には既に「プラグイン化済み」だが、ユーザー視点では単一バイナリのアプリ。
+
+**ユーザー向けに非公開な要素 (v1.0 で意図的に隠している)**
+
+- `main.cpp` の `ViewerDispatcher::loadPlugins(QDir)` 呼び出し (起動時に
+  外部 .dylib / .dll / .so を読まない)
+- Help → Plugins... メニューと診断ダイアログ (削除済み)
+- Settings → `behavior.pluginsDirectory` の編集 UI (そもそも未提供)
+
+**残してある基盤コード**
+
+- インターフェース: `IViewerPlugin` ([src/viewer/IViewerPlugin.h](src/viewer/IViewerPlugin.h))
+  - `pluginId()` / `pluginName()` / `supportedExtensions()` /
+    `supportedMimeTypes()` / `canHandle(filePath)` /
+    `createViewer(filePath, parent, ctx)` / `priority()` /
+    `initialize(ctx)` / `shutdown()` / `capabilities()`
+- `PluginContext` 構造体 (将来 logger / settings / mainWindow 等を「引数追加
+  = ABI 破壊」抜きで足せるよう用意)
+- `ViewerDispatcher::registerBuiltins()` / `loadPlugins(QDir)` /
+  `pluginRecords()`
+- `Settings::pluginsDirectory()` / `defaultPluginsDirectory()` アクセサ
+  (JSON キー `behavior.pluginsDirectory` の serialize / deserialize も含む)
+
+**v1.0 後にやること (バックログ)**
+
+1. サンプル外部プラグインを社内で 1〜2 件試作し、API の使いにくさ / 抜けを洗う
+2. 必要なら `IViewerPlugin` を破壊的に改訂 (この段階ならまだ自由が効く)
+3. Help → Plugins... メニュー復活 + プラグインディレクトリの設定 UI 追加
+4. サンプル `.dylib` の配布 / リファレンス文書化
+
+**拡張余地** (将来): WDX 風 (列追加) / WFX 風 (仮想 FS) / WCX 風 (アーカイブ
+フォーマット) は別 IID の `IContentPlugin` / `IFsPlugin` / `IArchivePlugin` を
+新設する形で、`IViewerPlugin` には触れずに対応可能。「追加ビュアー」を組み込み
+で実装するかプラグインとして外出しにするかは、ライブラリ依存の重さで判断する
+(PDF は組み込み寄り、Office は外部依存が大きいのでプラグイン寄りが妥当)。
 
 ---
 
@@ -1761,6 +1781,16 @@ Last checked: 2026-05-10 09:42
 - **screenshot / GIF demo** を README に貼る — ある程度 UI が安定してから。
 
 ### 機能拡張系
+
+- **プラグインの正式公開 (v1.0 以降)** — 現状プラグイン機構は内部実装として
+  だけ存在し、外部公開していない (SPEC.md "プラグインシステム" 節参照)。
+  v1.0 リリース後に下記の順で公開検討する:
+  1. リポジトリ同梱のサンプル外部プラグインを 1〜2 件試作 (`IViewerPlugin`
+     実装、CMake から別ターゲットで `.dylib` / `.so` / `.dll` 生成)。API の
+     使いにくさ・抜けをまずこれで洗う。
+  2. 必要なら `IViewerPlugin` を破壊的に改訂 (この段階ならまだ自由が効く)。
+  3. Help → Plugins... メニュー復活 + プラグインディレクトリの設定 UI 追加。
+  4. プラグイン作者向けのリファレンス文書 + テンプレートとしてサンプルを公開。
 
 - **アーカイブ作成オプション** — 現状 `CreateArchiveDialog` はフォーマット /
   出力先 / ファイル名のみ。読み取り側の password 対応 (`ArchiveContext::password`)

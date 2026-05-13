@@ -3764,6 +3764,14 @@ This will discard all custom keybindings.</source>
         <translation>ショートカット一覧ウィンドウの表示/非表示を切り替えます</translation>
     </message>
     <message>
+        <source>Plugins...</source>
+        <translation type="vanished">プラグイン...</translation>
+    </message>
+    <message>
+        <source>Show loaded plugins and any failed plugin entries with their reasons.</source>
+        <translation type="vanished">ロード済みのプラグイン、およびロードに失敗したプラグインとその理由を表示します。</translation>
+    </message>
+    <message>
         <location filename="../src/ui/MainWindow.cpp" line="1113"/>
         <source>Settings...</source>
         <translation>設定...</translation>
@@ -3962,6 +3970,63 @@ This will discard all custom keybindings.</source>
         <location filename="../src/ui/OverwriteDialog.cpp" line="72"/>
         <source>Alt+N to focus this field</source>
         <translation>Alt+N でこの欄にフォーカス</translation>
+    </message>
+</context>
+<context>
+    <name>Farman::PluginListDialog</name>
+    <message>
+        <source>Plugins</source>
+        <translation type="vanished">プラグイン</translation>
+    </message>
+    <message>
+        <source>Plugins directory: %1</source>
+        <translation type="vanished">プラグインディレクトリ: %1</translation>
+    </message>
+    <message>
+        <source>Origin</source>
+        <translation type="vanished">区分</translation>
+    </message>
+    <message>
+        <source>Status</source>
+        <translation type="vanished">状態</translation>
+    </message>
+    <message>
+        <source>Plugin ID</source>
+        <translation type="vanished">プラグイン ID</translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation type="vanished">名前</translation>
+    </message>
+    <message>
+        <source>File / Reason</source>
+        <translation type="vanished">ファイル / 理由</translation>
+    </message>
+    <message>
+        <source>(No external plugins found in this directory.)</source>
+        <translation type="vanished">(このディレクトリには外部プラグインがありません)</translation>
+    </message>
+    <message>
+        <source>Built-in</source>
+        <translation type="vanished">組み込み</translation>
+    </message>
+    <message>
+        <source>External</source>
+        <translation type="vanished">外部</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation type="vanished">OK</translation>
+    </message>
+    <message>
+        <source>Failed</source>
+        <translation type="vanished">失敗</translation>
+    </message>
+    <message>
+        <source>%1
+%2</source>
+        <translation type="vanished">%1
+%2</translation>
     </message>
 </context>
 <context>
@@ -4691,6 +4756,34 @@ Keybindings are not affected.</source>
     </message>
 </context>
 <context>
+    <name>Farman::ViewerDispatcher</name>
+    <message>
+        <location filename="../src/viewer/ViewerDispatcher.cpp" line="62"/>
+        <source>Not an IViewerPlugin (wrong IID?)</source>
+        <translation>IViewerPlugin ではありません (IID 不一致?)</translation>
+    </message>
+    <message>
+        <location filename="../src/viewer/ViewerDispatcher.cpp" line="164"/>
+        <source>null plugin instance</source>
+        <translation>プラグインインスタンスが null</translation>
+    </message>
+    <message>
+        <location filename="../src/viewer/ViewerDispatcher.cpp" line="173"/>
+        <source>duplicate plugin id (already registered)</source>
+        <translation>プラグイン ID が重複 (既に登録済み)</translation>
+    </message>
+    <message>
+        <location filename="../src/viewer/ViewerDispatcher.cpp" line="186"/>
+        <source>initialize() returned false</source>
+        <translation>initialize() が失敗を返しました</translation>
+    </message>
+    <message>
+        <location filename="../src/viewer/ViewerDispatcher.cpp" line="200"/>
+        <source>built-in</source>
+        <translation>組み込み</translation>
+    </message>
+</context>
+<context>
     <name>Farman::ViewerPanel</name>
     <message>
         <location filename="../src/ui/ViewerPanel.cpp" line="61"/>
@@ -5017,37 +5110,37 @@ External: ファイル毎に独立したウィンドウを開く (複数並べ�
         <translation>OK</translation>
     </message>
     <message>
-        <location filename="../src/settings/Settings.cpp" line="1052"/>
+        <location filename="../src/settings/Settings.cpp" line="1067"/>
         <source>Home</source>
         <translation>ホーム</translation>
     </message>
     <message>
-        <location filename="../src/settings/Settings.cpp" line="1054"/>
+        <location filename="../src/settings/Settings.cpp" line="1069"/>
         <source>Desktop</source>
         <translation>デスクトップ</translation>
     </message>
     <message>
-        <location filename="../src/settings/Settings.cpp" line="1056"/>
+        <location filename="../src/settings/Settings.cpp" line="1071"/>
         <source>Documents</source>
         <translation>ドキュメント</translation>
     </message>
     <message>
-        <location filename="../src/settings/Settings.cpp" line="1058"/>
+        <location filename="../src/settings/Settings.cpp" line="1073"/>
         <source>Downloads</source>
         <translation>ダウンロード</translation>
     </message>
     <message>
-        <location filename="../src/settings/Settings.cpp" line="1060"/>
+        <location filename="../src/settings/Settings.cpp" line="1075"/>
         <source>Pictures</source>
         <translation>ピクチャ</translation>
     </message>
     <message>
-        <location filename="../src/settings/Settings.cpp" line="1062"/>
+        <location filename="../src/settings/Settings.cpp" line="1077"/>
         <source>Music</source>
         <translation>ミュージック</translation>
     </message>
     <message>
-        <location filename="../src/settings/Settings.cpp" line="1064"/>
+        <location filename="../src/settings/Settings.cpp" line="1079"/>
         <source>Movies</source>
         <translation>ムービー</translation>
     </message>

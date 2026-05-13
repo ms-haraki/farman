@@ -39,10 +39,9 @@ public:
     };
   }
 
-  QWidget* createViewer(
-    const QString& filePath,
-    QWidget* parent = nullptr
-  ) override;
+  QWidget* createViewer(const QString&       filePath,
+                        QWidget*             parent,
+                        const PluginContext& ctx) override;
 };
 
 } // namespace Farman

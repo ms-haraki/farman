@@ -3,9 +3,9 @@
 
 namespace Farman {
 
-QWidget* BinaryViewerPlugin::createViewer(
-  const QString& filePath,
-  QWidget* parent)
+QWidget* BinaryViewerPlugin::createViewer(const QString&       filePath,
+                                          QWidget*             parent,
+                                          const PluginContext& /*ctx*/)
 {
   auto* window = new BinaryViewerWindow(filePath, QString(), parent);
   window->setAttribute(Qt::WA_DeleteOnClose);

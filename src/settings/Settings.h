@@ -184,6 +184,18 @@ public:
   bool singleInstance()                 const;
   void setSingleInstance(bool enabled);
 
+  // ビュアープラグインを探しに行くディレクトリ (空 = 既定のユーザー固有 path)。
+  // ".dylib" / ".so" / ".dll" を起動時にロードする。
+  // 既定: macOS = ~/Library/Application Support/farman/plugins,
+  //       Linux = ~/.local/share/farman/plugins,
+  //       Windows = %APPDATA%/Farman/farman/plugins
+  // (QStandardPaths::AppDataLocation + "/plugins")。
+  QString pluginsDirectory()            const;  // 空のときは defaultPluginsDirectory()
+  void    setPluginsDirectory(const QString& dir);
+  // 既定のプラグインディレクトリを返す (= 上記の OS 別 path)。
+  // pluginsDirectory() が空のとき loadPlugins に使う実体。
+  static QString defaultPluginsDirectory();
+
   // ビュアーの表示モード (Inline / External)。Inline はメインウィンドウ内の
   // ViewerPanel を使う現状の挙動、External はファイル毎に独立ウィンドウ。
   ViewerMode viewerMode()               const;
@@ -440,6 +452,8 @@ private:
   bool             m_confirmOnExit   = false;
   bool             m_singleInstance  = true;
   bool             m_syncBrowseShowDisabledDialog = true;
+  // ビュアープラグインを置くディレクトリ。空文字 = defaultPluginsDirectory()。
+  QString          m_pluginsDirectory;
   // ビュアー表示モード。デフォルトは Inline (ビュアーパネルでの表示)。
   ViewerMode       m_viewerMode      = ViewerMode::Inline;
   // メニュー下のツールバーの表示。デフォルトは ON (新機能を見つけてもらう)。

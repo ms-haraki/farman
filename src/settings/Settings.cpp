@@ -775,6 +775,21 @@ void Settings::setSingleInstance(bool enabled) {
   m_singleInstance = enabled;
 }
 
+QString Settings::pluginsDirectory() const {
+  return m_pluginsDirectory;
+}
+
+void Settings::setPluginsDirectory(const QString& dir) {
+  m_pluginsDirectory = dir;
+}
+
+QString Settings::defaultPluginsDirectory() {
+  // QStandardPaths::AppDataLocation で取れる OS 別ユーザーデータ path の下に
+  // "plugins/" を足す。Settings.json と同じ「ユーザー毎のアプリ専用」場所。
+  return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+       + QStringLiteral("/plugins");
+}
+
 bool Settings::syncBrowseShowDisabledDialog() const {
   return m_syncBrowseShowDisabledDialog;
 }
@@ -1527,6 +1542,7 @@ void Settings::load() {
   QJsonObject behavior = root.value("behavior").toObject();
   m_confirmOnExit = behavior.value("confirmOnExit").toBool(false);
   m_singleInstance = behavior.value("singleInstance").toBool(true);
+  m_pluginsDirectory = behavior.value("pluginsDirectory").toString();
   m_syncBrowseShowDisabledDialog = behavior.value("syncBrowseShowDisabledDialog").toBool(true);
   {
     const QString modeStr = behavior.value("viewerMode").toString("inline");
@@ -1964,6 +1980,7 @@ void Settings::save() const {
   QJsonObject behavior;
   behavior["confirmOnExit"] = m_confirmOnExit;
   behavior["singleInstance"] = m_singleInstance;
+  behavior["pluginsDirectory"] = m_pluginsDirectory;
   behavior["syncBrowseShowDisabledDialog"] = m_syncBrowseShowDisabledDialog;
   behavior["viewerMode"] = (m_viewerMode == ViewerMode::External)
                              ? QStringLiteral("external")

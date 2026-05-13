@@ -21,10 +21,9 @@ public:
 
   bool canHandle(const QString& /*filePath*/) const override { return false; }
 
-  QWidget* createViewer(
-    const QString& filePath,
-    QWidget*       parent = nullptr
-  ) override;
+  QWidget* createViewer(const QString&       filePath,
+                        QWidget*             parent,
+                        const PluginContext& ctx) override;
 };
 
 } // namespace Farman
