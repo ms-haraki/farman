@@ -8,6 +8,9 @@
 #include <QColor>
 #include <QFont>
 #include <QGuiApplication>
+#include <QInputDialog>
+#include <QLineEdit>
+#include <QMessageBox>
 #include <QProgressDialog>
 #include <QTimer>
 #include <QtConcurrent/QtConcurrentRun>
@@ -126,6 +129,43 @@ bool FileListModel::setPath(const QString& path) {
           : loadErr;
         emit loadFailed(path, m_lastLoadError);
         return false;
+      }
+      // 暗号化アーカイブの場合はパスワードを入力させて検証する。
+      // 取得後 ctx->password に保存し、以後 extractEntryTo /
+      // ArchiveExtractEntriesWorker でそれを使う。Cancel された場合は
+      // load 失敗扱いで通常 FS に戻る。
+      if (ctx->hasEncryptedEntries && ctx->password.isEmpty()) {
+        QWidget* parent = QApplication::activeWindow();
+        const QString archiveName = QFileInfo(split.archivePath).fileName();
+        QString prompt = tr("Enter password for %1:").arg(archiveName);
+        for (int attempt = 0; attempt < 3; ++attempt) {
+          bool ok = false;
+          const QString pw = QInputDialog::getText(parent,
+            tr("Password Required"),
+            prompt,
+            QLineEdit::Password,
+            QString(),
+            &ok);
+          if (!ok) {
+            m_lastLoadError = tr("Password input cancelled.");
+            emit loadFailed(path, m_lastLoadError);
+            return false;
+          }
+          if (ArchiveContext::verifyPassword(split.archivePath, pw)) {
+            ctx->password = pw;
+            break;
+          }
+          // 失敗 → 再入力プロンプトに切替
+          prompt = tr("Wrong password. Enter password for %1:").arg(archiveName);
+          if (attempt == 2) {
+            QMessageBox::warning(parent,
+              tr("Cannot Open Archive"),
+              tr("Wrong password (3 attempts). Giving up."));
+            m_lastLoadError = tr("Wrong password (gave up after 3 attempts).");
+            emit loadFailed(path, m_lastLoadError);
+            return false;
+          }
+        }
       }
     }
     if (!ctx->isValidDirectory(split.innerPath)) {

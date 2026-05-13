@@ -63,6 +63,7 @@ ArchiveExtractEntriesWorker::ArchiveExtractEntriesWorker(
   const QString&     currentInnerDir,
   const QString&     destDir,
   int                filesTotal,
+  const QString&     password,
   QObject*           parent)
   : WorkerBase(parent)
   , m_archivePath(archivePath)
@@ -70,7 +71,8 @@ ArchiveExtractEntriesWorker::ArchiveExtractEntriesWorker(
   , m_selectedDirs(selectedDirs)
   , m_currentInnerDir(currentInnerDir)
   , m_destDir(destDir)
-  , m_filesTotal(filesTotal) {
+  , m_filesTotal(filesTotal)
+  , m_password(password) {
   // 先頭/末尾 '/' を剥がして揃える (空 = ルート)
   while (m_currentInnerDir.startsWith(QLatin1Char('/'))) m_currentInnerDir.remove(0, 1);
   while (m_currentInnerDir.endsWith(QLatin1Char('/')))   m_currentInnerDir.chop(1);
@@ -92,6 +94,10 @@ void ArchiveExtractEntriesWorker::run() {
   struct archive* src = archive_read_new();
   archive_read_support_format_all(src);
   archive_read_support_filter_all(src);
+  // 暗号化エントリ用パスワード (空文字なら効果なし)
+  if (!m_password.isEmpty()) {
+    archive_read_add_passphrase(src, m_password.toUtf8().constData());
+  }
 
 #ifdef Q_OS_WIN
   const int openResult = archive_read_open_filename_w(src, asWChar(m_archivePath), 64 * 1024);

@@ -26,12 +26,14 @@ class ArchiveExtractEntriesWorker : public WorkerBase {
 public:
   // filesTotal: 進捗ダイアログの「N / M files」表示用に、呼び出し側で事前に
   // 数えた展開対象エントリ件数を渡す。<= 0 のときは indeterminate モード。
+  // password: 暗号化アーカイブの場合のパスワード。空文字なら無視。
   ArchiveExtractEntriesWorker(const QString&     archivePath,
                               const QStringList& selectedFiles,
                               const QStringList& selectedDirs,
                               const QString&     currentInnerDir,
                               const QString&     destDir,
                               int                filesTotal,
+                              const QString&     password = QString(),
                               QObject*           parent = nullptr);
 
 protected:
@@ -47,6 +49,8 @@ private:
   QString     m_destDir;
   // 進捗ダイアログの「N / M files」表示用。<= 0 = indeterminate。
   int         m_filesTotal;
+  // 暗号化アーカイブの場合のパスワード。空文字 = 暗号化なし or 未設定。
+  QString     m_password;
 };
 
 } // namespace Farman

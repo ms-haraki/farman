@@ -1281,8 +1281,14 @@ void FileManagerPanel::copySelectedFiles() {
 
     const int totalCount = selFiles.size() + selDirs.size();
 
+    // 暗号化アーカイブの場合は ctx->password を worker に渡して libarchive で
+    // 復号させる。通常アーカイブでは空文字列 = no-op。
+    const QString archivePassword = srcModel->archiveContext()
+                                      ? srcModel->archiveContext()->password
+                                      : QString();
     auto* worker = new ArchiveExtractEntriesWorker(
-      archiveAbs, selFiles, selDirs, innerCurrent, destDir, filesTotal, this);
+      archiveAbs, selFiles, selDirs, innerCurrent, destDir, filesTotal,
+      archivePassword, this);
     ProgressDialog* dialog = new ProgressDialog(tr("Extracting files..."), this);
     dialog->setWorker(worker);
 

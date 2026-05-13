@@ -84,15 +84,12 @@ std::shared_ptr<ArchiveContext> ArchiveContext::load(
     return nullptr;
   }
 
-  // パスワード付きアーカイブの早期検出。zip 中央ディレクトリのフラグから
-  // 0 件 / >0 件 / 不明 の 3 状態で返る (tar は format 上「不明」を返す)。
-  // >0 のときは v1.0 では非対応 (SPEC.md L457) なので拒否する。
+  // パスワード付きアーカイブの早期検出 (zip 中央ディレクトリのフラグから取れる)。
+  // ZIP の暗号化はデータ部分にのみかかるので、エントリ "一覧" は password 無し
+  // で取得できる。後で実データを extractEntryTo するときに ctx->password を
+  // 使って復号する。
   if (archive_read_has_encrypted_entries(a) > 0) {
-    if (errorOut) {
-      *errorOut = QObject::tr("Archive is password-protected (not supported).");
-    }
-    archive_read_free(a);
-    return nullptr;
+    ctx->hasEncryptedEntries = true;
   }
 
   struct archive_entry* entry = nullptr;
@@ -109,14 +106,10 @@ std::shared_ptr<ArchiveContext> ArchiveContext::load(
     if (r < ARCHIVE_WARN) break;  // 致命エラー
     if (r < ARCHIVE_OK)  continue; // 警告は黙って流す
 
-    // パスワード付き検出 (フォーマットが直接答えない tar 等のフォールバック)
+    // パスワード付き検出 (フォーマットが直接答えない tar 等のフォールバック)。
+    // hasEncryptedEntries を遅延設定するだけで、リスト構築は継続する。
     if (archive_entry_is_encrypted(entry)) {
-      if (errorOut) {
-        *errorOut = QObject::tr("Archive is password-protected (not supported).");
-      }
-      archive_read_close(a);
-      archive_read_free(a);
-      return nullptr;
+      ctx->hasEncryptedEntries = true;
     }
 
     const QString path = readEntryPath(entry);
@@ -193,6 +186,10 @@ bool ArchiveContext::extractEntryTo(const QString& entryPath,
   struct archive* a = archive_read_new();
   archive_read_support_format_all(a);
   archive_read_support_filter_all(a);
+  // 暗号化エントリ用パスワードを設定 (空文字列は無視される)。
+  if (!password.isEmpty()) {
+    archive_read_add_passphrase(a, password.toUtf8().constData());
+  }
 
 #ifdef Q_OS_WIN
   const int openResult = archive_read_open_filename_w(a, asWChar(archivePath), 64 * 1024);
@@ -246,6 +243,60 @@ bool ArchiveContext::extractEntryTo(const QString& entryPath,
     return false;
   }
   return true;
+}
+
+bool ArchiveContext::verifyPassword(const QString& archivePath,
+                                    const QString& password) {
+  // 暗号化エントリを 1 件だけ試し読みする。少しでも復号できれば true。
+  // ARCHIVE_FATAL (-30) や負値が返れば失敗 (incorrect passphrase 等)。
+  // 暗号化エントリが 1 件も無いアーカイブでは「password が要らない」ので
+  // 検証成功扱い (true)。
+  struct archive* a = archive_read_new();
+  archive_read_support_format_all(a);
+  archive_read_support_filter_all(a);
+  if (!password.isEmpty()) {
+    archive_read_add_passphrase(a, password.toUtf8().constData());
+  }
+#ifdef Q_OS_WIN
+  const int openResult = archive_read_open_filename_w(a, asWChar(archivePath), 64 * 1024);
+#else
+  const int openResult = archive_read_open_filename(
+    a, archivePath.toUtf8().constData(), 64 * 1024);
+#endif
+  if (openResult != ARCHIVE_OK) {
+    archive_read_free(a);
+    return false;
+  }
+
+  bool result = true;  // デフォルト: 暗号化エントリが見つからなければ OK
+  bool foundEncrypted = false;
+  struct archive_entry* entry = nullptr;
+  while (true) {
+    const int r = archive_read_next_header(a, &entry);
+    if (r == ARCHIVE_EOF) break;
+    if (r < ARCHIVE_WARN) break;
+    if (r < ARCHIVE_OK)  continue;
+    if (!archive_entry_is_encrypted(entry)) continue;
+    if (archive_entry_size(entry) <= 0) continue;  // 空ファイルは復号できないので次へ
+
+    foundEncrypted = true;
+    char buf[1024];
+    const la_ssize_t n = archive_read_data(a, buf, sizeof(buf));
+    if (n < 0) {
+      // ARCHIVE_FATAL 等 → incorrect passphrase の可能性が高い
+      result = false;
+    } else {
+      // 0 (EOF) または > 0 (一部復号できた) のいずれも成功扱い
+      result = true;
+    }
+    break;
+  }
+  // 暗号化エントリが 1 件も無かった場合は password 不要 → 検証成功
+  if (!foundEncrypted) result = true;
+
+  archive_read_close(a);
+  archive_read_free(a);
+  return result;
 }
 
 bool ArchiveContext::isValidDirectory(const QString& innerDir) const {

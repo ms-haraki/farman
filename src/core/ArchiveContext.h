@@ -24,6 +24,16 @@ public:
   QHash<QString, ArchiveEntry>  entries;        // pathInArchive (先頭 '/' なし) → entry
   QDateTime                     archiveMtime;   // 元アーカイブの mtime (再ロード判定用)
 
+  // ── 暗号化対応 ────────────────────────────────
+  // アーカイブに暗号化エントリが含まれているか (ZIP の中央ディレクトリで検出 or
+  // エントリ単位の archive_entry_is_encrypted で検出)。
+  // ZIP は暗号化されていてもエントリ "一覧" 自体は password 無しで取れるので、
+  // load() はこのフラグを立てつつ list 構築までは成功する。実データの展開
+  // (extractEntryTo / ArchiveExtractEntriesWorker) には password が要る。
+  bool                          hasEncryptedEntries = false;
+  // ユーザーが入力したパスワード。プロセスメモリ内のみ。永続化しない。
+  QString                       password;
+
   // ── ファクトリ ────────────────────────────────
   // libarchive で archivePath を開いて全エントリのメタデータを列挙する。
   // 失敗時は nullptr。
@@ -59,7 +69,16 @@ public:
   // に書き出す。destPath の親ディレクトリは必要に応じて作成。
   // 戻り値: 成功 true。libarchive はランダムアクセスできないので、エントリ
   // 発見まで先頭から逐次読みする (大きなアーカイブでは線形時間)。
+  // 暗号化エントリの場合、password が空文字以外なら archive_read_add_passphrase
+  // で渡して復号する。
   bool extractEntryTo(const QString& entryPath, const QString& destPath) const;
+
+  // ── パスワード検証 ────────────────────────────
+  // archivePath に対し、与えられた password で 1 つ目の暗号化エントリを試し
+  // 読みする。少しでも復号できれば true。失敗 (libarchive が "incorrect
+  // passphrase" を返す等) なら false。暗号化エントリが無いアーカイブでは
+  // true を返す (password 不要なので合致扱い)。
+  static bool verifyPassword(const QString& archivePath, const QString& password);
 
 private:
   // pathInArchive をディレクトリ正規形に整える内部ヘルパ:
