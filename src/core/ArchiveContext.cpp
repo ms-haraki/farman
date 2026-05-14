@@ -47,6 +47,20 @@ QString readEntryPath(struct archive_entry* entry) {
   return path;
 }
 
+// Zip Slip 兆候のあるエントリ名を弾く。
+// 一覧表示用 (load) でも extractEntryTo でも、`..` や NUL を含むパスはモデル
+// に取り込まない / 抽出対象にしないという防御線を引いておく。
+bool isSafeArchiveEntryName(const QString& path) {
+  if (path.isEmpty()) return false;
+  if (path.contains(QChar(0))) return false;
+  // `..` が独立セグメントとして含まれる場合のみ拒否 ("foo..bar" は許可)
+  if (path == QStringLiteral("..")) return false;
+  if (path.startsWith(QStringLiteral("../"))) return false;
+  if (path.endsWith(QStringLiteral("/.."))) return false;
+  if (path.contains(QStringLiteral("/../"))) return false;
+  return true;
+}
+
 } // namespace
 
 QString ArchiveContext::normalizeDirKey(const QString& innerDir) {
@@ -103,7 +117,18 @@ std::shared_ptr<ArchiveContext> ArchiveContext::load(
     }
     const int r = archive_read_next_header(a, &entry);
     if (r == ARCHIVE_EOF) break;
-    if (r < ARCHIVE_WARN) break;  // 致命エラー
+    if (r < ARCHIVE_WARN) {
+      // 致命エラー: 部分構築された ctx を捨てて呼び出し側にエラーを返す。
+      // ここで break して ctx を返すと「途中まで読めた壊れたアーカイブ」が
+      // 正常な一覧として見えてしまう。
+      if (errorOut) {
+        *errorOut = QObject::tr("Archive read error: %1")
+                      .arg(QString::fromUtf8(archive_error_string(a)));
+      }
+      archive_read_close(a);
+      archive_read_free(a);
+      return nullptr;
+    }
     if (r < ARCHIVE_OK)  continue; // 警告は黙って流す
 
     // パスワード付き検出 (フォーマットが直接答えない tar 等のフォールバック)。
@@ -114,6 +139,10 @@ std::shared_ptr<ArchiveContext> ArchiveContext::load(
 
     const QString path = readEntryPath(entry);
     if (path.isEmpty()) continue;  // ルート自身などはスキップ
+    // Zip Slip 防衛: `..` / NUL を含むエントリはモデルに取り込まない。
+    // (展開時点でもチェックするが、一覧表示・コピー先パス組み立ての段階でも
+    //  弾いておくことで防御を二重にする)。
+    if (!isSafeArchiveEntryName(path)) continue;
 
     ArchiveEntry e;
     e.pathInArchive  = path;
@@ -179,6 +208,11 @@ QList<const ArchiveEntry*> ArchiveContext::childrenOf(const QString& innerDir) c
 
 bool ArchiveContext::extractEntryTo(const QString& entryPath,
                                     const QString& destPath) const {
+  // Zip Slip 防衛: アーカイブ内パス側に `..` や NUL があれば即拒否。
+  // (呼び出し側が destPath を信頼できる場所に組み立てている前提だが、念のため
+  //  entryPath 単体でも検査しておく)。
+  if (!isSafeArchiveEntryName(entryPath)) return false;
+
   // 親ディレクトリを確保
   QFileInfo destInfo(destPath);
   if (!QDir().mkpath(destInfo.absolutePath())) return false;

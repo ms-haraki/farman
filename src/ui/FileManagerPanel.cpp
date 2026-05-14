@@ -33,6 +33,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QInputDialog>
+#include <QLineEdit>
 #include <QLocale>
 #include <QMessageBox>
 #include <QSet>
@@ -1994,8 +1995,39 @@ void FileManagerPanel::extractArchive() {
     targetDir = QDir(outputDir).absoluteFilePath(baseName);
   }
 
+  // 暗号化アーカイブの場合はパスワードを入力させて検証する。
+  // verifyPassword(_, "") は「暗号化なし、もしくは空パスワードで復号できる」
+  // ときに true を返すので、false なら password 入力が必要。
+  // 個別エントリ展開 (FileListModel::setPath 側) と同じ 3 回リトライ仕様。
+  QString password;
+  if (!ArchiveContext::verifyPassword(archivePath, QString())) {
+    const QString archiveName = QFileInfo(archivePath).fileName();
+    QString prompt = tr("Enter password for %1:").arg(archiveName);
+    for (int attempt = 0; attempt < 3; ++attempt) {
+      bool ok = false;
+      const QString pw = QInputDialog::getText(this,
+        tr("Password Required"),
+        prompt,
+        QLineEdit::Password,
+        QString(),
+        &ok);
+      if (!ok) return;
+      if (ArchiveContext::verifyPassword(archivePath, pw)) {
+        password = pw;
+        break;
+      }
+      prompt = tr("Wrong password. Enter password for %1:").arg(archiveName);
+      if (attempt == 2) {
+        QMessageBox::warning(this,
+          tr("Cannot Extract Archive"),
+          tr("Wrong password (3 attempts). Giving up."));
+        return;
+      }
+    }
+  }
+
   ArchiveExtractWorker* worker = new ArchiveExtractWorker(
-    archivePath, targetDir, this);
+    archivePath, targetDir, password, this);
   ProgressDialog* dialog = new ProgressDialog(tr("Extracting archive..."), this);
   dialog->setWorker(worker);
 

@@ -1,4 +1,5 @@
 #include "ArchiveExtractEntriesWorker.h"
+#include "utils/ArchivePath.h"
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -134,6 +135,7 @@ void ArchiveExtractEntriesWorker::run() {
     const int r = archive_read_next_header(src, &entry);
     if (r == ARCHIVE_EOF) break;
     if (r < ARCHIVE_WARN) {
+      // 致命エラーは部分成功扱いせず中断する。
       emit errorOccurred(m_archivePath,
                          QString::fromUtf8(archive_error_string(src)));
       success = false; break;
@@ -142,6 +144,14 @@ void ArchiveExtractEntriesWorker::run() {
 
     const QString entryPath = readEntryPath(entry);
     if (entryPath.isEmpty()) continue;
+    // Zip Slip 対策: アーカイブ内パスに `..` や絶対パスが含まれるエントリは
+    // (この時点で抽出対象になっていなくても) そもそも信頼しない。
+    if (entryPath.contains(QStringLiteral("/../"))
+        || entryPath.startsWith(QStringLiteral("../"))
+        || entryPath == QStringLiteral("..")
+        || entryPath.contains(QChar(0))) {
+      continue;
+    }
 
     // 抽出対象か判定:
     //   1. ファイルとして単独選択されている (fileSet)
@@ -173,7 +183,13 @@ void ArchiveExtractEntriesWorker::run() {
         continue;
       }
     }
-    const QString destPath = QDir(m_destDir).absoluteFilePath(relative);
+    // Zip Slip 対策: 結合・正規化後に m_destDir 配下に収まることを検証。
+    const QString destPath = ArchivePath::safeJoinExtractPath(m_destDir, relative);
+    if (destPath.isEmpty()) {
+      emit errorOccurred(entryPath,
+        QStringLiteral("Refused unsafe archive entry path: %1").arg(entryPath));
+      continue;
+    }
 #ifdef Q_OS_WIN
     archive_entry_copy_pathname_w(entry, asWChar(destPath));
 #else

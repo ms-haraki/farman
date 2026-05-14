@@ -103,7 +103,11 @@ std::shared_ptr<ArchiveContext> loadArchiveBlocking(const QString& archivePath,
                    &loop, &QEventLoop::quit);
   watcher.setFuture(future);
   if (!future.isFinished()) {
-    loop.exec(QEventLoop::ExcludeUserInputEvents);
+    // ExcludeUserInputEvents だと QProgressDialog の Cancel ボタンクリックも
+    // 含めて全ユーザー入力が読まれないため、巨大アーカイブを止められない。
+    // 進捗ダイアログ自身は WindowModal なので親ウィンドウは入力を受け取らず、
+    // ユーザーは実質「Cancel を押す」以外の操作はできない。
+    loop.exec();
   }
   labelTimer.stop();
   progress.close();

@@ -6,6 +6,29 @@
 
 namespace Farman {
 
+namespace {
+
+// コピー先がコピー元自身、もしくはコピー元配下に入っているかを判定する。
+// 例: `~/foo` を `~/foo/bar` にコピー → bar が新規作成された瞬間に列挙対象に
+// 加わって再帰展開してしまう。コピー先を src 自身に指定した場合も同様。
+// canonicalFilePath はパスが実在しないと空になるので、その場合は clean な
+// absolute パスで比較する (シンボリックリンクは追跡できなくなるがフォールバック)。
+bool isDestinationInsideSource(const QString& srcPath, const QString& dstDir) {
+  auto canonOrAbs = [](const QString& p) {
+    QFileInfo fi(p);
+    QString c = fi.canonicalFilePath();
+    if (c.isEmpty()) c = QDir::cleanPath(fi.absoluteFilePath());
+    return c;
+  };
+  const QString src = canonOrAbs(srcPath);
+  const QString dst = canonOrAbs(dstDir);
+  if (src.isEmpty() || dst.isEmpty()) return false;
+  if (dst == src) return true;
+  return dst.startsWith(src + QLatin1Char('/'));
+}
+
+} // namespace
+
 CopyWorker::CopyWorker(
   const QStringList& srcPaths,
   const QString&     dstDir,
@@ -45,6 +68,15 @@ void CopyWorker::run() {
     QFileInfo srcInfo(srcPath);
     if (!srcInfo.exists()) {
       emit errorOccurred(srcPath, "Source does not exist");
+      success = false;
+      continue;
+    }
+
+    // ディレクトリを自分自身 / 配下にコピーしようとしている場合は拒否する。
+    // (放置するとコピー先が列挙対象に加わって再帰展開してしまう)。
+    if (srcInfo.isDir() && isDestinationInsideSource(srcPath, m_dstDir)) {
+      emit errorOccurred(srcPath,
+        "Destination is inside the source directory");
       success = false;
       continue;
     }

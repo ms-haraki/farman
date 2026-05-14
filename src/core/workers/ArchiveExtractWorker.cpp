@@ -1,4 +1,5 @@
 #include "ArchiveExtractWorker.h"
+#include "utils/ArchivePath.h"
 #include <QDir>
 #include <QFileInfo>
 #include <QString>
@@ -36,10 +37,12 @@ inline const wchar_t* asWChar(const QString& s) {
 
 ArchiveExtractWorker::ArchiveExtractWorker(const QString& archivePath,
                                            const QString& outputDir,
+                                           const QString& password,
                                            QObject*       parent)
   : WorkerBase(parent)
   , m_archivePath(archivePath)
-  , m_outputDir(outputDir) {
+  , m_outputDir(outputDir)
+  , m_password(password) {
 }
 
 void ArchiveExtractWorker::run() {
@@ -49,6 +52,10 @@ void ArchiveExtractWorker::run() {
   struct archive* src = archive_read_new();
   archive_read_support_format_all(src);
   archive_read_support_filter_all(src);
+  // 暗号化エントリ用パスワード (空文字は無視される)。
+  if (!m_password.isEmpty()) {
+    archive_read_add_passphrase(src, m_password.toUtf8().constData());
+  }
 
   // Windows では archive_read_open_filename (char*) が ANSI 解釈なので、
   // 日本語パス (例: OneDrive\ドキュメント) や OneDrive 配下が開けない。
@@ -86,11 +93,14 @@ void ArchiveExtractWorker::run() {
 
     const int r = archive_read_next_header(src, &entry);
     if (r == ARCHIVE_EOF) break;
-    if (r < ARCHIVE_OK) {
+    if (r < ARCHIVE_WARN) {
+      // 致命エラー: libarchive のエラーメッセージを伝えて中断する
+      // (壊れたアーカイブを「途中まで成功」扱いにしない)。
       emit errorOccurred(m_archivePath,
                          QString::fromUtf8(archive_error_string(src)));
-      if (r < ARCHIVE_WARN) { success = false; break; }
+      success = false; break;
     }
+    if (r < ARCHIVE_OK) continue;  // 警告は黙って次へ
 
     // 出力パスを outputDir 配下へ書き換える。
     // Windows ではアーカイブ内エントリ名が UTF-16 で取れる pathname_w を使う
@@ -109,7 +119,13 @@ void ArchiveExtractWorker::run() {
 #else
     origName = QString::fromUtf8(archive_entry_pathname(entry));
 #endif
-    const QString destPath = QDir(m_outputDir).absoluteFilePath(origName);
+    // Zip Slip 対策: `..` / 絶対パス / outputDir を抜け出すエントリは拒否。
+    const QString destPath = ArchivePath::safeJoinExtractPath(m_outputDir, origName);
+    if (destPath.isEmpty()) {
+      emit errorOccurred(origName,
+        QStringLiteral("Refused unsafe archive entry path: %1").arg(origName));
+      continue;
+    }
 #ifdef Q_OS_WIN
     archive_entry_copy_pathname_w(entry, asWChar(destPath));
 #else

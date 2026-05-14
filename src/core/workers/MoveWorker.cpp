@@ -6,6 +6,27 @@
 
 namespace Farman {
 
+namespace {
+
+// 移動先が移動元自身 or 配下かを判定する (CopyWorker の同名関数と同じ仕様)。
+// rename(2) で同 FS なら一発で動くが、別 FS への fallback で copyDirectory が
+// 走るときに再帰展開する危険があるため事前に弾く。
+bool isDestinationInsideSource(const QString& srcPath, const QString& dstDir) {
+  auto canonOrAbs = [](const QString& p) {
+    QFileInfo fi(p);
+    QString c = fi.canonicalFilePath();
+    if (c.isEmpty()) c = QDir::cleanPath(fi.absoluteFilePath());
+    return c;
+  };
+  const QString src = canonOrAbs(srcPath);
+  const QString dst = canonOrAbs(dstDir);
+  if (src.isEmpty() || dst.isEmpty()) return false;
+  if (dst == src) return true;
+  return dst.startsWith(src + QLatin1Char('/'));
+}
+
+} // namespace
+
 MoveWorker::MoveWorker(
   const QStringList& srcPaths,
   const QString&     dstDir,
@@ -44,6 +65,16 @@ void MoveWorker::run() {
     QFileInfo srcInfo(srcPath);
     if (!srcInfo.exists()) {
       emit errorOccurred(srcPath, "Source does not exist");
+      success = false;
+      continue;
+    }
+
+    // ディレクトリを自分自身 / 配下に移動しようとしている場合は拒否する。
+    // 同 FS では rename(2) が失敗するが、別 FS なら copyDirectory フォール
+    // バックが走ってしまうので、先に弾いておくのが安全。
+    if (srcInfo.isDir() && isDestinationInsideSource(srcPath, m_dstDir)) {
+      emit errorOccurred(srcPath,
+        "Destination is inside the source directory");
       success = false;
       continue;
     }

@@ -12,6 +12,7 @@ class ArchiveExtractWorker : public WorkerBase {
 public:
   ArchiveExtractWorker(const QString& archivePath,
                        const QString& outputDir,
+                       const QString& password,
                        QObject*       parent = nullptr);
 
 protected:
@@ -20,6 +21,7 @@ protected:
 private:
   QString m_archivePath;
   QString m_outputDir;
+  QString m_password;
 };
 
 } // namespace Farman

@@ -39,4 +39,13 @@ QString parentInnerPath(const QString& innerPath);
 //   "/"            → ""
 QString innerBaseName(const QString& innerPath);
 
+// アーカイブ内エントリ名を安全に展開先ディレクトリへ結合する (Zip Slip 対策)。
+// 受け入れる entryName は「outputDir を基準とした相対パス」とみなし、以下を拒否:
+//   - 空文字、絶対パス (Unix `/...`, Windows `C:\...` / UNC `\\server\...`)
+//   - `..` / `.` セグメント
+//   - 結合・正規化した結果が outputDir 配下に収まらないもの
+// 受け入れた場合は cleanPath 済みの絶対パス (outputDir 配下) を返す。
+// 拒否時は空 QString を返す。呼び出し側は空チェックで skip する。
+QString safeJoinExtractPath(const QString& outputDir, const QString& entryName);
+
 } // namespace Farman::ArchivePath
