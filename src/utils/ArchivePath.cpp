@@ -81,17 +81,26 @@ QString safeJoinExtractPath(const QString& outputDir, const QString& entryName) 
   // Windows のバックスラッシュも内部表現の '/' に揃えてから判定する。
   QString rel = QDir::fromNativeSeparators(entryName);
 
+  // libarchive のディレクトリエントリは `emptydir/` のように末尾 '/' を
+  // 付けてくる。これを正常エントリ扱いするため、検査前に末尾 '/' を
+  // 1 文字落とす。連続 '/' (`foo//bar/`) は KeepEmptyParts で次の検査が
+  // 拾うのでここでは 1 個だけ落とす。
+  if (rel.size() > 1 && rel.endsWith(QLatin1Char('/'))) {
+    rel.chop(1);
+  }
+
   // 絶対パス (Unix `/...`、Windows `C:\...` / `\\server\...`) は拒否。
+  // 末尾 '/' を落とした後でも判定対象は変わらない。
   if (QDir::isAbsolutePath(rel)) return {};
 
-  // 分解して `..` / `.` セグメント、NUL 文字、空セグメントを弾く。
+  // 分解して `..` / `.` セグメント、NUL 文字、連続スラッシュ (空セグメント) を弾く。
   // 通常エントリは `foo/bar/baz` のような清潔な形だが、悪意あるアーカイブは
   // `../etc/passwd` や `foo/../../../../etc/passwd` を含む。
   const QStringList parts = rel.split(QLatin1Char('/'), Qt::KeepEmptyParts);
   QStringList clean;
   clean.reserve(parts.size());
   for (const QString& part : parts) {
-    if (part.isEmpty()) return {};                       // 連続する '/' は不正
+    if (part.isEmpty()) return {};                       // 連続/末端の '/' は不正
     if (part == QStringLiteral("."))  return {};
     if (part == QStringLiteral("..")) return {};
     if (part.contains(QChar(0)))      return {};         // NUL 注入を弾く

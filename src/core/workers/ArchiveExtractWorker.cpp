@@ -75,9 +75,13 @@ void ArchiveExtractWorker::run() {
   }
 
   struct archive* dst = archive_write_disk_new();
+  // SECURE_SYMLINKS: 出力パス上にユーザーが書き込めない symlink があったら
+  // 展開を拒否する。これがないと「先に link/ → /tmp/x を仕込み、後続で
+  // link/foo を展開して /tmp/x/foo を書く」式の Zip Slip が成立する。
   archive_write_disk_set_options(dst,
-    ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_PERM |
-    ARCHIVE_EXTRACT_ACL  | ARCHIVE_EXTRACT_FFLAGS);
+    ARCHIVE_EXTRACT_TIME    | ARCHIVE_EXTRACT_PERM |
+    ARCHIVE_EXTRACT_ACL     | ARCHIVE_EXTRACT_FFLAGS |
+    ARCHIVE_EXTRACT_SECURE_SYMLINKS);
   archive_write_disk_set_standard_lookup(dst);
 
   WorkerProgress progress;
@@ -120,10 +124,14 @@ void ArchiveExtractWorker::run() {
     origName = QString::fromUtf8(archive_entry_pathname(entry));
 #endif
     // Zip Slip 対策: `..` / 絶対パス / outputDir を抜け出すエントリは拒否。
+    // 危険エントリを 1 件でも含むアーカイブは「正常終了」にせず、操作全体を
+    // 失敗扱いにする (UI 側で errorOccurred を表示しなくても、最終的な
+    // finished(success=false) でユーザーに失敗が伝わる)。
     const QString destPath = ArchivePath::safeJoinExtractPath(m_outputDir, origName);
     if (destPath.isEmpty()) {
       emit errorOccurred(origName,
         QStringLiteral("Refused unsafe archive entry path: %1").arg(origName));
+      success = false;
       continue;
     }
 #ifdef Q_OS_WIN

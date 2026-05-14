@@ -115,10 +115,12 @@ void ArchiveExtractEntriesWorker::run() {
   }
 
   // 書き出し先 (disk) を準備。Permissions / ACL / FFLAGS は反映、Time は反映する。
+  // SECURE_SYMLINKS は Zip Slip 対策 (link → 外部パス + 後続エントリで脱出)。
   struct archive* dst = archive_write_disk_new();
   archive_write_disk_set_options(dst,
-    ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_PERM |
-    ARCHIVE_EXTRACT_ACL  | ARCHIVE_EXTRACT_FFLAGS);
+    ARCHIVE_EXTRACT_TIME    | ARCHIVE_EXTRACT_PERM |
+    ARCHIVE_EXTRACT_ACL     | ARCHIVE_EXTRACT_FFLAGS |
+    ARCHIVE_EXTRACT_SECURE_SYMLINKS);
   archive_write_disk_set_standard_lookup(dst);
 
   WorkerProgress progress;
@@ -184,10 +186,12 @@ void ArchiveExtractEntriesWorker::run() {
       }
     }
     // Zip Slip 対策: 結合・正規化後に m_destDir 配下に収まることを検証。
+    // 危険エントリ 1 件で操作全体を失敗扱いにする (success=false)。
     const QString destPath = ArchivePath::safeJoinExtractPath(m_destDir, relative);
     if (destPath.isEmpty()) {
       emit errorOccurred(entryPath,
         QStringLiteral("Refused unsafe archive entry path: %1").arg(entryPath));
+      success = false;
       continue;
     }
 #ifdef Q_OS_WIN
