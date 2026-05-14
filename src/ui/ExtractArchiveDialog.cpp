@@ -17,8 +17,11 @@ namespace Farman {
 
 ExtractArchiveDialog::ExtractArchiveDialog(const QString& archivePath,
                                            const QString& defaultOutputDir,
+                                           const QString& sourcePaneDir,
                                            QWidget*       parent)
   : QDialog(parent)
+  , m_destPaneDir(defaultOutputDir)
+  , m_sourcePaneDir(sourcePaneDir)
   , m_dirEdit(nullptr)
   , m_browseButton(nullptr) {
   setupUi(archivePath, defaultOutputDir);
@@ -46,6 +49,14 @@ void ExtractArchiveDialog::setupUi(const QString& archivePath,
   dirRowLayout->setContentsMargins(0, 0, 0, 0);
   m_dirEdit = new QLineEdit(defaultOutputDir, this);
   m_dirEdit->setFocusPolicy(Qt::StrongFocus);
+  // Copy/Move ダイアログ (TransferConfirmDialog) と同様に ReadOnly にし、
+  // ↑/↓ で「相手ペイン」⇔「自分ペイン」をトグル。フリーテキスト入力で
+  // 誤ったパスを作らないようにする (値変更はトグル or Browse のみ)。
+  m_dirEdit->setReadOnly(true);
+  m_dirEdit->setToolTip(
+    tr("Output directory. Press ↑/↓ to toggle between the source pane "
+       "and the opposite-pane directory. Click the folder button to browse."));
+  m_dirEdit->installEventFilter(this);
   m_browseButton = new QPushButton(this);
   m_browseButton->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
   m_browseButton->setToolTip(tr("Browse folder..."));
@@ -92,6 +103,32 @@ void ExtractArchiveDialog::onBrowseDir() {
     this, tr("Select Output Directory"), start,
     QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks);
   if (!selected.isEmpty()) m_dirEdit->setText(selected);
+}
+
+bool ExtractArchiveDialog::eventFilter(QObject* watched, QEvent* event) {
+  // ↑/↓ で「相手ペイン (m_destPaneDir)」⇔「自分ペイン (m_sourcePaneDir)」を
+  // トグル。TransferConfirmDialog と同じロジック。
+  // 注意: ShortcutOverride と KeyPress は同じ押下に対して 2 回飛んでくるため、
+  // トグル本体は KeyPress のときだけ実行する。
+  if (watched == m_dirEdit
+      && (event->type() == QEvent::KeyPress
+          || event->type() == QEvent::ShortcutOverride)) {
+    auto* ke = static_cast<QKeyEvent*>(event);
+    const auto mods = ke->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier
+                                          | Qt::AltModifier | Qt::MetaModifier);
+    if (mods == Qt::NoModifier
+        && (ke->key() == Qt::Key_Up || ke->key() == Qt::Key_Down)) {
+      if (event->type() == QEvent::KeyPress) {
+        const QString cur = m_dirEdit->text();
+        m_dirEdit->setText(cur == m_sourcePaneDir ? m_destPaneDir
+                                                  : m_sourcePaneDir);
+        m_dirEdit->selectAll();
+      }
+      event->accept();
+      return true;
+    }
+  }
+  return QDialog::eventFilter(watched, event);
 }
 
 void ExtractArchiveDialog::keyPressEvent(QKeyEvent* event) {

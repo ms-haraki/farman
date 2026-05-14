@@ -18,8 +18,11 @@ namespace Farman {
 
 CreateArchiveDialog::CreateArchiveDialog(const QStringList& inputPaths,
                                          const QString&     defaultOutputDir,
+                                         const QString&     sourcePaneDir,
                                          QWidget*           parent)
   : QDialog(parent)
+  , m_destPaneDir(defaultOutputDir)
+  , m_sourcePaneDir(sourcePaneDir)
   , m_inputPaths(inputPaths)
   , m_formatCombo(nullptr)
   , m_dirEdit(nullptr)
@@ -87,6 +90,13 @@ void CreateArchiveDialog::setupUi(const QString& defaultOutputDir) {
   dirRowLayout->setContentsMargins(0, 0, 0, 0);
   m_dirEdit = new QLineEdit(defaultOutputDir, this);
   m_dirEdit->setFocusPolicy(Qt::StrongFocus);
+  // Copy/Move ダイアログと同様に ReadOnly にし、↑/↓ で「相手ペイン」⇔
+  // 「自分ペイン」をトグル。値変更はトグル or Browse のみ。
+  m_dirEdit->setReadOnly(true);
+  m_dirEdit->setToolTip(
+    tr("Output directory. Press ↑/↓ to toggle between the source pane "
+       "and the opposite-pane directory. Click the folder button to browse."));
+  m_dirEdit->installEventFilter(this);
   m_browseButton = new QPushButton(this);
   m_browseButton->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
   m_browseButton->setToolTip(tr("Browse folder..."));
@@ -165,6 +175,30 @@ void CreateArchiveDialog::onFormatChanged() {
     }
   }
   m_nameEdit->setText(name + extensionForFormat(format()));
+}
+
+bool CreateArchiveDialog::eventFilter(QObject* watched, QEvent* event) {
+  // ↑/↓ で「相手ペイン (m_destPaneDir)」⇔「自分ペイン (m_sourcePaneDir)」を
+  // トグル。TransferConfirmDialog と同じロジック。
+  if (watched == m_dirEdit
+      && (event->type() == QEvent::KeyPress
+          || event->type() == QEvent::ShortcutOverride)) {
+    auto* ke = static_cast<QKeyEvent*>(event);
+    const auto mods = ke->modifiers() & (Qt::ShiftModifier | Qt::ControlModifier
+                                          | Qt::AltModifier | Qt::MetaModifier);
+    if (mods == Qt::NoModifier
+        && (ke->key() == Qt::Key_Up || ke->key() == Qt::Key_Down)) {
+      if (event->type() == QEvent::KeyPress) {
+        const QString cur = m_dirEdit->text();
+        m_dirEdit->setText(cur == m_sourcePaneDir ? m_destPaneDir
+                                                  : m_sourcePaneDir);
+        m_dirEdit->selectAll();
+      }
+      event->accept();
+      return true;
+    }
+  }
+  return QDialog::eventFilter(watched, event);
 }
 
 void CreateArchiveDialog::keyPressEvent(QKeyEvent* event) {

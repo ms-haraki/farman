@@ -19,8 +19,13 @@ class CreateArchiveDialog : public QDialog {
   Q_OBJECT
 
 public:
+  // defaultOutputDir: 既定の出力先 (=「相手ペイン」)。初期表示値。
+  // sourcePaneDir:    アクティブペイン (圧縮対象が置かれているディレクトリ)。
+  //                   ↑/↓ キーで defaultOutputDir との間をトグルする。
+  // TransferConfirmDialog (Copy/Move) と同じ UX。
   CreateArchiveDialog(const QStringList& inputPaths,
                       const QString&     defaultOutputDir,
+                      const QString&     sourcePaneDir,
                       QWidget*           parent = nullptr);
   ~CreateArchiveDialog() override = default;
 
@@ -29,6 +34,7 @@ public:
 
 protected:
   void keyPressEvent(QKeyEvent* event) override;
+  bool eventFilter(QObject* watched, QEvent* event) override;
 
 private slots:
   void onBrowseDir();
@@ -39,6 +45,8 @@ private:
   QString baseName() const;
   QString extensionForFormat(ArchiveCreateWorker::Format fmt) const;
 
+  QString      m_destPaneDir;     // 相手ペイン (= 既定値)
+  QString      m_sourcePaneDir;   // 自分ペイン (= ↑↓トグル相手)
   QStringList  m_inputPaths;
   QComboBox*   m_formatCombo;
   QLineEdit*   m_dirEdit;

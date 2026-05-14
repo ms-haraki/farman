@@ -1878,8 +1878,12 @@ void FileManagerPanel::createArchive() {
   }
   if (paths.isEmpty()) return;
 
-  // 既定の出力先は圧縮対象と同じディレクトリ（アクティブペインのカレント）
-  CreateArchiveDialog dlg(paths, srcPane->currentPath(), this);
+  // 既定の出力先は「相手ペイン」のカレント (Copy/Move と同じ UX)。
+  // ダイアログ内で ↑/↓ により「自分ペイン (srcPane)」とトグルできる。
+  CreateArchiveDialog dlg(paths,
+                          destPane->currentPath(),
+                          srcPane->currentPath(),
+                          this);
   if (dlg.exec() != QDialog::Accepted) return;
 
   QString     outputPath = dlg.outputPath();
@@ -1966,10 +1970,12 @@ void FileManagerPanel::extractArchive() {
   }
 
   const QString archivePath = item->absolutePath();
-  // 展開先の既定はアーカイブと同じディレクトリ
-  const QString defaultDir = QFileInfo(archivePath).absolutePath();
-
-  ExtractArchiveDialog dlg(archivePath, defaultDir, this);
+  // 展開先の既定は「相手ペイン」(Copy/Move と同じ UX)。↑/↓ でアーカイブが
+  // 置かれているディレクトリ (= srcPane のカレント) にトグルできる。
+  ExtractArchiveDialog dlg(archivePath,
+                           destPane->currentPath(),
+                           srcPane->currentPath(),
+                           this);
   if (dlg.exec() != QDialog::Accepted) return;
 
   const QString outputDir = dlg.outputDirectory();
