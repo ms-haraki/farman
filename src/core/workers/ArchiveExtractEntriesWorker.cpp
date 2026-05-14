@@ -82,6 +82,11 @@ ArchiveExtractEntriesWorker::ArchiveExtractEntriesWorker(
 void ArchiveExtractEntriesWorker::run() {
   QDir().mkpath(m_destDir);
 
+  // 出力ディレクトリの実体パス解決 (macOS `/tmp` → `/private/tmp` 等の symlink
+  // が ARCHIVE_EXTRACT_SECURE_SYMLINKS で誤拒否されるのを回避する)。
+  QString destDir = QFileInfo(m_destDir).canonicalFilePath();
+  if (destDir.isEmpty()) destDir = m_destDir;
+
   // 高速判定用に Set 化。selectedDirs は trailing '/' 付きの prefix にして
   // startsWith でも使えるようにしておく。
   const QSet<QString> fileSet(m_selectedFiles.cbegin(), m_selectedFiles.cend());
@@ -185,9 +190,9 @@ void ArchiveExtractEntriesWorker::run() {
         continue;
       }
     }
-    // Zip Slip 対策: 結合・正規化後に m_destDir 配下に収まることを検証。
+    // Zip Slip 対策: 結合・正規化後に destDir 配下に収まることを検証。
     // 危険エントリ 1 件で操作全体を失敗扱いにする (success=false)。
-    const QString destPath = ArchivePath::safeJoinExtractPath(m_destDir, relative);
+    const QString destPath = ArchivePath::safeJoinExtractPath(destDir, relative);
     if (destPath.isEmpty()) {
       emit errorOccurred(entryPath,
         QStringLiteral("Refused unsafe archive entry path: %1").arg(entryPath));

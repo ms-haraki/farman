@@ -49,6 +49,14 @@ void ArchiveExtractWorker::run() {
   // 展開先ディレクトリを確保
   QDir().mkpath(m_outputDir);
 
+  // 出力ディレクトリの実体パスに解決する。macOS の `/tmp` (→ /private/tmp)
+  // のように上位コンポーネントが symlink だと、ARCHIVE_EXTRACT_SECURE_SYMLINKS
+  // が「出力パスの途中に symlink がある」として書き込みを全て拒否してしまう。
+  // canonicalFilePath は実在パスを実体に解決するので、`/private/tmp/...` まで
+  // 解決した上で libarchive に渡せばこの誤検知を避けられる。
+  QString outputDir = QFileInfo(m_outputDir).canonicalFilePath();
+  if (outputDir.isEmpty()) outputDir = m_outputDir;
+
   struct archive* src = archive_read_new();
   archive_read_support_format_all(src);
   archive_read_support_filter_all(src);
@@ -127,7 +135,7 @@ void ArchiveExtractWorker::run() {
     // 危険エントリを 1 件でも含むアーカイブは「正常終了」にせず、操作全体を
     // 失敗扱いにする (UI 側で errorOccurred を表示しなくても、最終的な
     // finished(success=false) でユーザーに失敗が伝わる)。
-    const QString destPath = ArchivePath::safeJoinExtractPath(m_outputDir, origName);
+    const QString destPath = ArchivePath::safeJoinExtractPath(outputDir, origName);
     if (destPath.isEmpty()) {
       emit errorOccurred(origName,
         QStringLiteral("Refused unsafe archive entry path: %1").arg(origName));
