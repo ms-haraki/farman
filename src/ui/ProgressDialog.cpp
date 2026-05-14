@@ -121,6 +121,15 @@ void ProgressDialog::onFinished(bool success) {
   }
 
   // OFF: 完了状態を残してユーザーが Close で閉じるまで開いたままにする。
+  // プログレスバーを完了状態で固定する (indeterminate range=0,0 のまま放置
+  // するとぐるぐる回り続け、ユーザーには「まだ実行中」に見えてしまう)。
+  m_progressBar->setRange(0, 100);
+  m_progressBar->setValue(100);
+  m_progressBar->setFormat(success ? tr("Done") : tr("Failed"));
+  // "Processing: foo.txt" は実行中の表示なので完了メッセージに差し替える
+  m_currentFileLabel->setText(success ? tr("Completed.")
+                                      : tr("Completed with errors."));
+
   // 「Cancel」ボタンを「Close」に切り替えて成功/失敗で accept/reject する。
   m_cancelButton->setEnabled(true);
   m_cancelButton->setText(tr("Close"));
