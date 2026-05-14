@@ -151,14 +151,6 @@ void ArchiveExtractEntriesWorker::run() {
 
     const QString entryPath = readEntryPath(entry);
     if (entryPath.isEmpty()) continue;
-    // Zip Slip 対策: アーカイブ内パスに `..` や絶対パスが含まれるエントリは
-    // (この時点で抽出対象になっていなくても) そもそも信頼しない。
-    if (entryPath.contains(QStringLiteral("/../"))
-        || entryPath.startsWith(QStringLiteral("../"))
-        || entryPath == QStringLiteral("..")
-        || entryPath.contains(QChar(0))) {
-      continue;
-    }
 
     // 抽出対象か判定:
     //   1. ファイルとして単独選択されている (fileSet)
@@ -171,6 +163,21 @@ void ArchiveExtractEntriesWorker::run() {
       }
     }
     if (!shouldExtract) continue;
+
+    // Zip Slip 対策: ここに来たエントリは選択範囲内 (shouldExtract=true)。
+    // この段階で `..` / NUL を含むなら、選択ディレクトリを抜け出そうとする
+    // 悪意あるエントリ (例: 選択 `foo/` に対する `foo/../evil`)。黙って
+    // スキップせず errorOccurred + success=false で操作全体を失敗扱いにする。
+    if (entryPath.contains(QStringLiteral("/../"))
+        || entryPath.startsWith(QStringLiteral("../"))
+        || entryPath == QStringLiteral("..")
+        || entryPath.endsWith(QStringLiteral("/.."))
+        || entryPath.contains(QChar(0))) {
+      emit errorOccurred(entryPath,
+        QStringLiteral("Refused unsafe archive entry path: %1").arg(entryPath));
+      success = false;
+      continue;
+    }
 
     // destDir 配下の絶対パスを構築。
     // ユーザーがいる「カレントアーカイブ内ディレクトリ」(m_currentInnerDir) を
