@@ -10,7 +10,7 @@
 #include <QGuiApplication>
 #include <QInputDialog>
 #include <QLineEdit>
-#include <QMessageBox>
+#include "utils/Dialogs.h"
 #include <QProgressDialog>
 #include <QTimer>
 #include <QtConcurrent/QtConcurrentRun>
@@ -162,7 +162,7 @@ bool FileListModel::setPath(const QString& path) {
           // 失敗 → 再入力プロンプトに切替
           prompt = tr("Wrong password. Enter password for %1:").arg(archiveName);
           if (attempt == 2) {
-            QMessageBox::warning(parent,
+            warn(parent,
               tr("Cannot Open Archive"),
               tr("Wrong password (3 attempts). Giving up."));
             m_lastLoadError = tr("Wrong password (gave up after 3 attempts).");

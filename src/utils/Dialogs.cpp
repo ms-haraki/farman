@@ -1,4 +1,5 @@
 #include "Dialogs.h"
+#include <QApplication>
 #include <QCheckBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -8,6 +9,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QStyle>
 #include <QTimer>
 #include <QVBoxLayout>
 
@@ -89,6 +91,94 @@ bool confirm(QWidget* parent,
              bool defaultYes) {
   ConfirmDialog dlg(parent, title, text, defaultYes);
   return dlg.exec() == QDialog::Accepted;
+}
+
+namespace {
+
+// 情報 / 警告 / エラーの OK 単独ダイアログの実体。
+// 標準 QMessageBox は macOS のキーボードナビゲーション設定が OFF だと
+// Tab フォーカスや Alt+key が効かないので、ConfirmDialog と同じパターンで
+// 自前実装する。
+class MessageDialog : public QDialog {
+public:
+  enum Icon { Information, Warning, Critical };
+
+  MessageDialog(QWidget* parent, const QString& title,
+                const QString& text, Icon icon)
+      : QDialog(parent) {
+    setWindowTitle(title);
+    setModal(true);
+    resize(480, 0);
+
+    auto* mainLayout = new QVBoxLayout(this);
+
+    auto* row = new QHBoxLayout();
+    row->setSpacing(12);
+
+    QStyle::StandardPixmap sp = QStyle::SP_MessageBoxInformation;
+    switch (icon) {
+      case Information: sp = QStyle::SP_MessageBoxInformation; break;
+      case Warning:     sp = QStyle::SP_MessageBoxWarning;     break;
+      case Critical:    sp = QStyle::SP_MessageBoxCritical;    break;
+    }
+    auto* iconLabel = new QLabel(this);
+    const int sz = style()->pixelMetric(QStyle::PM_LargeIconSize);
+    iconLabel->setPixmap(style()->standardIcon(sp).pixmap(sz, sz));
+    iconLabel->setAlignment(Qt::AlignTop);
+    iconLabel->setFixedWidth(sz);
+    row->addWidget(iconLabel, 0, Qt::AlignTop);
+
+    auto* msgLabel = new QLabel(text, this);
+    msgLabel->setWordWrap(true);
+    msgLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    msgLabel->setAlignment(Qt::AlignTop);
+    row->addWidget(msgLabel, 1);
+    mainLayout->addLayout(row);
+
+    auto* btnLayout = new QHBoxLayout();
+    btnLayout->addStretch(1);
+    auto* okBtn = new QPushButton(tr("OK"), this);
+    applyAltShortcut(okBtn, Qt::Key_O);
+    okBtn->setDefault(true);
+    okBtn->setAutoDefault(true);
+    btnLayout->addWidget(okBtn);
+    mainLayout->addLayout(btnLayout);
+
+    connect(okBtn, &QPushButton::clicked, this, &QDialog::accept);
+
+    okBtn->setFocus();
+  }
+
+protected:
+  void keyPressEvent(QKeyEvent* event) override {
+    // Esc / Enter / Return / Space すべて OK 扱いで閉じる。
+    const int k = event->key();
+    if (k == Qt::Key_Escape || k == Qt::Key_Return || k == Qt::Key_Enter) {
+      accept();
+      return;
+    }
+    QDialog::keyPressEvent(event);
+  }
+};
+
+void showMessage(QWidget* parent, const QString& title,
+                 const QString& text, MessageDialog::Icon icon) {
+  MessageDialog dlg(parent, title, text, icon);
+  dlg.exec();
+}
+
+} // anonymous namespace
+
+void inform(QWidget* parent, const QString& title, const QString& text) {
+  showMessage(parent, title, text, MessageDialog::Information);
+}
+
+void warn(QWidget* parent, const QString& title, const QString& text) {
+  showMessage(parent, title, text, MessageDialog::Warning);
+}
+
+void critical(QWidget* parent, const QString& title, const QString& text) {
+  showMessage(parent, title, text, MessageDialog::Critical);
 }
 
 QString withAltMnemonic(const QString& text, Qt::Key key) {

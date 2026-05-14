@@ -3,7 +3,6 @@
 #include "utils/Dialogs.h"
 #include <QVBoxLayout>
 #include <QFileDialog>
-#include <QMessageBox>
 #include <QStandardPaths>
 #include <QHBoxLayout>
 #include <QFormLayout>
@@ -1168,12 +1167,12 @@ void AppearanceTab::onApplyThemePreset() {
 
   QJsonObject obj;
   if (auto r = PresetIO::loadJsonFromResource(resourcePath, obj); !r.ok) {
-    QMessageBox::warning(this, tr("Apply Theme Preset"), r.error);
+    warn(this, tr("Apply Theme Preset"), r.error);
     return;
   }
   PresetIO::ThemeData data;
   if (auto r = PresetIO::themeFromJson(obj, data); !r.ok) {
-    QMessageBox::warning(this, tr("Apply Theme Preset"), r.error);
+    warn(this, tr("Apply Theme Preset"), r.error);
     return;
   }
 
@@ -1201,7 +1200,7 @@ void AppearanceTab::onExportTheme() {
   if (path.isEmpty()) return;
 
   if (auto r = PresetIO::exportThemeToFile(path, data); !r.ok) {
-    QMessageBox::warning(this, tr("Export Theme"), r.error);
+    warn(this, tr("Export Theme"), r.error);
   }
 }
 
@@ -1214,7 +1213,7 @@ void AppearanceTab::onImportTheme() {
 
   PresetIO::ThemeData data;
   if (auto r = PresetIO::importThemeFromFile(path, data); !r.ok) {
-    QMessageBox::warning(this, tr("Import Theme"), r.error);
+    warn(this, tr("Import Theme"), r.error);
     return;
   }
 

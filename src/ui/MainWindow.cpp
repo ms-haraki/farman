@@ -34,7 +34,6 @@
 #include <QTableView>
 #include <QApplication>
 #include <QClipboard>
-#include <QMessageBox>
 #include <QMenuBar>
 #include <QMenu>
 #include <QAction>
@@ -1271,7 +1270,7 @@ void MainWindow::rebuildToolsMenu() {
     connect(action, &QAction::triggered, this, [id, this]() {
       QString err;
       if (!UserCommandManager::instance().run(id, &err)) {
-        QMessageBox::warning(this, tr("External command failed"), err);
+        warn(this, tr("External command failed"), err);
       }
     });
     m_toolsMenu->addAction(action);
@@ -1480,7 +1479,7 @@ void MainWindow::applyToolbarVisibility() {
 
 void MainWindow::showAboutDialog() {
   const QString version = QStringLiteral(QT_STRINGIFY(FARMAN_VERSION));
-  QMessageBox::about(this, tr("About farman"),
+  inform(this, tr("About farman"),
     tr("<b>farman</b> %1<br><br>"
        "Copyright &copy; Mashsoft Inc.<br>"
        "<a href=\"https://www.mashsoft.co.jp\">https://www.mashsoft.co.jp</a>")

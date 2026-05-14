@@ -2,6 +2,7 @@
 #include <QFile>
 #include <QDir>
 #include <QDebug>
+#include "utils/Dialogs.h"
 #include <QMessageBox>
 #include "core/workers/CopyWorker.h"
 #include "core/workers/MoveWorker.h"
@@ -95,11 +96,11 @@ int main(int argc, char* argv[]) {
 
     if (result == QDialog::Accepted) {
       qDebug() << "Copy completed successfully!";
-      QMessageBox::information(nullptr, "Success",
+      inform(nullptr, "Success",
         "Copy test completed!\n\nCheck destination: " + dstDir);
     } else {
       qDebug() << "Copy was cancelled";
-      QMessageBox::information(nullptr, "Cancelled", "Copy operation was cancelled.");
+      inform(nullptr, "Cancelled", "Copy operation was cancelled.");
     }
 
     delete dialog;
@@ -122,11 +123,11 @@ int main(int argc, char* argv[]) {
 
     if (result == QDialog::Accepted) {
       qDebug() << "Move completed successfully!";
-      QMessageBox::information(nullptr, "Success",
+      inform(nullptr, "Success",
         "Move test completed!\n\nCheck destination: " + moveDstDir);
     } else {
       qDebug() << "Move was cancelled";
-      QMessageBox::information(nullptr, "Cancelled", "Move operation was cancelled.");
+      inform(nullptr, "Cancelled", "Move operation was cancelled.");
     }
 
     delete dialog;

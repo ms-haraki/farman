@@ -9,7 +9,6 @@
 #include <QHeaderView>
 #include <QPushButton>
 #include <QInputDialog>
-#include <QMessageBox>
 #include <QLineEdit>
 #include <QAbstractItemView>
 #include <QDir>

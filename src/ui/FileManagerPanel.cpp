@@ -825,7 +825,7 @@ void FileManagerPanel::handleEnterKey() {
       // FileListModel が lastLoadError に詳細メッセージを残しているので、
       // それを使ったエラーダイアログを出してユーザーに知らせる。
       const QString reason = model->lastLoadError();
-      QMessageBox::warning(this, tr("Cannot Open Archive"),
+      warn(this, tr("Cannot Open Archive"),
         reason.isEmpty() ? tr("Failed to open archive: %1").arg(item->absolutePath())
                          : reason);
       Logger::instance().warn(
@@ -1230,7 +1230,7 @@ void FileManagerPanel::copySelectedFiles() {
   // ── アーカイブ書込ガード ──────────────────
   // 反対パネルがアーカイブモードのときは「アーカイブ内に書き込み」になるので拒否。
   if (destModel->isInArchiveMode()) {
-    QMessageBox::warning(this, tr("Read-only archive"),
+    warn(this, tr("Read-only archive"),
       tr("Cannot copy into a read-only archive."));
     return;
   }
@@ -1451,7 +1451,7 @@ void FileManagerPanel::moveSelectedFiles() {
   FileListModel* srcModel = srcPane->model();
   // アーカイブモードでは「移動」は両側成立しない (アーカイブが read-only)。
   if (srcModel->isInArchiveMode() || destPane->model()->isInArchiveMode()) {
-    QMessageBox::warning(this, tr("Read-only archive"),
+    warn(this, tr("Read-only archive"),
       tr("Cannot move files to or from a read-only archive."));
     return;
   }
@@ -1585,7 +1585,7 @@ void FileManagerPanel::deleteSelectedFiles() {
   FileListModel* srcModel = srcPane->model();
 
   if (srcModel->isInArchiveMode()) {
-    QMessageBox::warning(this, tr("Read-only archive"),
+    warn(this, tr("Read-only archive"),
       tr("Cannot delete entries inside a read-only archive."));
     return;
   }
@@ -1695,7 +1695,7 @@ void FileManagerPanel::deleteSelectedFiles() {
 void FileManagerPanel::createDirectory() {
   FileListPane* srcPane = activePane();
   if (srcPane->model()->isInArchiveMode()) {
-    QMessageBox::warning(this, tr("Read-only archive"),
+    warn(this, tr("Read-only archive"),
       tr("Cannot create a directory inside a read-only archive."));
     return;
   }
@@ -1720,7 +1720,7 @@ void FileManagerPanel::createDirectory() {
   QDir dir;
   if (!dir.mkpath(newDirPath)) {
     Logger::instance().error(QStringLiteral("Mkdir failed: %1").arg(newDirPath));
-    QMessageBox::critical(
+    critical(
       this,
       tr("Error"),
       tr("Failed to create directory: %1").arg(dirName)
@@ -1748,7 +1748,7 @@ void FileManagerPanel::createDirectory() {
 void FileManagerPanel::createFile() {
   FileListPane* srcPane = activePane();
   if (srcPane->model()->isInArchiveMode()) {
-    QMessageBox::warning(this, tr("Read-only archive"),
+    warn(this, tr("Read-only archive"),
       tr("Cannot create a new file inside a read-only archive."));
     return;
   }
@@ -1769,7 +1769,7 @@ void FileManagerPanel::createFile() {
 
   const QString newFilePath = currentPath + "/" + fileName;
   if (QFileInfo::exists(newFilePath)) {
-    QMessageBox::critical(
+    critical(
       this, tr("Error"),
       tr("A file or directory with the name '%1' already exists.").arg(fileName)
     );
@@ -1780,7 +1780,7 @@ void FileManagerPanel::createFile() {
   QFile file(newFilePath);
   if (!file.open(QIODevice::WriteOnly)) {
     Logger::instance().error(QStringLiteral("Create file failed: %1").arg(newFilePath));
-    QMessageBox::critical(
+    critical(
       this, tr("Error"),
       tr("Failed to create file: %1").arg(fileName)
     );
@@ -1808,7 +1808,7 @@ void FileManagerPanel::changeAttributes() {
   FileListModel* model = srcPane->model();
 
   if (model->isInArchiveMode()) {
-    QMessageBox::warning(this, tr("Read-only archive"),
+    warn(this, tr("Read-only archive"),
       tr("Cannot change attributes of entries inside a read-only archive."));
     return;
   }
@@ -1857,12 +1857,12 @@ void FileManagerPanel::createArchive() {
   // アーカイブモード中はソースが仮想 FS の中なので圧縮対象を選べない。
   // 反対パネル側がアーカイブモードなら書き込み先として無効。
   if (srcModel->isInArchiveMode()) {
-    QMessageBox::warning(this, tr("Read-only archive"),
+    warn(this, tr("Read-only archive"),
       tr("Cannot create an archive from entries inside another archive."));
     return;
   }
   if (destPane->model()->isInArchiveMode()) {
-    QMessageBox::warning(this, tr("Read-only archive"),
+    warn(this, tr("Read-only archive"),
       tr("Cannot write a new archive into a read-only archive."));
     return;
   }
@@ -1949,12 +1949,12 @@ void FileManagerPanel::extractArchive() {
   // (アーカイブ内のサブアーカイブを取り出したい場合は、まず c で
   //  反対パネルに展開してからそちらで u する)。
   if (srcModel->isInArchiveMode()) {
-    QMessageBox::warning(this, tr("Read-only archive"),
+    warn(this, tr("Read-only archive"),
       tr("Cannot extract an archive that lives inside another archive."));
     return;
   }
   if (destPane->model()->isInArchiveMode()) {
-    QMessageBox::warning(this, tr("Read-only archive"),
+    warn(this, tr("Read-only archive"),
       tr("Cannot extract into a read-only archive."));
     return;
   }
@@ -1963,7 +1963,7 @@ void FileManagerPanel::extractArchive() {
   if (!currentIndex.isValid()) return;
   const FileItem* item = srcModel->itemAt(currentIndex);
   if (!item || item->isDir() || item->isDotDot()) {
-    QMessageBox::information(
+    inform(
       this, tr("Extract Archive"),
       tr("Select an archive file to extract."));
     return;
@@ -2033,7 +2033,7 @@ void FileManagerPanel::extractArchive() {
       }
       prompt = tr("Wrong password. Enter password for %1:").arg(archiveName);
       if (attempt == 2) {
-        QMessageBox::warning(this,
+        warn(this,
           tr("Cannot Extract Archive"),
           tr("Wrong password (3 attempts). Giving up."));
         return;
@@ -2163,7 +2163,7 @@ void FileManagerPanel::bulkRenameItems() {
   FileListModel* srcModel = srcPane->model();
 
   if (srcModel->isInArchiveMode()) {
-    QMessageBox::warning(this, tr("Read-only archive"),
+    warn(this, tr("Read-only archive"),
       tr("Cannot rename entries inside a read-only archive."));
     return;
   }
@@ -2215,7 +2215,7 @@ void FileManagerPanel::bulkRenameItems() {
     }
   }
   if (ng > 0) {
-    QMessageBox::warning(this, tr("Bulk Rename"),
+    warn(this, tr("Bulk Rename"),
       tr("%1 file(s) renamed, %2 failed.").arg(ok).arg(ng));
   }
 
@@ -2229,7 +2229,7 @@ void FileManagerPanel::renameItem() {
   FileListModel* srcModel = srcPane->model();
 
   if (srcModel->isInArchiveMode()) {
-    QMessageBox::warning(this, tr("Read-only archive"),
+    warn(this, tr("Read-only archive"),
       tr("Cannot rename an entry inside a read-only archive."));
     return;
   }
@@ -2269,7 +2269,7 @@ void FileManagerPanel::renameItem() {
   QString newPath = parentPath + "/" + newName;
 
   if (QFileInfo::exists(newPath)) {
-    QMessageBox::critical(
+    critical(
       this,
       tr("Error"),
       tr("A file or directory with the name '%1' already exists.").arg(newName)
@@ -2290,7 +2290,7 @@ void FileManagerPanel::renameItem() {
   if (!success) {
     Logger::instance().error(QStringLiteral("Rename failed: %1 → %2")
       .arg(oldPath, newPath));
-    QMessageBox::critical(
+    critical(
       this,
       tr("Error"),
       tr("Failed to rename '%1' to '%2'.").arg(oldName, newName)
@@ -2323,13 +2323,13 @@ void FileManagerPanel::startDirectoryCompare() {
   // アーカイブモード中は対象にできない (libarchive エントリは QDir で読めない)
   if (m_leftPane->model()->isInArchiveMode() ||
       m_rightPane->model()->isInArchiveMode()) {
-    QMessageBox::warning(this, tr("Cannot compare"),
+    warn(this, tr("Cannot compare"),
       tr("Directory compare is not available while one of the panes is "
          "browsing an archive."));
     return;
   }
   if (m_singlePaneMode) {
-    QMessageBox::warning(this, tr("Cannot compare"),
+    warn(this, tr("Cannot compare"),
       tr("Directory compare requires two panes."));
     return;
   }
@@ -2341,7 +2341,7 @@ void FileManagerPanel::startDirectoryCompare() {
   // 早期 return。両ペインのパスを QDir::cleanPath で正規化して比較する
   // (末尾スラッシュや "/foo/./bar" のような表記揺れを吸収するため)。
   if (QDir::cleanPath(leftPath) == QDir::cleanPath(rightPath)) {
-    QMessageBox::warning(this, tr("Cannot compare"),
+    warn(this, tr("Cannot compare"),
       tr("Both panes are showing the same directory; nothing to compare."));
     return;
   }

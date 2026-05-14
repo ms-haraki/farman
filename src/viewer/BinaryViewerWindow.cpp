@@ -3,7 +3,7 @@
 
 #include <QFileInfo>
 #include <QKeyEvent>
-#include <QMessageBox>
+#include "utils/Dialogs.h"
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -31,7 +31,7 @@ BinaryViewerWindow::BinaryViewerWindow(const QString& filePath,
   resize(800, 600);
 
   if (!m_view->loadFile(filePath)) {
-    QMessageBox::critical(this, QStringLiteral("Error"),
+    critical(this, QStringLiteral("Error"),
       QStringLiteral("Failed to open file: %1").arg(filePath));
   }
   // ウィンドウを表示しただけでは Qt の auto-first-responder 機構が

@@ -2,7 +2,7 @@
 #include "TextView.h"
 #include <QVBoxLayout>
 #include <QWidget>
-#include <QMessageBox>
+#include "utils/Dialogs.h"
 #include <QFileInfo>
 #include <QKeyEvent>
 
@@ -37,7 +37,7 @@ void TextViewerWindow::setupUi() {
 
 void TextViewerWindow::loadFile() {
   if (!m_textView->loadFile(m_filePath)) {
-    QMessageBox::critical(this, QStringLiteral("Error"),
+    critical(this, QStringLiteral("Error"),
       QStringLiteral("Failed to open file: %1").arg(m_filePath));
     return;
   }

@@ -4,7 +4,7 @@
 #include <QFileInfo>
 #include <QIcon>
 #include <QKeyEvent>
-#include <QMessageBox>
+#include "utils/Dialogs.h"
 #include <QScreen>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -60,7 +60,7 @@ void ImageViewerWindow::setupUi() {
 
 void ImageViewerWindow::loadImage() {
   if (!m_imageView->loadFile(m_filePath)) {
-    QMessageBox::critical(this, QStringLiteral("Error"),
+    critical(this, QStringLiteral("Error"),
       QStringLiteral("Failed to load image: %1").arg(m_filePath));
     return;
   }

@@ -18,6 +18,17 @@ bool confirm(QWidget* parent,
              const QString& text,
              bool defaultYes = false);
 
+// 情報 / 警告 / エラーの OK 単独ダイアログ。
+// QMessageBox::information / warning / critical の置き換え。
+// 標準 QMessageBox は macOS のキーボードナビゲーション設定が OFF だと Tab
+// フォーカス移動や Alt+O が効かないため、独自ダイアログにする。
+// - 左にアイコン (Information / Warning / Critical で色分け)、右にメッセージ
+// - OK ボタン (Alt+O) のみ
+// - `Enter`: OK / `Escape`: OK
+void inform  (QWidget* parent, const QString& title, const QString& text);
+void warn    (QWidget* parent, const QString& title, const QString& text);
+void critical(QWidget* parent, const QString& title, const QString& text);
+
 // ラベル文字列に Alt+key ショートカットの視覚的ヒントを埋め込む。
 // 戻り値はそのまま QLabel / QRadioButton / QPushButton の text に使える。
 //   Windows / Linux: 該当文字の前に '&' を挿入 (例: "&Foo")。

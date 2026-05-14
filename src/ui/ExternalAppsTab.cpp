@@ -447,7 +447,7 @@ void ExternalAppsTab::onTestLaunchTerminal() {
     m_terminalProgramEdit, m_terminalArgsEdit);
   QString err;
   if (!UserCommandManager::instance().runTransient(c, &err)) {
-    QMessageBox::warning(this, tr("Test launch failed"), err);
+    warn(this, tr("Test launch failed"), err);
   }
 }
 
@@ -457,7 +457,7 @@ void ExternalAppsTab::onTestLaunchEditor() {
     m_editorProgramEdit, m_editorArgsEdit);
   QString err;
   if (!UserCommandManager::instance().runTransient(c, &err)) {
-    QMessageBox::warning(this, tr("Test launch failed"), err);
+    warn(this, tr("Test launch failed"), err);
   }
 }
 
@@ -510,7 +510,7 @@ void ExternalAppsTab::switchEditorToCustom() {
 
 void ExternalAppsTab::onExportCommands() {
   if (m_nonBuiltinUserCommands.isEmpty()) {
-    QMessageBox::information(this, tr("Export Commands"),
+    inform(this, tr("Export Commands"),
                              tr("No custom commands to export. "
                                 "(The built-in Terminal and Editor entries are not included.)"));
     return;
@@ -524,7 +524,7 @@ void ExternalAppsTab::onExportCommands() {
   if (path.isEmpty()) return;
 
   if (auto r = PresetIO::exportUserCommandsToFile(path, m_nonBuiltinUserCommands); !r.ok) {
-    QMessageBox::warning(this, tr("Export Commands"), r.error);
+    warn(this, tr("Export Commands"), r.error);
   }
 }
 
@@ -538,7 +538,7 @@ void ExternalAppsTab::onImportCommands() {
   // ファイルを読み出す
   QList<UserCommand> imported;
   if (auto r = PresetIO::importUserCommandsFromFile(path, imported); !r.ok) {
-    QMessageBox::warning(this, tr("Import Commands"), r.error);
+    warn(this, tr("Import Commands"), r.error);
     return;
   }
 
@@ -548,7 +548,7 @@ void ExternalAppsTab::onImportCommands() {
     if (!c.builtin) filtered.append(c);
   }
   if (filtered.isEmpty()) {
-    QMessageBox::information(this, tr("Import Commands"),
+    inform(this, tr("Import Commands"),
                              tr("The file contains no custom (non-builtin) commands."));
     return;
   }
@@ -585,7 +585,7 @@ void ExternalAppsTab::onImportCommands() {
     }
   }
 
-  QMessageBox::information(this, tr("Import Commands"),
+  inform(this, tr("Import Commands"),
                            tr("Imported %1 custom command(s). "
                               "They will be saved when you close Settings with OK.")
                              .arg(filtered.size()));
@@ -715,7 +715,7 @@ void ExternalAppsTab::buildExistingCommandRow(const UserCommand& cmd) {
     c.workingDirTemplate = QString();
     QString err;
     if (!UserCommandManager::instance().runTransient(c, &err)) {
-      QMessageBox::warning(this, tr("Test launch failed"), err);
+      warn(this, tr("Test launch failed"), err);
     }
   });
   // Update: フォーム値をモデルへ反映し、タイトルにも追従させる
@@ -817,7 +817,7 @@ void ExternalAppsTab::onAddCommandTestClicked() {
   c.workingDirTemplate = QString();
   QString err;
   if (!UserCommandManager::instance().runTransient(c, &err)) {
-    QMessageBox::warning(this, tr("Test launch failed"), err);
+    warn(this, tr("Test launch failed"), err);
   }
 }
 
@@ -825,7 +825,7 @@ void ExternalAppsTab::onAddCommandClicked() {
   // Program が空ならエラー (名前は空でも追加させ、"(Unnamed)" として並ぶ)
   const QString program = m_addCmdProgram->text().trimmed();
   if (program.isEmpty()) {
-    QMessageBox::warning(this, tr("Add Command"),
+    warn(this, tr("Add Command"),
                          tr("Program path is required."));
     return;
   }

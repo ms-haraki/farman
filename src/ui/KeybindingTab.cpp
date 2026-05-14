@@ -10,7 +10,6 @@
 #include <QTableWidget>
 #include <QPushButton>
 #include <QHeaderView>
-#include <QMessageBox>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QFrame>
@@ -520,7 +519,7 @@ bool KeybindingTab::validateBinding(const QKeySequence& newKey, const QString& c
 void KeybindingTab::onClearBinding() {
   QList<QTableWidgetItem*> selected = m_table->selectedItems();
   if (selected.isEmpty()) {
-    QMessageBox::information(this, tr("No Selection"),
+    inform(this, tr("No Selection"),
                             tr("Please select a command to clear its binding."));
     return;
   }
@@ -702,12 +701,12 @@ void KeybindingTab::onApplyPreset() {
 
   QJsonObject obj;
   if (auto r = PresetIO::loadJsonFromResource(resourcePath, obj); !r.ok) {
-    QMessageBox::warning(this, tr("Apply Preset"), r.error);
+    warn(this, tr("Apply Preset"), r.error);
     return;
   }
   QString err;
   if (!applyBindingsToPending(obj, &err)) {
-    QMessageBox::warning(this, tr("Apply Preset"), err);
+    warn(this, tr("Apply Preset"), err);
     return;
   }
   updateTable();
@@ -729,7 +728,7 @@ void KeybindingTab::onExport() {
   if (path.isEmpty()) return;
 
   if (auto r = PresetIO::exportKeybindingsToFile(path, /*name=*/{}); !r.ok) {
-    QMessageBox::warning(this, tr("Export Keybindings"), r.error);
+    warn(this, tr("Export Keybindings"), r.error);
     return;
   }
 }
@@ -752,7 +751,7 @@ void KeybindingTab::onImport() {
   //  「New Key」列にプレビュー表示する)
   QFile file(path);
   if (!file.open(QIODevice::ReadOnly)) {
-    QMessageBox::warning(this, tr("Import Keybindings"),
+    warn(this, tr("Import Keybindings"),
                          tr("Cannot open file: %1").arg(file.errorString()));
     return;
   }
@@ -761,13 +760,13 @@ void KeybindingTab::onImport() {
   QJsonParseError parseErr;
   const QJsonDocument doc = QJsonDocument::fromJson(bytes, &parseErr);
   if (parseErr.error != QJsonParseError::NoError || !doc.isObject()) {
-    QMessageBox::warning(this, tr("Import Keybindings"),
+    warn(this, tr("Import Keybindings"),
                          tr("Invalid JSON: %1").arg(parseErr.errorString()));
     return;
   }
   QString err;
   if (!applyBindingsToPending(doc.object(), &err)) {
-    QMessageBox::warning(this, tr("Import Keybindings"), err);
+    warn(this, tr("Import Keybindings"), err);
     return;
   }
   updateTable();
