@@ -50,14 +50,19 @@ QString readEntryPath(struct archive_entry* entry) {
 // Zip Slip 兆候のあるエントリ名を弾く。
 // 一覧表示用 (load) でも extractEntryTo でも、`..` や NUL を含むパスはモデル
 // に取り込まない / 抽出対象にしないという防御線を引いておく。
+// Windows のバックスラッシュ (`..\evil.txt`) も `/` に正規化してから検査
+// するので、libarchive がバックスラッシュ付きのエントリ名を返してくる
+// ケースでも取りこぼさない。
 bool isSafeArchiveEntryName(const QString& path) {
   if (path.isEmpty()) return false;
   if (path.contains(QChar(0))) return false;
+  // `\` を `/` に揃えてから `..` セグメントを検査する
+  const QString p = QDir::fromNativeSeparators(path);
   // `..` が独立セグメントとして含まれる場合のみ拒否 ("foo..bar" は許可)
-  if (path == QStringLiteral("..")) return false;
-  if (path.startsWith(QStringLiteral("../"))) return false;
-  if (path.endsWith(QStringLiteral("/.."))) return false;
-  if (path.contains(QStringLiteral("/../"))) return false;
+  if (p == QStringLiteral("..")) return false;
+  if (p.startsWith(QStringLiteral("../"))) return false;
+  if (p.endsWith(QStringLiteral("/.."))) return false;
+  if (p.contains(QStringLiteral("/../"))) return false;
   return true;
 }
 

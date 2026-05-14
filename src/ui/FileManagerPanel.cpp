@@ -861,9 +861,18 @@ void FileManagerPanel::handleEnterKey() {
     // パス衝突回避 + ファイル名・パス階層をなるべく保存して viewer に渡す)。
     const QByteArray hash = QCryptographicHash::hash(
       ctx->archivePath.toUtf8(), QCryptographicHash::Sha1).toHex().left(8);
-    const QString tempPath = sessionTempDir.path()
-      + QStringLiteral("/") + QString::fromLatin1(hash)
-      + QStringLiteral("/") + ae->pathInArchive;
+    const QString tempRoot = sessionTempDir.path()
+      + QStringLiteral("/") + QString::fromLatin1(hash);
+    // Zip Slip 対策: ビュアー用 temp 展開先も `..` / 絶対パス / `\` 経由の
+    // 脱出を拒否する safeJoinExtractPath 経由にする。展開 worker 側と同じ
+    // 防御線を temp 展開経路にも揃える狙い。
+    const QString tempPath = ArchivePath::safeJoinExtractPath(
+      tempRoot, ae->pathInArchive);
+    if (tempPath.isEmpty()) {
+      Logger::instance().error(
+        tr("Refused unsafe archive entry path: %1").arg(ae->pathInArchive));
+      return;
+    }
 
     if (!ctx->extractEntryTo(ae->pathInArchive, tempPath)) {
       Logger::instance().error(
