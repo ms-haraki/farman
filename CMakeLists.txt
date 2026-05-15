@@ -91,6 +91,7 @@ qt_add_executable(farman
   src/core/AppPresets.cpp
   src/core/ArchiveContext.cpp
   src/utils/Dialogs.cpp
+  src/utils/FarmanMessageBox.cpp
   src/utils/EnterClickFilter.cpp
   src/utils/ArchivePath.cpp
   src/core/workers/WorkerBase.cpp
@@ -195,6 +196,7 @@ qt_add_executable(test_worker
   src/core/workers/MoveWorker.cpp
   src/ui/ProgressDialog.cpp
   src/utils/Dialogs.cpp
+  src/utils/FarmanMessageBox.cpp
   # ProgressDialog が Settings に依存するので test_worker でも Settings を含める。
   # Settings.cpp は core/UserCommand.h を include しており、defaults / JSON の
   # 各シンボルが未定義になるので UserCommand.cpp も同梱する (Manager / Runner は

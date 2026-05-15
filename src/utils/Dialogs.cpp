@@ -1,4 +1,5 @@
 #include "Dialogs.h"
+#include "FarmanMessageBox.h"
 #include <QApplication>
 #include <QCheckBox>
 #include <QDialog>
@@ -15,73 +16,30 @@
 
 namespace Farman {
 
+// 注: このブランチでは inform / warn / critical / confirm / choose を
+// 「QMessageBox 派生 (FarmanMessageBox) ベース」で実装する。
+// macOS の「キーボードナビゲーション」OS 設定が OFF でも Tab フォーカスと
+// Alt+key が動くよう、FarmanMessageBox 側で setFocusPolicy / setTabOrder
+// を後付けしている。
+//
+// informWithSuppress / inputText / withAltMnemonic / applyAltShortcut は
+// 既存のままで利用される (チェックボックス付き or 入力欄付きは QMessageBox
+// では作れないため独自 QDialog 実装を維持)。
+
 namespace {
 
-// QMessageBox では keyPressEvent override が届かないため、QDialog を直接
-// 継承し、さらに子ボタンにフォーカスがあっても Y/N を拾えるよう eventFilter
-// も仕込む。Tab によるボタン間フォーカス移動も明示的に有効化する。
-class ConfirmDialog : public QDialog {
-public:
-  ConfirmDialog(QWidget* parent,
-                const QString& title,
-                const QString& text,
-                bool defaultYes)
-      : QDialog(parent) {
-    setWindowTitle(title);
-    setModal(true);
-
-    auto* layout = new QVBoxLayout(this);
-    auto* label = new QLabel(text, this);
-    label->setWordWrap(true);
-    layout->addWidget(label);
-
-    auto* btnLayout = new QHBoxLayout();
-    btnLayout->addStretch(1);
-    auto* noBtn  = new QPushButton(tr("No"),  this);
-    auto* yesBtn = new QPushButton(tr("Yes"), this);
-    btnLayout->addWidget(noBtn);
-    btnLayout->addWidget(yesBtn);
-    layout->addLayout(btnLayout);
-
-    connect(yesBtn, &QPushButton::clicked, this, &QDialog::accept);
-    connect(noBtn,  &QPushButton::clicked, this, &QDialog::reject);
-
-    // Alt+Y / Alt+N のショートカットとラベル表記、Tab フォーカスを設定
-    applyAltShortcut(yesBtn, Qt::Key_Y);
-    applyAltShortcut(noBtn,  Qt::Key_N);
-    setTabOrder(noBtn, yesBtn);
-
-    (defaultYes ? yesBtn : noBtn)->setDefault(true);
-    (defaultYes ? yesBtn : noBtn)->setFocus();
-
-    // 子ボタンにフォーカスがある時でも単押しの Y/N を拾えるようフィルタ経由でも処理。
-    yesBtn->installEventFilter(this);
-    noBtn->installEventFilter(this);
-  }
-
-protected:
-  bool eventFilter(QObject* obj, QEvent* event) override {
-    if (event->type() == QEvent::KeyPress) {
-      auto* ke = static_cast<QKeyEvent*>(event);
-      if (handleShortcut(ke)) return true;
-    }
-    return QDialog::eventFilter(obj, event);
-  }
-
-  void keyPressEvent(QKeyEvent* event) override {
-    if (handleShortcut(event)) return;
-    QDialog::keyPressEvent(event);
-  }
-
-private:
-  bool handleShortcut(QKeyEvent* event) {
-    const auto mods = event->modifiers();
-    if (mods != Qt::NoModifier && mods != Qt::KeypadModifier) return false;
-    if (event->key() == Qt::Key_Y) { accept(); return true; }
-    if (event->key() == Qt::Key_N) { reject(); return true; }
-    return false;
-  }
-};
+// FarmanMessageBox に「OK ボタン + アイコン」をセットアップする共通処理。
+void setupSingleOk(FarmanMessageBox& box, QMessageBox::Icon icon,
+                   const QString& title, const QString& text) {
+  box.setIcon(icon);
+  box.setWindowTitle(title);
+  box.setText(text);
+  auto* okBtn = box.addButton(QObject::tr("OK"), QMessageBox::AcceptRole);
+  applyAltShortcut(okBtn, Qt::Key_O);
+  box.setDefaultButton(okBtn);
+  // FarmanMessageBox::showEvent で enforceTabFocus が呼ばれるので、ここでは
+  // ボタン追加だけしておけば OK。
+}
 
 } // anonymous namespace
 
@@ -89,197 +47,56 @@ bool confirm(QWidget* parent,
              const QString& title,
              const QString& text,
              bool defaultYes) {
-  ConfirmDialog dlg(parent, title, text, defaultYes);
-  return dlg.exec() == QDialog::Accepted;
+  // Yes / No を QMessageBox のボタンとして動的に追加する。
+  // 「No」を左、「Yes」を右に置く (Apple HIG の "Cancel 左 / Action 右"
+  // と整合)。Esc で No 扱いになるよう escapeButton 明示。
+  FarmanMessageBox box(parent);
+  box.setIcon(QMessageBox::Question);
+  box.setWindowTitle(title);
+  box.setText(text);
+  auto* noBtn  = box.addButton(QObject::tr("No"),  QMessageBox::RejectRole);
+  auto* yesBtn = box.addButton(QObject::tr("Yes"), QMessageBox::AcceptRole);
+  applyAltShortcut(noBtn,  Qt::Key_N);
+  applyAltShortcut(yesBtn, Qt::Key_Y);
+  auto* defBtn = defaultYes ? yesBtn : noBtn;
+  box.setDefaultButton(defBtn);
+  box.setEscapeButton(noBtn);
+  defBtn->setFocus();
+  box.exec();
+  return box.clickedButton() == yesBtn;
 }
-
-namespace {
-
-// 情報 / 警告 / エラーの OK 単独ダイアログの実体。
-// 標準 QMessageBox は macOS のキーボードナビゲーション設定が OFF だと
-// Tab フォーカスや Alt+key が効かないので、ConfirmDialog と同じパターンで
-// 自前実装する。
-class MessageDialog : public QDialog {
-public:
-  enum Icon { Information, Warning, Critical };
-
-  MessageDialog(QWidget* parent, const QString& title,
-                const QString& text, Icon icon)
-      : QDialog(parent) {
-    setWindowTitle(title);
-    setModal(true);
-    resize(480, 0);
-
-    auto* mainLayout = new QVBoxLayout(this);
-
-    auto* row = new QHBoxLayout();
-    row->setSpacing(12);
-
-    QStyle::StandardPixmap sp = QStyle::SP_MessageBoxInformation;
-    switch (icon) {
-      case Information: sp = QStyle::SP_MessageBoxInformation; break;
-      case Warning:     sp = QStyle::SP_MessageBoxWarning;     break;
-      case Critical:    sp = QStyle::SP_MessageBoxCritical;    break;
-    }
-    auto* iconLabel = new QLabel(this);
-    const int sz = style()->pixelMetric(QStyle::PM_LargeIconSize);
-    iconLabel->setPixmap(style()->standardIcon(sp).pixmap(sz, sz));
-    iconLabel->setAlignment(Qt::AlignTop);
-    iconLabel->setFixedWidth(sz);
-    row->addWidget(iconLabel, 0, Qt::AlignTop);
-
-    auto* msgLabel = new QLabel(text, this);
-    msgLabel->setWordWrap(true);
-    msgLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    msgLabel->setAlignment(Qt::AlignTop);
-    row->addWidget(msgLabel, 1);
-    mainLayout->addLayout(row);
-
-    auto* btnLayout = new QHBoxLayout();
-    btnLayout->addStretch(1);
-    auto* okBtn = new QPushButton(tr("OK"), this);
-    applyAltShortcut(okBtn, Qt::Key_O);
-    okBtn->setDefault(true);
-    okBtn->setAutoDefault(true);
-    btnLayout->addWidget(okBtn);
-    mainLayout->addLayout(btnLayout);
-
-    connect(okBtn, &QPushButton::clicked, this, &QDialog::accept);
-
-    okBtn->setFocus();
-  }
-
-protected:
-  void keyPressEvent(QKeyEvent* event) override {
-    // Esc / Enter / Return / Space すべて OK 扱いで閉じる。
-    const int k = event->key();
-    if (k == Qt::Key_Escape || k == Qt::Key_Return || k == Qt::Key_Enter) {
-      accept();
-      return;
-    }
-    QDialog::keyPressEvent(event);
-  }
-};
-
-void showMessage(QWidget* parent, const QString& title,
-                 const QString& text, MessageDialog::Icon icon) {
-  MessageDialog dlg(parent, title, text, icon);
-  dlg.exec();
-}
-
-} // anonymous namespace
 
 void inform(QWidget* parent, const QString& title, const QString& text) {
-  showMessage(parent, title, text, MessageDialog::Information);
+  FarmanMessageBox box(parent);
+  setupSingleOk(box, QMessageBox::Information, title, text);
+  box.exec();
 }
 
 void warn(QWidget* parent, const QString& title, const QString& text) {
-  showMessage(parent, title, text, MessageDialog::Warning);
+  FarmanMessageBox box(parent);
+  setupSingleOk(box, QMessageBox::Warning, title, text);
+  box.exec();
 }
 
 void critical(QWidget* parent, const QString& title, const QString& text) {
-  showMessage(parent, title, text, MessageDialog::Critical);
+  FarmanMessageBox box(parent);
+  setupSingleOk(box, QMessageBox::Critical, title, text);
+  box.exec();
 }
 
 namespace {
 
-// 任意ボタンの選択ダイアログ。MessageDialog と同じレイアウトに、右下に
-// 任意個のボタンを並べる。各ボタンに Alt+key (任意) を applyAltShortcut で
-// 設定し、ボタンクリック / Enter (default) / Esc (cancelIndex) を index に
-// 変換して accept() する。返り値は QDialog::exec() の戻りではなく、
-// メンバ m_result に格納した「押されたボタンの index」を使う。
-class ChoiceDialog : public QDialog {
-public:
-  ChoiceDialog(QWidget* parent,
-               const QString& title,
-               const QString& text,
-               const QList<DialogButton>& buttons,
-               int defaultIndex,
-               int cancelIndex,
-               DialogIcon icon)
-      : QDialog(parent)
-      , m_result(cancelIndex)
-      , m_cancelIndex(cancelIndex) {
-    setWindowTitle(title);
-    setModal(true);
-    resize(480, 0);
-
-    auto* mainLayout = new QVBoxLayout(this);
-
-    auto* row = new QHBoxLayout();
-    row->setSpacing(12);
-
-    if (icon != DialogIcon::None) {
-      QStyle::StandardPixmap sp = QStyle::SP_MessageBoxInformation;
-      switch (icon) {
-        case DialogIcon::Information: sp = QStyle::SP_MessageBoxInformation; break;
-        case DialogIcon::Question:    sp = QStyle::SP_MessageBoxQuestion;    break;
-        case DialogIcon::Warning:     sp = QStyle::SP_MessageBoxWarning;     break;
-        case DialogIcon::Critical:    sp = QStyle::SP_MessageBoxCritical;    break;
-        case DialogIcon::None:        break;
-      }
-      auto* iconLabel = new QLabel(this);
-      const int sz = style()->pixelMetric(QStyle::PM_LargeIconSize);
-      iconLabel->setPixmap(style()->standardIcon(sp).pixmap(sz, sz));
-      iconLabel->setAlignment(Qt::AlignTop);
-      iconLabel->setFixedWidth(sz);
-      row->addWidget(iconLabel, 0, Qt::AlignTop);
-    }
-
-    auto* msgLabel = new QLabel(text, this);
-    msgLabel->setWordWrap(true);
-    msgLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    msgLabel->setAlignment(Qt::AlignTop);
-    row->addWidget(msgLabel, 1);
-    mainLayout->addLayout(row);
-
-    auto* btnLayout = new QHBoxLayout();
-    btnLayout->addStretch(1);
-    QList<QPushButton*> btns;
-    for (int i = 0; i < buttons.size(); ++i) {
-      const auto& b = buttons.at(i);
-      auto* btn = new QPushButton(b.label, this);
-      btn->setFocusPolicy(Qt::StrongFocus);
-      if (b.altKey != Qt::Key(0)) {
-        applyAltShortcut(btn, b.altKey);
-      }
-      connect(btn, &QPushButton::clicked, this, [this, i]() {
-        m_result = i;
-        accept();
-      });
-      btnLayout->addWidget(btn);
-      btns.append(btn);
-    }
-    mainLayout->addLayout(btnLayout);
-
-    // Default ボタン (Enter で発火) + 初期フォーカス
-    if (defaultIndex >= 0 && defaultIndex < btns.size()) {
-      btns[defaultIndex]->setDefault(true);
-      btns[defaultIndex]->setAutoDefault(true);
-      btns[defaultIndex]->setFocus();
-    }
-    // Tab 順 (左 → 右)
-    for (int i = 0; i + 1 < btns.size(); ++i) {
-      setTabOrder(btns[i], btns[i + 1]);
-    }
+// DialogIcon → QMessageBox::Icon マッピング
+QMessageBox::Icon toQmIcon(DialogIcon icon) {
+  switch (icon) {
+    case DialogIcon::None:        return QMessageBox::NoIcon;
+    case DialogIcon::Information: return QMessageBox::Information;
+    case DialogIcon::Question:    return QMessageBox::Question;
+    case DialogIcon::Warning:     return QMessageBox::Warning;
+    case DialogIcon::Critical:    return QMessageBox::Critical;
   }
-
-  int result() const { return m_result; }
-
-protected:
-  void keyPressEvent(QKeyEvent* event) override {
-    if (event->key() == Qt::Key_Escape) {
-      m_result = m_cancelIndex;
-      reject();
-      return;
-    }
-    QDialog::keyPressEvent(event);
-  }
-
-private:
-  int m_result;
-  int m_cancelIndex;
-};
+  return QMessageBox::NoIcon;
+}
 
 } // anonymous namespace
 
@@ -290,10 +107,42 @@ int choose(QWidget* parent,
            int defaultIndex,
            int cancelIndex,
            DialogIcon icon) {
-  ChoiceDialog dlg(parent, title, text, buttons,
-                   defaultIndex, cancelIndex, icon);
-  dlg.exec();
-  return dlg.result();
+  FarmanMessageBox box(parent);
+  box.setIcon(toQmIcon(icon));
+  box.setWindowTitle(title);
+  box.setText(text);
+
+  QList<QAbstractButton*> btns;
+  for (int i = 0; i < buttons.size(); ++i) {
+    const auto& b = buttons.at(i);
+    // role は AcceptRole で統一 (押されたボタンの index を clickedButton で
+    // 判定するため、role の使い分けは不要)。escapeButton は別途 setEscape
+    // Button で指定する。
+    auto* btn = box.addButton(b.label, QMessageBox::AcceptRole);
+    if (b.altKey != Qt::Key(0)) {
+      applyAltShortcut(qobject_cast<QPushButton*>(btn), b.altKey);
+    }
+    btns.append(btn);
+  }
+
+  if (defaultIndex >= 0 && defaultIndex < btns.size()) {
+    auto* def = qobject_cast<QPushButton*>(btns[defaultIndex]);
+    if (def) {
+      box.setDefaultButton(def);
+      def->setFocus();
+    }
+  }
+  if (cancelIndex >= 0 && cancelIndex < btns.size()) {
+    auto* esc = qobject_cast<QPushButton*>(btns[cancelIndex]);
+    if (esc) box.setEscapeButton(esc);
+  }
+
+  box.exec();
+  QAbstractButton* clicked = box.clickedButton();
+  for (int i = 0; i < btns.size(); ++i) {
+    if (btns[i] == clicked) return i;
+  }
+  return cancelIndex;
 }
 
 QString withAltMnemonic(const QString& text, Qt::Key key) {
