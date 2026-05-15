@@ -1752,8 +1752,6 @@ Last checked: 2026-05-10 09:42
 
 ### CI / ビルド系
 
-- **vcpkg の binary cache** を有効化して Windows ビルドの初回 12〜15 分
-  (libarchive / OpenSSL / 関連依存をソースビルドする時間) を 3〜5 分に短縮する。
 - **`-DCMAKE_BUILD_PARALLEL_LEVEL`** など、各 OS 用の並列度チューニング。
   特に macOS runner (M1 3 コア) のビルド時間が現状 25〜35 分と長い。
 
