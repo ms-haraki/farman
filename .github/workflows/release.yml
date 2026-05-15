@@ -131,7 +131,10 @@ jobs:
       - name: Deploy (macOS)
         if: runner.os == 'macOS'
         run: |
-          macdeployqt build/farman.app
+          # -libpath=/opt/homebrew/lib: Qt WebP プラグインが依存する
+          # libwebp / libsharpyuv は Homebrew 配下にあり、指定しないと
+          # macdeployqt が "could not be resolved" 警告を大量に出す。
+          macdeployqt build/farman.app -libpath=/opt/homebrew/lib
           codesign --force --deep --sign - build/farman.app
           codesign --verify --deep --strict build/farman.app
           hdiutil create -volname farman \

@@ -7,6 +7,14 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
+# Qt6Gui は optional dependency として WrapVulkanHeaders を探すが、farman は
+# Vulkan を使わない (Qt の Vulkan サポート自体は wantsRhi=false の用途では不要)。
+# 何もしないと configure ログに毎回
+#   -- Could NOT find WrapVulkanHeaders (missing: Vulkan_INCLUDE_DIR)
+# が出てノイジーなので、CMAKE_DISABLE_FIND_PACKAGE で find 自体を抑止する
+# (Qt 側はその結果を見て該当機能を無効化するだけで実害はない)。
+set(CMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders TRUE)
+
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Core5Compat Concurrent Network LinguistTools)
 
 # Homebrew の libarchive は keg-only なので明示的にパスを通す

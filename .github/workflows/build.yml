@@ -159,7 +159,10 @@ jobs:
           #    -dmg は付けない: macdeployqt は frameworks の rpath を書き換える際
           #    元々付いていた ad-hoc 署名を破壊する。先に DMG 化すると壊れた署名の
           #    まま固まってしまい、配布先で「壊れているため開けません」と弾かれる。
-          macdeployqt build/farman.app
+          #    -libpath=/opt/homebrew/lib: Qt の WebP プラグインが依存する
+          #    libwebp.7.dylib / libsharpyuv.0.dylib は Homebrew 配下にあり、
+          #    指定しないと "could not be resolved" 警告が大量に出る。
+          macdeployqt build/farman.app -libpath=/opt/homebrew/lib
 
           # 2. .app 全体を ad-hoc 署名で再署名する。Apple Developer ID は使えない
           #    が、署名の整合性が取れていれば Gatekeeper は「未署名アプリ」として
