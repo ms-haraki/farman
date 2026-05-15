@@ -141,19 +141,108 @@ jobs:
         run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
 
       # ──────── Deploy: 配布形式へ整形 ────────
+      # macOS は「Secrets が全部揃っていれば Developer ID 署名 + Notarization、
+      # 揃っていなければ ad-hoc 署名で従来通り」の 2 モード運用にする。
+      # 必要 Secrets (5 つ):
+      #   MACOS_CERTIFICATE_BASE64       .p12 (Developer ID Application) の base64
+      #   MACOS_CERTIFICATE_PASSWORD     .p12 のパスワード
+      #   MACOS_NOTARIZATION_APPLE_ID    Apple ID メール
+      #   MACOS_NOTARIZATION_TEAM_ID     10 桁の Team ID
+      #   MACOS_NOTARIZATION_PASSWORD    App-specific password
+      # GitHub Actions では Secrets を if 条件で直接参照できないため、
+      # 「sign-check」ステップで env 経由に展開し、その output を後続の if で見る。
+
+      - name: Determine signing availability (macOS)
+        if: runner.os == 'macOS'
+        id: sign-check
+        shell: bash
+        env:
+          CERT_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+        run: |
+          if [ -n "$CERT_BASE64" ]; then
+            echo "available=true"  >> "$GITHUB_OUTPUT"
+            echo "Developer ID signing available."
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Developer ID signing NOT available; falling back to ad-hoc signing (Gatekeeper will block, users need right-click → Open)."
+          fi
+
+      - name: Import Developer ID certificate (macOS, signed runs only)
+        if: runner.os == 'macOS' && steps.sign-check.outputs.available == 'true'
+        shell: bash
+        env:
+          CERT_BASE64:   ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          # 一時 Keychain に .p12 を import。ジョブ終了時にランナーごと破棄される。
+          CERT_PATH="$RUNNER_TEMP/developer-id.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain"
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          echo "$CERT_BASE64" | base64 --decode > "$CERT_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security default-keychain -s "$KEYCHAIN_PATH"
+          security unlock-keychain  -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 7200 "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -k "$KEYCHAIN_PATH" \
+            -P "$CERT_PASSWORD" -T /usr/bin/codesign
+
+          # codesign がパスワード入力プロンプトを出さないよう partition list を緩める
+          security set-key-partition-list -S "apple-tool:,apple:,codesign:" \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
+
+          # Developer ID Application の SHA-1 ハッシュを取り出して後続ステップに渡す
+          IDENTITY_HASH=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
+            | grep "Developer ID Application" | head -n 1 | awk '{print $2}')
+          if [ -z "$IDENTITY_HASH" ]; then
+            echo "::error::Developer ID Application identity not found after import"
+            exit 1
+          fi
+          echo "MACOS_IDENTITY_HASH=$IDENTITY_HASH" >> "$GITHUB_ENV"
+          echo "Imported identity: $IDENTITY_HASH"
+
       - name: Deploy (macOS)
         if: runner.os == 'macOS'
+        env:
+          SIGN_AVAILABLE: ${{ steps.sign-check.outputs.available }}
         run: |
-          # -libpath=/opt/homebrew/lib: Qt WebP プラグインが依存する
-          # libwebp / libsharpyuv は Homebrew 配下にあり、指定しないと
-          # macdeployqt が "could not be resolved" 警告を大量に出す。
+          # macdeployqt で Qt frameworks を .app に埋める
+          # (-libpath: Homebrew の libwebp / libsharpyuv を解決させる)
           macdeployqt build/farman.app -libpath=/opt/homebrew/lib
-          codesign --force --deep --sign - build/farman.app
+
+          if [ "$SIGN_AVAILABLE" = "true" ]; then
+            # 正式署名: Hardened Runtime (notarization 必須) + timestamp
+            codesign --force --deep --options runtime --timestamp \
+              --sign "$MACOS_IDENTITY_HASH" build/farman.app
+          else
+            # フォールバック: ad-hoc 署名のみ。配布先で Gatekeeper にブロックされる
+            # ので「右クリック → 開く」での起動を案内する想定。
+            codesign --force --deep --sign - build/farman.app
+          fi
           codesign --verify --deep --strict build/farman.app
+
           hdiutil create -volname farman \
             -srcfolder build/farman.app \
             -ov -format UDZO \
             build/farman.dmg
+
+      - name: Notarize and staple (macOS, signed runs only)
+        if: runner.os == 'macOS' && steps.sign-check.outputs.available == 'true'
+        env:
+          APPLE_ID: ${{ secrets.MACOS_NOTARIZATION_APPLE_ID }}
+          TEAM_ID:  ${{ secrets.MACOS_NOTARIZATION_TEAM_ID }}
+          PASSWORD: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
+        run: |
+          # Apple のサーバに送って公証を取得 (通常 5〜15 分、失敗時は --wait
+          # 完了後 notarytool log <submission-id> でログ確認)。
+          xcrun notarytool submit build/farman.dmg \
+            --apple-id "$APPLE_ID" \
+            --team-id  "$TEAM_ID" \
+            --password "$PASSWORD" \
+            --wait
+          # ステープル: 公証結果を DMG に焼き付ける。これがあると配布先で
+          # ネット接続なしでも Gatekeeper が公証を確認できる。
+          xcrun stapler staple build/farman.dmg
 
       - name: Deploy (Windows)
         if: runner.os == 'Windows'
