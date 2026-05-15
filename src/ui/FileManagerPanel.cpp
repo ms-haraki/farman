@@ -35,7 +35,6 @@
 #include <QInputDialog>
 #include <QLineEdit>
 #include <QLocale>
-#include <QMessageBox>
 #include <QSet>
 #include <QSplitter>
 #include <QTemporaryDir>
@@ -515,19 +514,21 @@ void FileManagerPanel::handleExternalDrop(FileListPane* destPane,
   setActivePane(destPane == m_leftPane ? PaneType::Left : PaneType::Right);
 
   // Copy / Move / Cancel をユーザーに尋ねる
-  QMessageBox box(this);
-  box.setWindowTitle(tr("Drop Files"));
-  box.setText(tr("Drop %1 item(s) into\n%2\n\nWhat would you like to do?")
-                .arg(srcPaths.size()).arg(destDir));
-  QPushButton* copyBtn   = box.addButton(tr("Copy"),   QMessageBox::AcceptRole);
-  QPushButton* moveBtn   = box.addButton(tr("Move"),   QMessageBox::AcceptRole);
-  QPushButton* cancelBtn = box.addButton(tr("Cancel"), QMessageBox::RejectRole);
-  box.setDefaultButton(copyBtn);
-  box.exec();
-  QAbstractButton* clicked = box.clickedButton();
-  if (!clicked || clicked == cancelBtn) return;
+  const int choice = choose(this,
+    tr("Drop Files"),
+    tr("Drop %1 item(s) into\n%2\n\nWhat would you like to do?")
+      .arg(srcPaths.size()).arg(destDir),
+    {
+      { tr("Copy"),   Qt::Key_C },
+      { tr("Move"),   Qt::Key_M },
+      { tr("Cancel"), Qt::Key_X },
+    },
+    /*defaultIndex=*/0,
+    /*cancelIndex=*/2,
+    DialogIcon::Question);
+  if (choice != 0 && choice != 1) return;
 
-  const bool isMove = (clicked == moveBtn);
+  const bool isMove = (choice == 1);
 
   // Worker + ProgressDialog を起動。OverwriteMode は Ask。
   const QString tmpl = Settings::instance().autoRenameTemplate();

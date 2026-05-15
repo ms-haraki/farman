@@ -3,7 +3,6 @@
 #include <QDir>
 #include <QDebug>
 #include "utils/Dialogs.h"
-#include <QMessageBox>
 #include "core/workers/CopyWorker.h"
 #include "core/workers/MoveWorker.h"
 #include "ui/ProgressDialog.h"
@@ -67,23 +66,23 @@ int main(int argc, char* argv[]) {
   qDebug() << "Total test files:" << testFiles.size();
 
   // ユーザーに選択肢を表示
-  QMessageBox msgBox;
-  msgBox.setWindowTitle("Worker Test");
-  msgBox.setText("Which test do you want to run?");
-  msgBox.setInformativeText(
+  const int choice = choose(nullptr,
+    "Worker Test",
+    "Which test do you want to run?\n\n"
     "Test files created in: " + srcDir + "\n\n"
     "Small: 1MB\n"
     "Medium: 10MB\n"
-    "Large: 100MB (good for cancel test)"
-  );
+    "Large: 100MB (good for cancel test)",
+    {
+      { "Copy Test", Qt::Key_C },
+      { "Move Test", Qt::Key_M },
+      { "Exit",      Qt::Key_X },
+    },
+    /*defaultIndex=*/0,
+    /*cancelIndex=*/2,
+    DialogIcon::Question);
 
-  QPushButton* copyBtn = msgBox.addButton("Copy Test", QMessageBox::ActionRole);
-  QPushButton* moveBtn = msgBox.addButton("Move Test", QMessageBox::ActionRole);
-  QPushButton* cancelBtn = msgBox.addButton("Exit", QMessageBox::RejectRole);
-
-  msgBox.exec();
-
-  if (msgBox.clickedButton() == copyBtn) {
+  if (choice == 0) {
     qDebug() << "Starting CopyWorker test...";
 
     CopyWorker* worker = new CopyWorker(testFiles, dstDir);
@@ -106,7 +105,7 @@ int main(int argc, char* argv[]) {
     delete dialog;
     delete worker;
 
-  } else if (msgBox.clickedButton() == moveBtn) {
+  } else if (choice == 1) {
     qDebug() << "Starting MoveWorker test...";
 
     // Move用に別のディレクトリを用意
@@ -137,15 +136,10 @@ int main(int argc, char* argv[]) {
     qDebug() << "Test cancelled by user";
   }
 
-  // クリーンアップ確認
-  QMessageBox cleanupBox;
-  cleanupBox.setWindowTitle("Cleanup");
-  cleanupBox.setText("Delete test directory?");
-  cleanupBox.setInformativeText(testDir);
-  cleanupBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-  cleanupBox.setDefaultButton(QMessageBox::No);
-
-  if (cleanupBox.exec() == QMessageBox::Yes) {
+  // クリーンアップ確認 (Y/N、デフォルト No)
+  if (confirm(nullptr, "Cleanup",
+              QString("Delete test directory?\n%1").arg(testDir),
+              /*defaultYes=*/false)) {
     QDir(testDir).removeRecursively();
     qDebug() << "Test directory removed";
   } else {

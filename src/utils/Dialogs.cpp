@@ -181,6 +181,121 @@ void critical(QWidget* parent, const QString& title, const QString& text) {
   showMessage(parent, title, text, MessageDialog::Critical);
 }
 
+namespace {
+
+// 任意ボタンの選択ダイアログ。MessageDialog と同じレイアウトに、右下に
+// 任意個のボタンを並べる。各ボタンに Alt+key (任意) を applyAltShortcut で
+// 設定し、ボタンクリック / Enter (default) / Esc (cancelIndex) を index に
+// 変換して accept() する。返り値は QDialog::exec() の戻りではなく、
+// メンバ m_result に格納した「押されたボタンの index」を使う。
+class ChoiceDialog : public QDialog {
+public:
+  ChoiceDialog(QWidget* parent,
+               const QString& title,
+               const QString& text,
+               const QList<DialogButton>& buttons,
+               int defaultIndex,
+               int cancelIndex,
+               DialogIcon icon)
+      : QDialog(parent)
+      , m_result(cancelIndex)
+      , m_cancelIndex(cancelIndex) {
+    setWindowTitle(title);
+    setModal(true);
+    resize(480, 0);
+
+    auto* mainLayout = new QVBoxLayout(this);
+
+    auto* row = new QHBoxLayout();
+    row->setSpacing(12);
+
+    if (icon != DialogIcon::None) {
+      QStyle::StandardPixmap sp = QStyle::SP_MessageBoxInformation;
+      switch (icon) {
+        case DialogIcon::Information: sp = QStyle::SP_MessageBoxInformation; break;
+        case DialogIcon::Question:    sp = QStyle::SP_MessageBoxQuestion;    break;
+        case DialogIcon::Warning:     sp = QStyle::SP_MessageBoxWarning;     break;
+        case DialogIcon::Critical:    sp = QStyle::SP_MessageBoxCritical;    break;
+        case DialogIcon::None:        break;
+      }
+      auto* iconLabel = new QLabel(this);
+      const int sz = style()->pixelMetric(QStyle::PM_LargeIconSize);
+      iconLabel->setPixmap(style()->standardIcon(sp).pixmap(sz, sz));
+      iconLabel->setAlignment(Qt::AlignTop);
+      iconLabel->setFixedWidth(sz);
+      row->addWidget(iconLabel, 0, Qt::AlignTop);
+    }
+
+    auto* msgLabel = new QLabel(text, this);
+    msgLabel->setWordWrap(true);
+    msgLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    msgLabel->setAlignment(Qt::AlignTop);
+    row->addWidget(msgLabel, 1);
+    mainLayout->addLayout(row);
+
+    auto* btnLayout = new QHBoxLayout();
+    btnLayout->addStretch(1);
+    QList<QPushButton*> btns;
+    for (int i = 0; i < buttons.size(); ++i) {
+      const auto& b = buttons.at(i);
+      auto* btn = new QPushButton(b.label, this);
+      btn->setFocusPolicy(Qt::StrongFocus);
+      if (b.altKey != Qt::Key(0)) {
+        applyAltShortcut(btn, b.altKey);
+      }
+      connect(btn, &QPushButton::clicked, this, [this, i]() {
+        m_result = i;
+        accept();
+      });
+      btnLayout->addWidget(btn);
+      btns.append(btn);
+    }
+    mainLayout->addLayout(btnLayout);
+
+    // Default ボタン (Enter で発火) + 初期フォーカス
+    if (defaultIndex >= 0 && defaultIndex < btns.size()) {
+      btns[defaultIndex]->setDefault(true);
+      btns[defaultIndex]->setAutoDefault(true);
+      btns[defaultIndex]->setFocus();
+    }
+    // Tab 順 (左 → 右)
+    for (int i = 0; i + 1 < btns.size(); ++i) {
+      setTabOrder(btns[i], btns[i + 1]);
+    }
+  }
+
+  int result() const { return m_result; }
+
+protected:
+  void keyPressEvent(QKeyEvent* event) override {
+    if (event->key() == Qt::Key_Escape) {
+      m_result = m_cancelIndex;
+      reject();
+      return;
+    }
+    QDialog::keyPressEvent(event);
+  }
+
+private:
+  int m_result;
+  int m_cancelIndex;
+};
+
+} // anonymous namespace
+
+int choose(QWidget* parent,
+           const QString& title,
+           const QString& text,
+           const QList<DialogButton>& buttons,
+           int defaultIndex,
+           int cancelIndex,
+           DialogIcon icon) {
+  ChoiceDialog dlg(parent, title, text, buttons,
+                   defaultIndex, cancelIndex, icon);
+  dlg.exec();
+  return dlg.result();
+}
+
 QString withAltMnemonic(const QString& text, Qt::Key key) {
   // & は mnemonic 用の予約文字。再呼び出しに備えて一旦除去する。
   QString out = text;

@@ -16,7 +16,6 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
-#include <QMessageBox>
 #include <QPushButton>
 #include <QStandardPaths>
 #include <QStyle>
@@ -554,19 +553,20 @@ void ExternalAppsTab::onImportCommands() {
   }
 
   // Replace / Append を選択させる
-  QMessageBox box(this);
-  box.setIcon(QMessageBox::Question);
-  box.setWindowTitle(tr("Import Commands"));
-  box.setText(tr("Imported %1 command(s). How should they be applied?").arg(filtered.size()));
-  QPushButton* replaceBtn = box.addButton(tr("Replace"), QMessageBox::AcceptRole);
-  QPushButton* appendBtn  = box.addButton(tr("Append"),  QMessageBox::AcceptRole);
-  box.addButton(QMessageBox::Cancel);
-  box.setDefaultButton(appendBtn);
-  box.exec();
-  QAbstractButton* clicked = box.clickedButton();
-  if (clicked != replaceBtn && clicked != appendBtn) return;
+  const int choice = choose(this,
+    tr("Import Commands"),
+    tr("Imported %1 command(s). How should they be applied?").arg(filtered.size()),
+    {
+      { tr("Replace"), Qt::Key_R },
+      { tr("Append"),  Qt::Key_A },
+      { tr("Cancel"),  Qt::Key_X },
+    },
+    /*defaultIndex=*/1,   // Append
+    /*cancelIndex=*/2,
+    DialogIcon::Question);
+  if (choice != 0 && choice != 1) return;
 
-  if (clicked == replaceBtn) {
+  if (choice == 0) {
     m_nonBuiltinUserCommands = filtered;
   } else {
     // Append: 既存の id と衝突したら数字接尾辞でリネーム (id 衝突防止)

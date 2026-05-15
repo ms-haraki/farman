@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QList>
 #include <QString>
 #include <Qt>
 
@@ -28,6 +29,28 @@ bool confirm(QWidget* parent,
 void inform  (QWidget* parent, const QString& title, const QString& text);
 void warn    (QWidget* parent, const QString& title, const QString& text);
 void critical(QWidget* parent, const QString& title, const QString& text);
+
+// 任意個数のボタンを並べる選択ダイアログ。
+// 動的に addButton() で組み立てていた QMessageBox の置き換え。
+// - icon: アイコン種別 (左に表示)。None ならアイコン無し
+// - buttons: 並べるボタン。altKey に Qt::Key を指定すれば Alt+key で発火
+// - defaultIndex: Enter で発火するボタンの index
+// - cancelIndex: Esc で発火させたいボタンの index (-1 なら閉じ動作のみ)
+// 戻り値: 押されたボタンの 0-based index。Esc キャンセル時は cancelIndex。
+enum class DialogIcon { None, Information, Question, Warning, Critical };
+
+struct DialogButton {
+  QString label;                    // 表示テキスト (例: "Copy")
+  Qt::Key altKey = Qt::Key(0);      // Alt+altKey で発火。0 = ショートカット無し
+};
+
+int choose(QWidget* parent,
+           const QString& title,
+           const QString& text,
+           const QList<DialogButton>& buttons,
+           int defaultIndex = 0,
+           int cancelIndex = -1,
+           DialogIcon icon = DialogIcon::Question);
 
 // ラベル文字列に Alt+key ショートカットの視覚的ヒントを埋め込む。
 // 戻り値はそのまま QLabel / QRadioButton / QPushButton の text に使える。
