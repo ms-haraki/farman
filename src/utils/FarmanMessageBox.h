@@ -1,7 +1,10 @@
 #pragma once
 
+#include <QMap>
 #include <QMessageBox>
 
+class QAbstractButton;
+class QKeyEvent;
 class QShowEvent;
 
 namespace Farman {
@@ -30,8 +33,21 @@ public:
   // showEvent から自動で呼ばれるが、addButton 後に手動で呼んでも安全。
   void enforceTabFocus();
 
+  // 修飾キーなしの単押し (Y / N / O 等) を特定ボタンにマッピングする。
+  // Yes/No 確認ダイアログのキーボード操作 (素の Y / N で即応答) を実現する
+  // ためのもの。子ボタンにフォーカスがあっても拾えるよう eventFilter 経由で
+  // も処理する。
+  void setBareKeyShortcut(Qt::Key key, QAbstractButton* button);
+
 protected:
   void showEvent(QShowEvent* event) override;
+  void keyPressEvent(QKeyEvent* event) override;
+  bool eventFilter(QObject* watched, QEvent* event) override;
+
+private:
+  // bare shortcut マップ。key (int) は Qt::Key の値。
+  bool handleBareShortcut(QKeyEvent* event);
+  QMap<int, QAbstractButton*> m_bareShortcuts;
 };
 
 } // namespace Farman

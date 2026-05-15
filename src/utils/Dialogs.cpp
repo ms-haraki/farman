@@ -58,6 +58,10 @@ bool confirm(QWidget* parent,
   auto* yesBtn = box.addButton(QObject::tr("Yes"), QMessageBox::AcceptRole);
   applyAltShortcut(noBtn,  Qt::Key_N);
   applyAltShortcut(yesBtn, Qt::Key_Y);
+  // 修飾キーなしの素の Y / N キーでも即応答できるようにする
+  // (Dialogs.h でこの挙動を契約として書いてある)。
+  box.setBareKeyShortcut(Qt::Key_Y, yesBtn);
+  box.setBareKeyShortcut(Qt::Key_N, noBtn);
   auto* defBtn = defaultYes ? yesBtn : noBtn;
   box.setDefaultButton(defBtn);
   box.setEscapeButton(noBtn);

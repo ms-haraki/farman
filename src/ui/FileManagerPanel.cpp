@@ -1226,15 +1226,27 @@ void FileManagerPanel::copySelectedFiles() {
 
   FileListModel* srcModel  = srcPane->model();
   FileListModel* destModel = destPane->model();
-  // 既定の出力先: 2 ペイン時は相手ペイン、1 ペイン時はアクティブペイン
-  // (相手ペインは hide されておりユーザーから見えないので使わない)。
-  QString destDir = m_singlePaneMode
-                  ? srcPane->currentPath()
-                  : destPane->currentPath();
+  // 既定の出力先:
+  //   - 2 ペイン時: 相手ペインのカレント
+  //   - 1 ペイン時 (通常): アクティブペインのカレント
+  //   - 1 ペイン時 (アーカイブモード): アーカイブが置かれている実 FS の
+  //     親ディレクトリ (currentPath() は archive.zip!/inner 形式なので
+  //     そのままだと QFile 系操作の宛先には使えない)
+  QString destDir;
+  if (!m_singlePaneMode) {
+    destDir = destPane->currentPath();
+  } else if (srcModel->isInArchiveMode()) {
+    destDir = QFileInfo(srcModel->archivePath()).absolutePath();
+  } else {
+    destDir = srcPane->currentPath();
+  }
 
   // ── アーカイブ書込ガード ──────────────────
   // 反対パネルがアーカイブモードのときは「アーカイブ内に書き込み」になるので拒否。
-  if (destModel->isInArchiveMode()) {
+  // ただし 1 ペイン時は相手ペインが hide() されているだけで、過去のアーカイブ
+  // 表示状態を残しているだけのことがある。1 ペイン時の出力先は srcPane なので
+  // 相手ペインの状態は無関係 → ガードをスキップする。
+  if (!m_singlePaneMode && destModel->isInArchiveMode()) {
     warn(this, tr("Read-only archive"),
       tr("Cannot copy into a read-only archive."));
     return;
@@ -1455,15 +1467,26 @@ void FileManagerPanel::moveSelectedFiles() {
 
   FileListModel* srcModel = srcPane->model();
   // アーカイブモードでは「移動」は両側成立しない (アーカイブが read-only)。
-  if (srcModel->isInArchiveMode() || destPane->model()->isInArchiveMode()) {
+  // ただし 1 ペイン時の destPane は hide() されているだけで実際の出力先は
+  // srcPane なので、destPane のアーカイブ状態は無関係 → ガードをスキップ。
+  if (srcModel->isInArchiveMode()
+      || (!m_singlePaneMode && destPane->model()->isInArchiveMode())) {
     warn(this, tr("Read-only archive"),
       tr("Cannot move files to or from a read-only archive."));
     return;
   }
-  // 1 ペイン時はアクティブペインを既定出力先に (相手ペインは見えないため)
-  QString destDir = m_singlePaneMode
-                  ? srcPane->currentPath()
-                  : destPane->currentPath();
+  // 1 ペイン時はアクティブペインを既定出力先に (相手ペインは見えないため)。
+  // 1 ペイン + アーカイブモードの場合は仮想パス (archive.zip!/inner) を
+  // そのまま実 FS の宛先には使えないので、アーカイブが置かれている実
+  // ディレクトリにフォールバックする。
+  QString destDir;
+  if (!m_singlePaneMode) {
+    destDir = destPane->currentPath();
+  } else if (srcModel->isInArchiveMode()) {
+    destDir = QFileInfo(srcModel->archivePath()).absolutePath();
+  } else {
+    destDir = srcPane->currentPath();
+  }
 
   // Get selected files, or current item if no selection
   QStringList selectedFiles = srcModel->selectedFilePaths();
@@ -1869,7 +1892,7 @@ void FileManagerPanel::createArchive() {
       tr("Cannot create an archive from entries inside another archive."));
     return;
   }
-  if (destPane->model()->isInArchiveMode()) {
+  if (!m_singlePaneMode && destPane->model()->isInArchiveMode()) {
     warn(this, tr("Read-only archive"),
       tr("Cannot write a new archive into a read-only archive."));
     return;
@@ -1965,7 +1988,7 @@ void FileManagerPanel::extractArchive() {
       tr("Cannot extract an archive that lives inside another archive."));
     return;
   }
-  if (destPane->model()->isInArchiveMode()) {
+  if (!m_singlePaneMode && destPane->model()->isInArchiveMode()) {
     warn(this, tr("Read-only archive"),
       tr("Cannot extract into a read-only archive."));
     return;
