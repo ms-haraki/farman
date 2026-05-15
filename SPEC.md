@@ -1765,8 +1765,10 @@ Last checked: 2026-05-10 09:42
 
 - **Universal Binary 化** (macOS arm64 + x86_64) — Intel Mac 対応のとき検討。
   当面は Apple Silicon のみ。
-- **`release.yml`** によるタグ push → GitHub Releases 自動公開 — 自分以外に
-  配布したくなったタイミングで作成 (build.yml をベースに 1〜2 時間で組める想定)。
+- **`release.yml`** によるタグ push → GitHub Releases 自動公開 (作成済み、
+  [.github/workflows/release.yml](.github/workflows/release.yml))。`v*` タグ
+  push or workflow_dispatch で 3 OS の DMG / AppImage / zip を生成し、Releases
+  に **draft** として公開する (本人が UI 確認後 Publish)。署名は未対応。
 - **コード署名 (Apple Developer ID / Authenticode)** — 配布数が増えてから検討。
   Mac は $99/年、Windows は $200〜500/年が必要。
 - **Linux 配布の拡充**: 現状 AppImage のみ。需要次第で `.deb` (CPack DEB) /

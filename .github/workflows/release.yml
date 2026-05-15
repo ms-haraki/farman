@@ -1,0 +1,228 @@
+# GitHub Actions: タグ push をトリガに 3 OS 分の配布パッケージをビルドし、
+# GitHub Releases に公開する。
+#
+#   トリガ:
+#     - `v*` 形式のタグ push (v1.0.0 / v1.0.0-beta.1 など)
+#     - workflow_dispatch (GitHub UI から手動起動: 試運転用)
+#
+#   フロー:
+#     1. matrix で macOS / Linux / Windows それぞれビルド + 配布パッケージ化
+#        (.dmg / AppImage / .zip)
+#     2. 3 OS の成果物を release ジョブに集約
+#     3. ファイル名にタグを埋め込み (例: farman-v1.0.0-macos-arm64.dmg)
+#     4. GitHub Releases に **draft** として作成し、3 OS の成果物を添付
+#        → 中身を確認してから手動で Publish するワークフロー
+#
+#   署名は未実装 (バックログ参照)。macOS は ad-hoc 署名のみで、ユーザー
+#   側は「右クリック → 開く」で起動する運用。Windows は SmartScreen の
+#   "unknown publisher" 警告が出るが「詳細情報 → 実行」で起動可能。
+#
+#   build.yml と大半重複するが、reusable workflow に切り出すよりは並べた
+#   方が読みやすいので素朴に二重に書く。Qt / 依存ライブラリのバージョンが
+#   変わったら両方を更新する必要がある点に注意。
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v1.0.0). 手動起動時のみ必須。'
+        required: true
+
+env:
+  QT_VERSION: 6.10.3
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # 1 OS が落ちても他 OS の成果物は確保したい (片肺リリース判定は
+      # 後段の release ジョブで人間が draft を見て判断する想定)。
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (arm64)
+            os: macos-latest
+            qt_host: mac
+            qt_arch: clang_64
+            artifact_name: macos
+            artifact_path: build/farman.dmg
+
+          - name: Linux (x86_64)
+            os: ubuntu-latest
+            qt_host: linux
+            qt_arch: linux_gcc_64
+            artifact_name: linux
+            artifact_path: farman-x86_64.AppImage
+
+          - name: Windows (x86_64)
+            os: windows-latest
+            qt_host: windows
+            qt_arch: win64_msvc2022_64
+            artifact_name: windows
+            artifact_path: build/farman-windows-x64.zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: ${{ matrix.qt_host }}
+          target: desktop
+          arch: ${{ matrix.qt_arch }}
+          modules: 'qt5compat'
+          cache: true
+
+      # ──────── 依存ライブラリ ────────
+      - name: Install deps (macOS)
+        if: runner.os == 'macOS'
+        run: brew install libarchive uchardet pkg-config
+
+      - name: Install deps (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libarchive-dev \
+            libuchardet-dev \
+            pkg-config \
+            libgl1-mesa-dev \
+            libxkbcommon-dev
+
+      - name: Install deps (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          vcpkg install libarchive:x64-windows uchardet:x64-windows
+          "VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT" `
+            | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      # ──────── Configure / Build ────────
+      - name: Configure (Unix)
+        if: runner.os != 'Windows'
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake -B build `
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel 2
+
+      - name: Build (macOS / Windows)
+        if: runner.os != 'Linux'
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      # ──────── Deploy: 配布形式へ整形 ────────
+      - name: Deploy (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          macdeployqt build/farman.app
+          codesign --force --deep --sign - build/farman.app
+          codesign --verify --deep --strict build/farman.app
+          hdiutil create -volname farman \
+            -srcfolder build/farman.app \
+            -ov -format UDZO \
+            build/farman.dmg
+
+      - name: Deploy (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          windeployqt --release --no-translations build/Release/farman.exe
+          Copy-Item "$env:VCPKG_ROOT/installed/x64-windows/bin/*.dll" `
+            -Destination build/Release/
+          # Releases に上げるためにフォルダごと zip 化する (build.yml は
+          # actions/upload-artifact 経由なのでフォルダのままで OK だが、
+          # GitHub Releases はファイル単位アップロードしか受け付けない)。
+          Compress-Archive -Path build/Release/* -DestinationPath build/farman-windows-x64.zip
+
+      - name: Deploy (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy*.AppImage
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          cp images/icon-256.png farman.png
+          export OUTPUT=farman-x86_64.AppImage
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            -e build/farman \
+            -i farman.png \
+            -d linux/farman.desktop \
+            --plugin qt \
+            --output appimage
+          ls -la farman-x86_64.AppImage
+
+      # ──────── 後段 release ジョブへ受け渡し ────────
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_path }}
+          retention-days: 7
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      # softprops/action-gh-release が Releases を作成・編集するために必要
+      contents: write
+    steps:
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v6
+        with:
+          path: dist
+
+      - name: Rename artifacts with tag
+        run: |
+          cd dist
+          ls -la */
+          TAG="${{ steps.tag.outputs.tag }}"
+          mv macos/farman.dmg              "farman-${TAG}-macos-arm64.dmg"
+          mv linux/farman-x86_64.AppImage  "farman-${TAG}-linux-x86_64.AppImage"
+          mv windows/farman-windows-x64.zip "farman-${TAG}-windows-x64.zip"
+          ls -la
+
+      - name: Create GitHub Release (draft)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: farman ${{ steps.tag.outputs.tag }}
+          # 安全のため draft で作成。本人が GitHub UI で動作確認した上で
+          # "Publish release" を押すことで世に出る運用。
+          draft: true
+          # タグ名に `-` を含むもの (v1.0.0-beta.1 等) は prerelease 扱い。
+          prerelease: ${{ contains(steps.tag.outputs.tag, '-') }}
+          # 前回タグからの commit / PR を GitHub が自動でリリースノート化する。
+          # CHANGELOG.md があれば優先的に拾うが、未整備なら自動生成だけで十分。
+          generate_release_notes: true
+          files: |
+            dist/farman-*-macos-arm64.dmg
+            dist/farman-*-linux-x86_64.AppImage
+            dist/farman-*-windows-x64.zip
