@@ -1778,7 +1778,9 @@ Last checked: 2026-05-10 09:42
 
 ### ドキュメント系
 
-- **CHANGELOG.md** — リリースのタイミングで導入 (現状はコミットログで代用)。
+- **CHANGELOG.md** — 作成済み ([CHANGELOG.md](CHANGELOG.md))。Keep a Changelog
+  形式でユーザー視点の主要変更点を要約。コミット単位の詳細は `release.yml`
+  の `generate_release_notes` に任せる住み分け。
 - **CONTRIBUTING.md** — 外部 contributor が現れた時に整備。
 - **screenshot / GIF demo** を README に貼る — ある程度 UI が安定してから。
 

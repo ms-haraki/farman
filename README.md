@@ -263,6 +263,10 @@ git push --delete origin v0.0.0-test` で消せる。
 「右クリック → 開く」、Windows は SmartScreen "詳細情報 → 実行" で
 起動する運用。配布数が増えたら Developer ID / Authenticode を導入予定。
 
+リリースノートは `release.yml` が GitHub の auto-generated notes として
+コミット / PR の差分を自動収集する。それとは別に、ユーザー視点の主要変更
+点は [CHANGELOG.md](CHANGELOG.md) に Keep a Changelog 形式で記録している。
+
 ## デフォルトキーバインド (抜粋)
 
 | キー | 動作 |
