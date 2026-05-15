@@ -1226,7 +1226,11 @@ void FileManagerPanel::copySelectedFiles() {
 
   FileListModel* srcModel  = srcPane->model();
   FileListModel* destModel = destPane->model();
-  QString destDir = destPane->currentPath();
+  // 既定の出力先: 2 ペイン時は相手ペイン、1 ペイン時はアクティブペイン
+  // (相手ペインは hide されておりユーザーから見えないので使わない)。
+  QString destDir = m_singlePaneMode
+                  ? srcPane->currentPath()
+                  : destPane->currentPath();
 
   // ── アーカイブ書込ガード ──────────────────
   // 反対パネルがアーカイブモードのときは「アーカイブ内に書き込み」になるので拒否。
@@ -1456,7 +1460,10 @@ void FileManagerPanel::moveSelectedFiles() {
       tr("Cannot move files to or from a read-only archive."));
     return;
   }
-  QString destDir = destPane->currentPath();
+  // 1 ペイン時はアクティブペインを既定出力先に (相手ペインは見えないため)
+  QString destDir = m_singlePaneMode
+                  ? srcPane->currentPath()
+                  : destPane->currentPath();
 
   // Get selected files, or current item if no selection
   QStringList selectedFiles = srcModel->selectedFilePaths();
@@ -1881,8 +1888,12 @@ void FileManagerPanel::createArchive() {
 
   // 既定の出力先は「相手ペイン」のカレント (Copy/Move と同じ UX)。
   // ダイアログ内で ↑/↓ により「自分ペイン (srcPane)」とトグルできる。
+  // 1 ペイン時はアクティブペインを既定出力先に (相手ペインは見えないため)。
+  const QString defaultOutputDir = m_singlePaneMode
+                                 ? srcPane->currentPath()
+                                 : destPane->currentPath();
   CreateArchiveDialog dlg(paths,
-                          destPane->currentPath(),
+                          defaultOutputDir,
                           srcPane->currentPath(),
                           this);
   if (dlg.exec() != QDialog::Accepted) return;
@@ -1973,8 +1984,12 @@ void FileManagerPanel::extractArchive() {
   const QString archivePath = item->absolutePath();
   // 展開先の既定は「相手ペイン」(Copy/Move と同じ UX)。↑/↓ でアーカイブが
   // 置かれているディレクトリ (= srcPane のカレント) にトグルできる。
+  // 1 ペイン時はアクティブペインを既定展開先に (相手ペインは見えないため)。
+  const QString defaultOutputDir = m_singlePaneMode
+                                 ? srcPane->currentPath()
+                                 : destPane->currentPath();
   ExtractArchiveDialog dlg(archivePath,
-                           destPane->currentPath(),
+                           defaultOutputDir,
                            srcPane->currentPath(),
                            this);
   if (dlg.exec() != QDialog::Accepted) return;
