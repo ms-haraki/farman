@@ -61,7 +61,11 @@ jobs:
             artifact_name: farman-macos
 
           - name: Linux (x86_64)
-            os: ubuntu-latest
+            # 古めの glibc に揃えるため明示的に 22.04 を使う (ubuntu-latest は
+            # 現在 24.04 → AppImage を 22.04 系の Linux で起動すると glibc 2.38
+            # 未満を要求するエラーになる)。Apple/MS のように latest 追従しないのは
+            # AppImage の互換性確保のため。
+            os: ubuntu-22.04
             qt_host: linux
             qt_arch: linux_gcc_64
             # linuxdeploy + qt plugin で AppImage を生成する
@@ -151,7 +155,7 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
 
       # ──────── Build ────────
-      # Linux ランナー (ubuntu-latest = 4 vCPU / 16GB) は、Qt6 + C++20 + Release で
+      # Linux ランナー (ubuntu-22.04 = 4 vCPU / 16GB) は、Qt6 + C++20 + Release で
       # 重い TU (MainWindow.cpp など) を 4 並列で走らせるとメモリピークが
       # ランナー上限を超え、ランナー側エージェントごと OOM kill される
       # ("The hosted runner lost communication with the server")。

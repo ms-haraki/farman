@@ -55,7 +55,8 @@ jobs:
             artifact_path: build/farman.dmg
 
           - name: Linux (x86_64)
-            os: ubuntu-latest
+            # build.yml と同様 22.04 を明示 (AppImage の glibc 互換のため)
+            os: ubuntu-22.04
             qt_host: linux
             qt_arch: linux_gcc_64
             artifact_name: linux
@@ -195,7 +196,9 @@ jobs:
   release:
     name: Publish GitHub Release
     needs: build
-    runs-on: ubuntu-latest
+    # ビルド成果物をまとめて Releases に publish するだけのジョブなので、
+    # glibc 等の互換性は無関係。ただ Linux 系は matrix と揃えて 22.04 にする。
+    runs-on: ubuntu-22.04
     permissions:
       # softprops/action-gh-release が Releases を作成・編集するために必要
       contents: write
