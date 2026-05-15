@@ -25,6 +25,50 @@ Qt6 / C++20 製のクロスプラットフォーム 2 画面ファイラ。
 - **国際化**: 英語 / 日本語 (Auto は OS 設定に追従)
 - **外部変更の自動反映**: Finder などからファイルを増減すると即座に追随
 
+## スクリーンショット
+
+### メイン 2 ペイン
+
+ツールバー + 左右ペイン + ログペインの基本レイアウト。
+
+![Main 2-pane UI](docs/screenshots/01-main-2pane.png)
+
+### アーカイブブラウジング
+
+`.zip` / `.tar.gz` などのアーカイブを Enter で開き、仮想 FS (`archive.zip!/inner/`)
+として閲覧。中の単一ファイルだけビュアーで開いたり、選択コピーで取り出せる。
+
+![Archive browsing](docs/screenshots/02-archive-browsing.png)
+
+### ディレクトリ比較
+
+左右ペインで比較対象を開いて `=` で発動。差分のあるファイル / このペインのみに
+存在するファイルを行ごとに色分けハイライト。
+
+![Directory compare](docs/screenshots/03-directory-compare.png)
+
+### ビュアー
+
+テキスト (エンコード自動判定 + 行番号) / 画像 (ズーム + Fit) / バイナリ
+(16 進ダンプ + アドレス列・文字列列カラーリング) の 3 種類が組み込み。
+
+![Text viewer](docs/screenshots/07-text-viewer.png)
+
+![Image viewer](docs/screenshots/08-image-viewer.png)
+
+![Binary viewer](docs/screenshots/09-binary-viewer.png)
+
+### 共通ダイアログ
+
+ショートカット一覧 (`?`) / 設定 / コピー・移動の確認ダイアログ。
+すべて Tab フォーカス + Alt+key で完結。
+
+![Shortcut list](docs/screenshots/04-shortcut-list.png)
+
+![Settings](docs/screenshots/05-settings.png)
+
+![Transfer confirm](docs/screenshots/06-transfer-confirm.png)
+
 ## 動作環境
 
 - **macOS** 12 (Monterey) 以降 / Apple Silicon (M1/M2/M3/M4)
