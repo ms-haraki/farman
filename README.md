@@ -71,8 +71,9 @@ Qt6 / C++20 製のクロスプラットフォーム 2 画面ファイラ。
 
 ## 動作環境
 
-- **macOS** 12 (Monterey) 以降 / Apple Silicon (M1/M2/M3/M4)
-  - 1.0 リリース前は Intel Mac を非対応とします (Universal Binary 化を v1.0 で検討)
+- **macOS** 12 (Monterey) 以降 / Apple Silicon + Intel Mac 両対応
+  (配布 DMG は Universal Binary、`release.yml` の merge-macos ジョブで
+  arm64 と x86_64 を lipo 結合して生成)
 - **Windows** 10 / 11 (x64)
 - **Linux** Qt 6 が動く X11 / Wayland 環境 (Ubuntu 22.04 以降で動作確認)
 

@@ -49,8 +49,10 @@ All notable changes to **farman** are documented in this file.
   - 国際化 (英語 / 日本語、Auto は OS 設定追従)
   - 外部変更の自動反映 (QFileSystemWatcher + デバウンス)
 - **CI / 配布**
-  - 3 OS (macOS arm64 / Linux x86_64 / Windows x86_64) の自動ビルド (`build.yml`)
+  - 3 OS の自動ビルド (`build.yml`、macOS arm64 / Linux x86_64 / Windows x86_64)
   - タグ push → GitHub Releases 自動公開 (`release.yml`、draft 公開で安全運用)
+  - **macOS Universal Binary** (arm64 + x86_64) 配布。release.yml で 2 ランナー
+    (macos-latest / macos-13) で別々にビルドした `.app` を lipo で結合
 
 ### Security
 

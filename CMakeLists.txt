@@ -17,9 +17,16 @@ set(CMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders TRUE)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Core5Compat Concurrent Network LinguistTools)
 
-# Homebrew の libarchive は keg-only なので明示的にパスを通す
-if(APPLE AND EXISTS /opt/homebrew/opt/libarchive)
-  list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/opt/libarchive)
+# Homebrew の libarchive は keg-only なので明示的にパスを通す。
+# Apple Silicon は /opt/homebrew、Intel Mac は /usr/local が Homebrew prefix。
+# Universal Binary をビルドするとき、CI 上の Intel ランナーでは /usr/local の
+# 方にライブラリが入るので両方検索する。
+if(APPLE)
+  if(EXISTS /opt/homebrew/opt/libarchive)
+    list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/opt/libarchive)
+  elseif(EXISTS /usr/local/opt/libarchive)
+    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/libarchive)
+  endif()
 endif()
 find_package(LibArchive REQUIRED)
 
@@ -34,6 +41,7 @@ if(NOT UCHARDET_FOUND)
   # uchardet.h は通常 .../include/uchardet/uchardet.h に置かれる。
   # PATH_SUFFIXES uchardet で「uchardet/ サブディレクトリ内の uchardet.h」を
   # 探し、結果のパス (`.../include/uchardet`) をそのまま include に通す。
+  # /opt/homebrew (Apple Silicon) と /usr/local (Intel) の両方を検索。
   find_path(UCHARDET_INCLUDE_DIR uchardet.h
     PATHS /opt/homebrew/include /usr/local/include /usr/include
     PATH_SUFFIXES uchardet)

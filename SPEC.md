@@ -1757,8 +1757,10 @@ Last checked: 2026-05-10 09:42
 
 ### 配布系
 
-- **Universal Binary 化** (macOS arm64 + x86_64) — Intel Mac 対応のとき検討。
-  当面は Apple Silicon のみ。
+- ~~**Universal Binary 化** (macOS arm64 + x86_64)~~ — 対応済み
+  ([release.yml](.github/workflows/release.yml) の merge-macos ジョブで
+  macos-latest (arm64) + macos-13 (Intel) のビルドを lipo 結合)。
+  ローカル開発は Apple Silicon 前提。
 - **`release.yml`** によるタグ push → GitHub Releases 自動公開 (作成済み、
   [.github/workflows/release.yml](.github/workflows/release.yml))。`v*` タグ
   push or workflow_dispatch で 3 OS の DMG / AppImage / zip を生成し、Releases

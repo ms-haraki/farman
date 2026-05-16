@@ -5,21 +5,23 @@
 #     - `v*` 形式のタグ push (v1.0.0 / v1.0.0-beta.1 など)
 #     - workflow_dispatch (GitHub UI から手動起動: 試運転用)
 #
-#   フロー:
-#     1. matrix で macOS / Linux / Windows それぞれビルド + 配布パッケージ化
-#        (.dmg / AppImage / .zip)
-#     2. 3 OS の成果物を release ジョブに集約
-#     3. ファイル名にタグを埋め込み (例: farman-v1.0.0-macos-arm64.dmg)
-#     4. GitHub Releases に **draft** として作成し、3 OS の成果物を添付
-#        → 中身を確認してから手動で Publish するワークフロー
+#   フロー (3 段階):
+#     [stage 1] build  : matrix で 各 OS / arch のビルド + 配布パッケージ化
+#                        - macOS は arm64 / x86_64 を別ランナーでビルド (Homebrew が
+#                          片 arch しか提供しないため、依存問題を回避する)
+#                        - Linux: AppImage、Windows: zip まで作成
+#                        - macOS は .app を tar.gz に固めて artifact 受け渡し
+#     [stage 2] merge-macos  : macOS 2 arch の .app を lipo で Universal に結合
+#                              → 署名 (任意) → DMG → notarize (任意)
+#     [stage 3] release  : 3 OS の成果物を集約し GitHub Releases に **draft**
+#                          として作成 (本人が UI で動作確認した上で Publish)
 #
-#   署名は未実装 (バックログ参照)。macOS は ad-hoc 署名のみで、ユーザー
-#   側は「右クリック → 開く」で起動する運用。Windows は SmartScreen の
-#   "unknown publisher" 警告が出るが「詳細情報 → 実行」で起動可能。
+#   署名: MACOS_* Secrets が全部揃っていれば Developer ID 署名 + Notarization、
+#   揃っていなければ ad-hoc 署名のみ (Gatekeeper にブロックされる)。詳細は
+#   ローカルの CODE_SIGNING.md 参照。
 #
 #   build.yml と大半重複するが、reusable workflow に切り出すよりは並べた
-#   方が読みやすいので素朴に二重に書く。Qt / 依存ライブラリのバージョンが
-#   変わったら両方を更新する必要がある点に注意。
+#   方が読みやすいので素朴に二重に書く。
 
 name: Release
 
@@ -38,24 +40,35 @@ env:
   BUILD_TYPE: Release
 
 jobs:
+  # ════════════════════════════════════════════════════════════════════
+  # Stage 1: 各 OS / arch でビルド
+  # ════════════════════════════════════════════════════════════════════
   build:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
-      # 1 OS が落ちても他 OS の成果物は確保したい (片肺リリース判定は
-      # 後段の release ジョブで人間が draft を見て判断する想定)。
       fail-fast: false
       matrix:
         include:
           - name: macOS (arm64)
-            os: macos-latest
+            os: macos-latest    # macOS 14+ (Apple Silicon)
             qt_host: mac
             qt_arch: clang_64
-            artifact_name: macos
-            artifact_path: build/farman.dmg
+            artifact_name: macos-arm64-app
+            artifact_path: build/farman-app.tar.gz
+
+          - name: macOS (x86_64)
+            # macos-13 が現役の最後の Intel runner。deprecated になったら
+            # その時点で Universal Binary 化の方針を見直す (Universal Qt SDK
+            # + Universal libarchive 自前ビルド路線への移行を検討)。
+            os: macos-13
+            qt_host: mac
+            qt_arch: clang_64
+            artifact_name: macos-x86_64-app
+            artifact_path: build/farman-app.tar.gz
 
           - name: Linux (x86_64)
-            # build.yml と同様 22.04 を明示 (AppImage の glibc 互換のため)
+            # AppImage の glibc 互換のため 22.04 を明示
             os: ubuntu-22.04
             qt_host: linux
             qt_arch: linux_gcc_64
@@ -99,8 +112,6 @@ jobs:
             libgl1-mesa-dev \
             libxkbcommon-dev
 
-      # vcpkg binary cache (GitHub Actions Cache バックエンド) で
-      # 2 回目以降の Windows ビルド時間を 12〜15 分 → 3〜5 分に短縮する。
       - name: Setup vcpkg binary cache env (Windows)
         if: runner.os == 'Windows'
         uses: actions/github-script@v7
@@ -140,110 +151,26 @@ jobs:
         if: runner.os != 'Linux'
         run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
 
-      # ──────── Deploy: 配布形式へ整形 ────────
-      # macOS は「Secrets が全部揃っていれば Developer ID 署名 + Notarization、
-      # 揃っていなければ ad-hoc 署名で従来通り」の 2 モード運用にする。
-      # 必要 Secrets (5 つ):
-      #   MACOS_CERTIFICATE_BASE64       .p12 (Developer ID Application) の base64
-      #   MACOS_CERTIFICATE_PASSWORD     .p12 のパスワード
-      #   MACOS_NOTARIZATION_APPLE_ID    Apple ID メール
-      #   MACOS_NOTARIZATION_TEAM_ID     10 桁の Team ID
-      #   MACOS_NOTARIZATION_PASSWORD    App-specific password
-      # GitHub Actions では Secrets を if 条件で直接参照できないため、
-      # 「sign-check」ステップで env 経由に展開し、その output を後続の if で見る。
-
-      - name: Determine signing availability (macOS)
-        if: runner.os == 'macOS'
-        id: sign-check
-        shell: bash
-        env:
-          CERT_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
-        run: |
-          if [ -n "$CERT_BASE64" ]; then
-            echo "available=true"  >> "$GITHUB_OUTPUT"
-            echo "Developer ID signing available."
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "Developer ID signing NOT available; falling back to ad-hoc signing (Gatekeeper will block, users need right-click → Open)."
-          fi
-
-      - name: Import Developer ID certificate (macOS, signed runs only)
-        if: runner.os == 'macOS' && steps.sign-check.outputs.available == 'true'
-        shell: bash
-        env:
-          CERT_BASE64:   ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
-          CERT_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-        run: |
-          # 一時 Keychain に .p12 を import。ジョブ終了時にランナーごと破棄される。
-          CERT_PATH="$RUNNER_TEMP/developer-id.p12"
-          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain"
-          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
-
-          echo "$CERT_BASE64" | base64 --decode > "$CERT_PATH"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security default-keychain -s "$KEYCHAIN_PATH"
-          security unlock-keychain  -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 7200 "$KEYCHAIN_PATH"
-          security import "$CERT_PATH" -k "$KEYCHAIN_PATH" \
-            -P "$CERT_PASSWORD" -T /usr/bin/codesign
-
-          # codesign がパスワード入力プロンプトを出さないよう partition list を緩める
-          security set-key-partition-list -S "apple-tool:,apple:,codesign:" \
-            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
-
-          # Developer ID Application の SHA-1 ハッシュを取り出して後続ステップに渡す
-          IDENTITY_HASH=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
-            | grep "Developer ID Application" | head -n 1 | awk '{print $2}')
-          if [ -z "$IDENTITY_HASH" ]; then
-            echo "::error::Developer ID Application identity not found after import"
-            exit 1
-          fi
-          echo "MACOS_IDENTITY_HASH=$IDENTITY_HASH" >> "$GITHUB_ENV"
-          echo "Imported identity: $IDENTITY_HASH"
-
+      # ──────── Deploy (macOS): macdeployqt + tar 化 ────────
+      # 署名 / DMG / Notarization は merge-macos ジョブに移す
+      # (Universal Binary 結合後にやらないと codesign / DMG 化が無駄になる)。
       - name: Deploy (macOS)
         if: runner.os == 'macOS'
-        env:
-          SIGN_AVAILABLE: ${{ steps.sign-check.outputs.available }}
         run: |
-          # macdeployqt で Qt frameworks を .app に埋める
-          # (-libpath: Homebrew の libwebp / libsharpyuv を解決させる)
-          macdeployqt build/farman.app -libpath=/opt/homebrew/lib
+          # Homebrew prefix は Apple Silicon (/opt/homebrew) と Intel (/usr/local)
+          # で違うので brew --prefix で動的解決する。
+          HOMEBREW_PREFIX=$(brew --prefix)
+          echo "Using Homebrew prefix: $HOMEBREW_PREFIX"
+          macdeployqt build/farman.app -libpath="$HOMEBREW_PREFIX/lib"
 
-          if [ "$SIGN_AVAILABLE" = "true" ]; then
-            # 正式署名: Hardened Runtime (notarization 必須) + timestamp
-            codesign --force --deep --options runtime --timestamp \
-              --sign "$MACOS_IDENTITY_HASH" build/farman.app
-          else
-            # フォールバック: ad-hoc 署名のみ。配布先で Gatekeeper にブロックされる
-            # ので「右クリック → 開く」での起動を案内する想定。
-            codesign --force --deep --sign - build/farman.app
-          fi
-          codesign --verify --deep --strict build/farman.app
+          # .app は内部にシンボリックリンクや実行権限を含むので、actions/upload-
+          # artifact に直接渡すと保持が崩れることがある。tar.gz に固めてから上げる。
+          tar -czf build/farman-app.tar.gz -C build farman.app
+          echo "Architecture of farman binary:"
+          lipo -info build/farman.app/Contents/MacOS/farman
+          ls -la build/farman-app.tar.gz
 
-          hdiutil create -volname farman \
-            -srcfolder build/farman.app \
-            -ov -format UDZO \
-            build/farman.dmg
-
-      - name: Notarize and staple (macOS, signed runs only)
-        if: runner.os == 'macOS' && steps.sign-check.outputs.available == 'true'
-        env:
-          APPLE_ID: ${{ secrets.MACOS_NOTARIZATION_APPLE_ID }}
-          TEAM_ID:  ${{ secrets.MACOS_NOTARIZATION_TEAM_ID }}
-          PASSWORD: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
-        run: |
-          # Apple のサーバに送って公証を取得 (通常 5〜15 分、失敗時は --wait
-          # 完了後 notarytool log <submission-id> でログ確認)。
-          xcrun notarytool submit build/farman.dmg \
-            --apple-id "$APPLE_ID" \
-            --team-id  "$TEAM_ID" \
-            --password "$PASSWORD" \
-            --wait
-          # ステープル: 公証結果を DMG に焼き付ける。これがあると配布先で
-          # ネット接続なしでも Gatekeeper が公証を確認できる。
-          xcrun stapler staple build/farman.dmg
-
+      # ──────── Deploy (Windows / Linux): 従来通り ────────
       - name: Deploy (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -251,9 +178,6 @@ jobs:
           windeployqt --release --no-translations build/Release/farman.exe
           Copy-Item "$env:VCPKG_ROOT/installed/x64-windows/bin/*.dll" `
             -Destination build/Release/
-          # Releases に上げるためにフォルダごと zip 化する (build.yml は
-          # actions/upload-artifact 経由なのでフォルダのままで OK だが、
-          # GitHub Releases はファイル単位アップロードしか受け付けない)。
           Compress-Archive -Path build/Release/* -DestinationPath build/farman-windows-x64.zip
 
       - name: Deploy (Linux)
@@ -274,7 +198,6 @@ jobs:
             --output appimage
           ls -la farman-x86_64.AppImage
 
-      # ──────── 後段 release ジョブへ受け渡し ────────
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
@@ -282,14 +205,163 @@ jobs:
           path: ${{ matrix.artifact_path }}
           retention-days: 7
 
+  # ════════════════════════════════════════════════════════════════════
+  # Stage 2: macOS arm64 + x86_64 を lipo で結合し Universal Binary 化
+  # ════════════════════════════════════════════════════════════════════
+  merge-macos:
+    name: Merge macOS Universal
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - name: Download arm64 app
+        uses: actions/download-artifact@v6
+        with:
+          name: macos-arm64-app
+          path: arm64-bundle
+
+      - name: Download x86_64 app
+        uses: actions/download-artifact@v6
+        with:
+          name: macos-x86_64-app
+          path: x86_64-bundle
+
+      - name: Extract apps
+        run: |
+          mkdir -p arm64 x86_64 build
+          tar -xzf arm64-bundle/farman-app.tar.gz   -C arm64
+          tar -xzf x86_64-bundle/farman-app.tar.gz  -C x86_64
+          echo "--- arm64 binary ---"
+          lipo -info arm64/farman.app/Contents/MacOS/farman
+          echo "--- x86_64 binary ---"
+          lipo -info x86_64/farman.app/Contents/MacOS/farman
+
+      - name: lipo merge into Universal
+        run: |
+          set -euo pipefail
+          ARM=arm64/farman.app
+          X86=x86_64/farman.app
+          OUT=build/farman.app
+
+          # arm64 版を base にコピーし、構造とリソースはそちらに揃える。
+          # Mach-O ファイルだけ x86_64 側と lipo で結合する。
+          rm -rf "$OUT"
+          cp -R "$ARM" "$OUT"
+
+          # arm64 側の全ファイルを走査。Mach-O かつ x86_64 側にも対応物が
+          # ある場合だけ lipo する。既に両 arch が入っているファイル (Qt が
+          # Universal で提供している framework 等) は skip。
+          merged=0
+          skipped=0
+          while IFS= read -r armfile; do
+            rel="${armfile#$ARM/}"
+            x86file="$X86/$rel"
+            outfile="$OUT/$rel"
+            [ -f "$x86file" ] || { skipped=$((skipped+1)); continue; }
+            file "$armfile" | grep -q "Mach-O" || { skipped=$((skipped+1)); continue; }
+            if lipo -info "$armfile" 2>/dev/null \
+                  | grep -qE 'x86_64.*arm64|arm64.*x86_64'; then
+              skipped=$((skipped+1))
+              continue
+            fi
+            lipo -create "$armfile" "$x86file" -output "$outfile"
+            merged=$((merged+1))
+          done < <(find "$ARM" -type f)
+
+          echo "Merged $merged Mach-O files, skipped $skipped."
+          echo "--- merged binary ---"
+          lipo -info "$OUT/Contents/MacOS/farman"
+
+      # ──────── 署名: Secrets 揃っていれば Developer ID、なければ ad-hoc ────────
+      - name: Determine signing availability
+        id: sign-check
+        shell: bash
+        env:
+          CERT_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+        run: |
+          if [ -n "$CERT_BASE64" ]; then
+            echo "available=true"  >> "$GITHUB_OUTPUT"
+            echo "Developer ID signing available."
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Developer ID signing NOT available; falling back to ad-hoc signing."
+          fi
+
+      - name: Import Developer ID certificate (signed runs only)
+        if: steps.sign-check.outputs.available == 'true'
+        shell: bash
+        env:
+          CERT_BASE64:   ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          CERT_PATH="$RUNNER_TEMP/developer-id.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain"
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          echo "$CERT_BASE64" | base64 --decode > "$CERT_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security default-keychain -s "$KEYCHAIN_PATH"
+          security unlock-keychain  -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 7200 "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -k "$KEYCHAIN_PATH" \
+            -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S "apple-tool:,apple:,codesign:" \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
+
+          IDENTITY_HASH=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" \
+            | grep "Developer ID Application" | head -n 1 | awk '{print $2}')
+          if [ -z "$IDENTITY_HASH" ]; then
+            echo "::error::Developer ID Application identity not found after import"
+            exit 1
+          fi
+          echo "MACOS_IDENTITY_HASH=$IDENTITY_HASH" >> "$GITHUB_ENV"
+
+      - name: Sign and package Universal DMG
+        env:
+          SIGN_AVAILABLE: ${{ steps.sign-check.outputs.available }}
+        run: |
+          if [ "$SIGN_AVAILABLE" = "true" ]; then
+            codesign --force --deep --options runtime --timestamp \
+              --sign "$MACOS_IDENTITY_HASH" build/farman.app
+          else
+            # 構成変更後 (lipo merge) は既存署名が無効になっているので必ず再署名する
+            codesign --force --deep --sign - build/farman.app
+          fi
+          codesign --verify --deep --strict build/farman.app
+
+          hdiutil create -volname farman \
+            -srcfolder build/farman.app \
+            -ov -format UDZO \
+            build/farman.dmg
+
+      - name: Notarize and staple (signed runs only)
+        if: steps.sign-check.outputs.available == 'true'
+        env:
+          APPLE_ID: ${{ secrets.MACOS_NOTARIZATION_APPLE_ID }}
+          TEAM_ID:  ${{ secrets.MACOS_NOTARIZATION_TEAM_ID }}
+          PASSWORD: ${{ secrets.MACOS_NOTARIZATION_PASSWORD }}
+        run: |
+          xcrun notarytool submit build/farman.dmg \
+            --apple-id "$APPLE_ID" \
+            --team-id  "$TEAM_ID" \
+            --password "$PASSWORD" \
+            --wait
+          xcrun stapler staple build/farman.dmg
+
+      - name: Upload Universal DMG
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-universal
+          path: build/farman.dmg
+          retention-days: 7
+
+  # ════════════════════════════════════════════════════════════════════
+  # Stage 3: GitHub Releases に publish
+  # ════════════════════════════════════════════════════════════════════
   release:
     name: Publish GitHub Release
-    needs: build
-    # ビルド成果物をまとめて Releases に publish するだけのジョブなので、
-    # glibc 等の互換性は無関係。ただ Linux 系は matrix と揃えて 22.04 にする。
+    needs: [build, merge-macos]
     runs-on: ubuntu-22.04
     permissions:
-      # softprops/action-gh-release が Releases を作成・編集するために必要
       contents: write
     steps:
       - name: Determine tag
@@ -311,7 +383,7 @@ jobs:
           cd dist
           ls -la */
           TAG="${{ steps.tag.outputs.tag }}"
-          mv macos/farman.dmg              "farman-${TAG}-macos-arm64.dmg"
+          mv macos-universal/farman.dmg    "farman-${TAG}-macos-universal.dmg"
           mv linux/farman-x86_64.AppImage  "farman-${TAG}-linux-x86_64.AppImage"
           mv windows/farman-windows-x64.zip "farman-${TAG}-windows-x64.zip"
           ls -la
@@ -321,15 +393,10 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: farman ${{ steps.tag.outputs.tag }}
-          # 安全のため draft で作成。本人が GitHub UI で動作確認した上で
-          # "Publish release" を押すことで世に出る運用。
           draft: true
-          # タグ名に `-` を含むもの (v1.0.0-beta.1 等) は prerelease 扱い。
           prerelease: ${{ contains(steps.tag.outputs.tag, '-') }}
-          # 前回タグからの commit / PR を GitHub が自動でリリースノート化する。
-          # CHANGELOG.md があれば優先的に拾うが、未整備なら自動生成だけで十分。
           generate_release_notes: true
           files: |
-            dist/farman-*-macos-arm64.dmg
+            dist/farman-*-macos-universal.dmg
             dist/farman-*-linux-x86_64.AppImage
             dist/farman-*-windows-x64.zip
