@@ -1757,10 +1757,14 @@ Last checked: 2026-05-10 09:42
 
 ### 配布系
 
-- ~~**Universal Binary 化** (macOS arm64 + x86_64)~~ — 対応済み
-  ([release.yml](.github/workflows/release.yml) の merge-macos ジョブで
-  macos-latest (arm64) + macos-13 (Intel) のビルドを lipo 結合)。
-  ローカル開発は Apple Silicon 前提。
+- **Universal Binary 化** (macOS arm64 + x86_64) — 保留。
+  2026-05-16 の v0.9.0-test で「macos-13 (Intel) + macos-latest (arm64)
+  並列ビルド + lipo 結合」方式を試したが、GitHub Actions の macos-13
+  runner が割り当てられず queue に滞留したため断念。CMakeLists.txt の
+  Intel Homebrew prefix 対応コードはローカル Intel ビルド用にツリーに残す。
+  将来再挑戦するなら「macos-latest 1 ランナーで Universal Qt SDK +
+  自前 Universal libarchive/uchardet ビルド + `CMAKE_OSX_ARCHITECTURES`
+  指定」路線を検討する。
 - **`release.yml`** によるタグ push → GitHub Releases 自動公開 (作成済み、
   [.github/workflows/release.yml](.github/workflows/release.yml))。`v*` タグ
   push or workflow_dispatch で 3 OS の DMG / AppImage / zip を生成し、Releases

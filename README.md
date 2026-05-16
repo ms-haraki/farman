@@ -71,9 +71,12 @@ Qt6 / C++20 製のクロスプラットフォーム 2 画面ファイラ。
 
 ## 動作環境
 
-- **macOS** 12 (Monterey) 以降 / Apple Silicon + Intel Mac 両対応
-  (配布 DMG は Universal Binary、`release.yml` の merge-macos ジョブで
-  arm64 と x86_64 を lipo 結合して生成)
+- **macOS** 12 (Monterey) 以降 / Apple Silicon (M1/M2/M3/M4)
+  - 配布 DMG は arm64 専用。Intel Mac で動かしたい場合はリポジトリを
+    clone して各自ローカルビルドで対応 (CMakeLists.txt は Intel
+    Homebrew prefix `/usr/local` も検索する)。
+  - CI で Universal Binary を生成する案は GitHub Actions の macos-13
+    runner が実質利用不可となり保留 (SPEC.md バックログ参照)
 - **Windows** 10 / 11 (x64)
 - **Linux** Qt 6 が動く X11 / Wayland 環境 (Ubuntu 22.04 以降で動作確認)
 
