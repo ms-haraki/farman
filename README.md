@@ -328,6 +328,12 @@ git push --delete origin v0.0.0-test` で消せる。
 cmake --build build --target update_translations
 ```
 
+## 貢献
+
+バグ報告 / 機能要望 / PR を歓迎します。開発環境のセットアップ、ブランチ
+モデル、PR の作成手順、コードスタイル、翻訳手順は [CONTRIBUTING.md](CONTRIBUTING.md)
+を参照してください。
+
 ## ライセンス
 
 [MIT License](LICENSE) — Copyright (c) Mashsoft Inc.
