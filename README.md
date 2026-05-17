@@ -235,9 +235,9 @@ rm -rf build         # Windows: rmdir /s /q build
 - `.github/workflows/build.yml` — **3 OS × push 毎** の自動ビルド検証。
   成果物は Actions の artifact として 14 日保存される (動作確認用)。
 - `.github/workflows/release.yml` — タグ push をトリガに 3 OS の配布
-  パッケージ (DMG / AppImage / zip) をビルドし、GitHub Releases に **draft**
-  として公開する。本人が GitHub UI で内容を確認してから "Publish release"
-  を押すまで世に出ない運用。
+  パッケージ (DMG / AppImage + .deb / zip) をビルドし、GitHub Releases に
+  **draft** として公開する。本人が GitHub UI で内容を確認してから
+  "Publish release" を押すまで世に出ない運用。
 
 ### リリース手順
 
@@ -253,6 +253,7 @@ git push origin v1.0.0
 #    https://github.com/<owner>/farman/releases
 #    - farman-v1.0.0-macos-arm64.dmg
 #    - farman-v1.0.0-linux-x86_64.AppImage
+#    - farman-v1.0.0-linux-x86_64.deb         (Debian / Ubuntu / Mint)
 #    - farman-v1.0.0-windows-x64.zip
 
 # 4. 動作確認 → "Edit" → "Publish release" で世に出る

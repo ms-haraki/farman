@@ -1771,8 +1771,9 @@ Last checked: 2026-05-10 09:42
   に **draft** として公開する (本人が UI 確認後 Publish)。署名は未対応。
 - **コード署名 (Apple Developer ID / Authenticode)** — 配布数が増えてから検討。
   Mac は $99/年、Windows は $200〜500/年が必要。
-- **Linux 配布の拡充**: 現状 AppImage のみ。需要次第で `.deb` (CPack DEB) /
-  `.rpm` / Flathub / AUR などを追加検討。
+- **Linux 配布の拡充**: AppImage + `.deb` 配布済み (`release.yml` で
+  linuxdeploy の AppDir をそのまま `/opt/farman/` に詰める方式)。
+  `.rpm` / Flathub / AUR は需要次第で追加検討 (現状は予定なし)。
 
 ### ドキュメント系
 

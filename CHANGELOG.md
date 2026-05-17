@@ -51,6 +51,9 @@ All notable changes to **farman** are documented in this file.
 - **CI / 配布**
   - 3 OS の自動ビルド (`build.yml`、macOS arm64 / Linux x86_64 / Windows x86_64)
   - タグ push → GitHub Releases 自動公開 (`release.yml`、draft 公開で安全運用)
+  - Linux は **AppImage** に加えて **`.deb`** (Debian / Ubuntu / Mint 系)
+    も同時配布。AppDir を `/opt/farman/` に詰める self-contained 方式で、
+    OS 標準の Qt バージョン差に依存しない
 
 ### Security
 

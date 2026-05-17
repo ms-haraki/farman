@@ -65,7 +65,8 @@ jobs:
             qt_host: linux
             qt_arch: linux_gcc_64
             artifact_name: linux
-            artifact_path: farman-x86_64.AppImage
+            # linux-dist/ に AppImage と .deb の両方を入れて受け渡す
+            artifact_path: linux-dist
 
           - name: Windows (x86_64)
             os: windows-latest
@@ -256,6 +257,7 @@ jobs:
       - name: Deploy (Linux)
         if: runner.os == 'Linux'
         run: |
+          # === Step 1: AppImage 生成 (既存ロジック) ===
           wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
           wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
           chmod +x linuxdeploy*.AppImage
@@ -270,6 +272,85 @@ jobs:
             --plugin qt \
             --output appimage
           ls -la farman-x86_64.AppImage
+
+          # === Step 2: .deb 生成 ===
+          # linuxdeploy が作った AppDir (= self-contained な Qt frameworks +
+          # libarchive / uchardet を bundle 済み) をそのまま /opt/farman/ に
+          # 詰めて .deb 化する。Ubuntu / Debian / Mint で OS 標準の Qt 6
+          # バージョン差に振り回されない。
+          VERSION=$(grep 'project(farman VERSION' CMakeLists.txt \
+                     | sed -E 's/.*VERSION ([0-9.]+).*/\1/')
+          PKG=deb-pkg
+          rm -rf "$PKG"
+
+          # /opt/farman/ 配下に AppDir の中身を flatten して配置
+          # (AppDir/usr/* を /opt/farman/* に対応させる)
+          mkdir -p "$PKG/opt/farman"
+          # 実行ファイル + 必要なら追加 binary
+          if [ -d AppDir/usr/bin ]; then
+            cp -R AppDir/usr/bin/*       "$PKG/opt/farman/"
+          fi
+          # Qt frameworks / libarchive / uchardet 等の .so
+          if [ -d AppDir/usr/lib ]; then
+            cp -R AppDir/usr/lib         "$PKG/opt/farman/"
+          fi
+          # Qt プラグイン (image formats / iconengines 等)
+          if [ -d AppDir/usr/plugins ]; then
+            cp -R AppDir/usr/plugins     "$PKG/opt/farman/"
+          fi
+          # QML / translations が存在すれば
+          if [ -d AppDir/usr/qml ]; then
+            cp -R AppDir/usr/qml         "$PKG/opt/farman/"
+          fi
+          if [ -d AppDir/usr/translations ]; then
+            cp -R AppDir/usr/translations "$PKG/opt/farman/"
+          fi
+
+          # ──── 外向け symlink / 共有資源 ────
+          # ターミナル / アプリケーションメニューからは /usr/bin/farman で起動可能に
+          mkdir -p "$PKG/usr/bin"
+          ln -s /opt/farman/farman "$PKG/usr/bin/farman"
+
+          # デスクトップエントリ + アイコン (XDG 標準位置)
+          mkdir -p "$PKG/usr/share/applications"
+          cp linux/farman.desktop "$PKG/usr/share/applications/farman.desktop"
+          mkdir -p "$PKG/usr/share/icons/hicolor/256x256/apps"
+          cp images/icon-256.png  "$PKG/usr/share/icons/hicolor/256x256/apps/farman.png"
+
+          # ──── DEBIAN/control メタデータ ────
+          mkdir -p "$PKG/DEBIAN"
+          INSTALLED_SIZE=$(du -sk "$PKG/opt" "$PKG/usr" | awk '{s+=$1} END{print s}')
+          cat > "$PKG/DEBIAN/control" << EOF
+          Package: farman
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Installed-Size: ${INSTALLED_SIZE}
+          Maintainer: Mashsoft Inc. <noreply@mashsoft.co.jp>
+          Homepage: https://github.com/ms-haraki/farman
+          Description: Qt6 dual-pane file manager
+           A keyboard-driven dual-pane file manager built on Qt 6.
+           Supports archive browsing (zip / tar / gz / bz2 / xz),
+           directory comparison, and built-in viewers (text / image / binary).
+          EOF
+
+          # ──── 権限整備 + パッケージング ────
+          # dpkg-deb は実行ファイルが executable bit を持っていること、
+          # ディレクトリが 755 であることを要求する。
+          find "$PKG" -type d -exec chmod 755 {} +
+          chmod 755 "$PKG/opt/farman/farman"
+          chmod 644 "$PKG/DEBIAN/control"
+
+          DEB_NAME="farman_${VERSION}_amd64.deb"
+          dpkg-deb --build --root-owner-group "$PKG" "$DEB_NAME"
+          ls -la "$DEB_NAME"
+
+          # === Step 3: 後段の artifact upload 用にひとまとめ ===
+          mkdir -p linux-dist
+          mv farman-x86_64.AppImage  linux-dist/
+          mv "$DEB_NAME"             linux-dist/
+          ls -la linux-dist/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -304,8 +385,9 @@ jobs:
           cd dist
           ls -la */
           TAG="${{ steps.tag.outputs.tag }}"
-          mv macos/farman.dmg              "farman-${TAG}-macos-arm64.dmg"
-          mv linux/farman-x86_64.AppImage  "farman-${TAG}-linux-x86_64.AppImage"
+          mv macos/farman.dmg               "farman-${TAG}-macos-arm64.dmg"
+          mv linux/farman-x86_64.AppImage   "farman-${TAG}-linux-x86_64.AppImage"
+          mv linux/farman_*_amd64.deb       "farman-${TAG}-linux-x86_64.deb"
           mv windows/farman-windows-x64.zip "farman-${TAG}-windows-x64.zip"
           ls -la
 
@@ -320,4 +402,5 @@ jobs:
           files: |
             dist/farman-*-macos-arm64.dmg
             dist/farman-*-linux-x86_64.AppImage
+            dist/farman-*-linux-x86_64.deb
             dist/farman-*-windows-x64.zip
