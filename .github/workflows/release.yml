@@ -283,22 +283,23 @@ jobs:
           PKG=deb-pkg
           rm -rf "$PKG"
 
-          # /opt/farman/ 配下に AppDir の中身を flatten して配置
-          # (AppDir/usr/* を /opt/farman/* に対応させる)
+          # AppDir/usr/* の階層をそのまま /opt/farman/ に保存する。
+          # 実行ファイルの rpath が `$ORIGIN/../lib` のように相対参照になって
+          # いる (linuxdeploy-plugin-qt のデフォルト) ため、bin / lib /
+          # plugins の親子関係を崩すと共有ライブラリが解決できなくなる。
+          #   /opt/farman/bin/farman         ← 実行ファイル
+          #   /opt/farman/lib/libQt6*.so.6  ← Qt frameworks 等 (../lib で参照)
+          #   /opt/farman/plugins/...       ← Qt プラグイン (../plugins で参照)
           mkdir -p "$PKG/opt/farman"
-          # 実行ファイル + 必要なら追加 binary
           if [ -d AppDir/usr/bin ]; then
-            cp -R AppDir/usr/bin/*       "$PKG/opt/farman/"
+            cp -R AppDir/usr/bin         "$PKG/opt/farman/"
           fi
-          # Qt frameworks / libarchive / uchardet 等の .so
           if [ -d AppDir/usr/lib ]; then
             cp -R AppDir/usr/lib         "$PKG/opt/farman/"
           fi
-          # Qt プラグイン (image formats / iconengines 等)
           if [ -d AppDir/usr/plugins ]; then
             cp -R AppDir/usr/plugins     "$PKG/opt/farman/"
           fi
-          # QML / translations が存在すれば
           if [ -d AppDir/usr/qml ]; then
             cp -R AppDir/usr/qml         "$PKG/opt/farman/"
           fi
@@ -309,7 +310,7 @@ jobs:
           # ──── 外向け symlink / 共有資源 ────
           # ターミナル / アプリケーションメニューからは /usr/bin/farman で起動可能に
           mkdir -p "$PKG/usr/bin"
-          ln -s /opt/farman/farman "$PKG/usr/bin/farman"
+          ln -s /opt/farman/bin/farman "$PKG/usr/bin/farman"
 
           # デスクトップエントリ + アイコン (XDG 標準位置)
           mkdir -p "$PKG/usr/share/applications"
@@ -339,7 +340,7 @@ jobs:
           # dpkg-deb は実行ファイルが executable bit を持っていること、
           # ディレクトリが 755 であることを要求する。
           find "$PKG" -type d -exec chmod 755 {} +
-          chmod 755 "$PKG/opt/farman/farman"
+          chmod 755 "$PKG/opt/farman/bin/farman"
           chmod 644 "$PKG/DEBIAN/control"
 
           DEB_NAME="farman_${VERSION}_amd64.deb"
