@@ -1773,8 +1773,6 @@ Last checked: 2026-05-10 09:42
   Mac は $99/年、Windows は $200〜500/年が必要。
 - **Linux 配布の拡充**: 現状 AppImage のみ。需要次第で `.deb` (CPack DEB) /
   `.rpm` / Flathub / AUR などを追加検討。
-- **Homebrew Tap** (Mac ユーザー向け `brew install ms-haraki/tap/farman`)。
-  CI で AppImage / DMG を作れているなら Tap 用の Formula は数十行で済む。
 
 ### ドキュメント系
 
