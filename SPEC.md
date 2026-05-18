@@ -784,6 +784,25 @@ CLI 版を優先表示)。
 
 ### ファイルマネージャパネル表示中
 - 左: アクティブパネルのフォーカス中ファイルの絶対パス (なければ空)。tooltip でも全パス表示
+- 中央 (Compare / Sync Browse / ディスク使用量 の順):
+  - Compare: ディレクトリ比較モードのインジケータ (OFF 時は空)
+  - Sync Browse: 同期ブラウズ ON のときだけ `Sync Browse: ON` を表示
+  - **ディスク使用量**: アクティブペインのカレントが属するボリュームの状態
+    - 通常 FS: `N GB free / M GB (P% used)` (例: `245.6 GB free / 500 GB (51% used)`)
+      - tooltip にボリューム名 / マウントポイント / ファイルシステム種別
+    - クラウド同期フォルダ: `<cloud sync folder>` 表示で容量抑止
+      (ホスト FS の容量が返り誤解を招くため)。検出対象パス:
+      - `~/Library/CloudStorage/` (macOS File Provider; Google Drive /
+        OneDrive / Dropbox / Box 等が統合されたパス)
+      - `~/Library/Mobile Documents/com~apple~CloudDocs/` (iCloud Drive)
+      - `~/Dropbox`, `~/Dropbox (...)`, `~/Dropbox - ...`
+      - `~/OneDrive`, `~/OneDrive - ...`
+      - `~/Google Drive`, `~/Google Drive (...)`
+      - Windows: `%OneDrive%` / `%OneDriveConsumer%` / `%OneDriveCommercial%`
+    - アーカイブ内パス (`archive.zip!/inner`): `!` 手前 (アーカイブの実 FS
+      パス) のボリューム使用量を表示
+    - 5 秒の polling タイマーで自動更新 (コピー / 移動 / 削除後の空き容量変動に追従)
+    - ビュアー表示中はラベル非表示
 - 右: アクティブパネル要約
   - 選択あり: `N / M items selected (合計バイト)` (例: `3 / 128 items selected (3.6 MB)`)
   - 選択なし: `M items` (`..` は数えない)

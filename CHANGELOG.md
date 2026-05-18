@@ -48,6 +48,10 @@ All notable changes to **farman** are documented in this file.
   - ログペイン (日次ローテーション + 保持日数設定)
   - 国際化 (英語 / 日本語、Auto は OS 設定追従)
   - 外部変更の自動反映 (QFileSystemWatcher + デバウンス)
+  - ステータスバーにアクティブペインのボリューム使用量表示
+    (`N GB free / M GB (P% used)`、5 秒ポーリングで追従)。クラウド同期
+    フォルダ (Google Drive / iCloud / OneDrive / Dropbox) を検出した場合は
+    `<cloud sync folder>` 表示で容量抑止 (ホスト FS 容量が誤解を招くため)
 - **CI / 配布**
   - 3 OS の自動ビルド (`build.yml`、macOS arm64 / Linux x86_64 / Windows x86_64)
   - タグ push → GitHub Releases 自動公開 (`release.yml`、draft 公開で安全運用)
