@@ -22,9 +22,13 @@
 #include "../viewer/ImageViewerWindow.h"
 #include "../viewer/BinaryViewerWindow.h"
 #include <QDesktopServices>
+#include <QDir>
+#include <QLocale>
 #include <QScreen>
 #include <QStackedWidget>
 #include <QStatusBar>
+#include <QStorageInfo>
+#include <QTimer>
 #include <QLabel>
 #include <QFontMetrics>
 #include <QUrl>
@@ -210,15 +214,30 @@ void MainWindow::setupUi() {
   // ディレクトリ比較モードのインジケータ。OFF 時は空文字列で何も表示しない。
   m_statusCompareLabel = new QLabel(this);
   m_statusCompareLabel->setObjectName(QStringLiteral("compareLabel"));
+  // アクティブペインのボリューム使用量表示。空き / 全体 / 使用率を出す。
+  m_statusDiskLabel = new QLabel(this);
+  m_statusDiskLabel->setObjectName(QStringLiteral("diskLabel"));
+  m_statusDiskLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
   statusBar()->addWidget(m_statusPathLabel, /*stretch*/ 1);
   statusBar()->addPermanentWidget(m_statusCompareLabel);
   statusBar()->addPermanentWidget(m_statusSyncBrowseLabel);
+  statusBar()->addPermanentWidget(m_statusDiskLabel);
   statusBar()->addPermanentWidget(m_statusSummaryLabel);
+
+  // コピー / 移動 / 削除などで空き容量が変動するので、5 秒ごとに自動更新する。
+  // ユーザー操作と独立なので軽量。activePane().currentPath() が変わったときは
+  // activeFocusedPathChanged のハンドラ側で即時に updateDiskStatus を呼ぶ。
+  m_diskUpdateTimer = new QTimer(this);
+  m_diskUpdateTimer->setInterval(5000);
+  connect(m_diskUpdateTimer, &QTimer::timeout, this, &MainWindow::updateDiskStatus);
+  m_diskUpdateTimer->start();
 
   connect(m_fileManagerPanel, &FileManagerPanel::activeFocusedPathChanged,
           this, [this](const QString& path) {
     m_fmStatusPath = path;
     if (m_stack->currentWidget() == m_fileManagerPanel) updateStatusBar();
+    // パスが変わるとボリュームが変わっている可能性があるので即時更新
+    updateDiskStatus();
   });
   connect(m_fileManagerPanel, &FileManagerPanel::activeSummaryChanged,
           this, [this](const QString& summary) {
@@ -254,6 +273,136 @@ void MainWindow::updateStatusBar() {
   m_statusPathLabel->setText(path);
   m_statusPathLabel->setToolTip(path);
   m_statusSummaryLabel->setText(summary);
+  // ディスク使用量はファイルマネージャ表示中だけ意味を持つ (ビュアーは単一
+  // ファイルを開いているだけなのでボリューム情報は表示しない)。
+  if (m_statusDiskLabel) m_statusDiskLabel->setVisible(fm);
+}
+
+namespace {
+
+// パスがクラウド同期フォルダ (Google Drive / iCloud / OneDrive / Dropbox 等)
+// 配下なら true。これらは OS から見ると「ローカル FS の一部のディレクトリ」
+// として統合されていて、QStorageInfo はホストディスクの容量を返してしまう
+// (= 期待した「クラウド側の使用量」にならない)。誤解を招くので容量表示を
+// 抑止する。
+bool isCloudSyncPath(const QString& path) {
+  if (path.isEmpty()) return false;
+  const QString cleaned = QDir::cleanPath(path);
+  const QString home    = QDir::cleanPath(QDir::homePath());
+  if (home.isEmpty()) return false;
+
+  // ホーム配下に相対化する。ホーム外なら通常 FS 扱いで OK (例外: Windows の
+  // %OneDrive% がホーム外を指すケースは別途検出)。
+  QString rel;
+  if (cleaned == home) {
+    return false;
+  } else if (cleaned.startsWith(home + QLatin1Char('/'))) {
+    rel = cleaned.mid(home.size() + 1);
+  } else {
+#ifdef Q_OS_WIN
+    // Windows: %OneDrive% / %OneDriveCommercial% が C:\Users 外を指すケース
+    for (const char* var : { "OneDrive", "OneDriveConsumer", "OneDriveCommercial" }) {
+      const QString od = QDir::cleanPath(qEnvironmentVariable(var));
+      if (!od.isEmpty() && (cleaned == od || cleaned.startsWith(od + QLatin1Char('/')))) {
+        return true;
+      }
+    }
+#endif
+    return false;
+  }
+
+  // ホーム直下の固定パターン (前方一致)
+  static const QStringList prefixes = {
+    QStringLiteral("Library/CloudStorage/"),                      // macOS File Provider (Google/OneDrive/Dropbox/Box etc.)
+    QStringLiteral("Library/Mobile Documents/com~apple~CloudDocs/"),  // iCloud Drive (macOS)
+    QStringLiteral("Dropbox/"),
+    QStringLiteral("Dropbox ("),     // "Dropbox (Personal)" / "Dropbox (Company)" 等
+    QStringLiteral("Dropbox - "),    // 一部の Dropbox Business レイアウト
+    QStringLiteral("OneDrive/"),
+    QStringLiteral("OneDrive - "),   // "OneDrive - Company" のように業務アカ用
+    QStringLiteral("Google Drive/"), // 旧 Google Drive 統合
+    QStringLiteral("Google Drive ("),
+  };
+  for (const QString& p : prefixes) {
+    if (rel.startsWith(p)) return true;
+  }
+  // 名前そのもの (子のないルートディレクトリ表示時)
+  static const QStringList exacts = {
+    QStringLiteral("Dropbox"),
+    QStringLiteral("OneDrive"),
+    QStringLiteral("Google Drive"),
+  };
+  for (const QString& e : exacts) {
+    if (rel == e) return true;
+  }
+  return false;
+}
+
+}  // anonymous namespace
+
+void MainWindow::updateDiskStatus() {
+  if (!m_statusDiskLabel || !m_fileManagerPanel) return;
+  // ビュアー表示中はラベル自体を隠しているので更新は不要
+  if (m_stack && m_stack->currentWidget() != m_fileManagerPanel) return;
+
+  // アクティブペインのカレントディレクトリが属するボリュームを引く。
+  // m_fmStatusPath (フォーカス中ファイルのパス) ではなく currentPath() を
+  // 使うのは、ペインに何も選択していない (= 焦点無し) ケースでも表示が
+  // 出るようにするため。
+  FileListPane* pane = m_fileManagerPanel->activePane();
+  if (!pane) return;
+  const QString path = pane->currentPath();
+  if (path.isEmpty()) {
+    m_statusDiskLabel->clear();
+    m_statusDiskLabel->setToolTip(QString());
+    return;
+  }
+
+  // アーカイブ内パス (archive.zip!/inner) の場合は仮想 FS なので QStorage
+  // Info が役に立たない。`!` の手前 (アーカイブが置かれている実 FS パス) を
+  // 渡して、そのボリュームの情報を出す。
+  QString fsPath = path;
+  const int sep = fsPath.indexOf(QLatin1Char('!'));
+  if (sep >= 0) fsPath = fsPath.left(sep);
+
+  // クラウド同期フォルダは容量表示を抑止 (ホスト FS の値が出てしまうため)
+  if (isCloudSyncPath(fsPath)) {
+    m_statusDiskLabel->setText(tr("<cloud sync folder>"));
+    m_statusDiskLabel->setToolTip(
+      tr("This looks like a cloud sync folder (Google Drive / OneDrive / "
+         "Dropbox / iCloud).\nLocal disk usage is not shown here because "
+         "the host volume size would be misleading."));
+    return;
+  }
+
+  QStorageInfo storage(fsPath);
+  if (!storage.isValid() || !storage.isReady()) {
+    m_statusDiskLabel->clear();
+    m_statusDiskLabel->setToolTip(QString());
+    return;
+  }
+  const qint64 total = storage.bytesTotal();
+  const qint64 free  = storage.bytesAvailable();
+  if (total <= 0) {
+    m_statusDiskLabel->clear();
+    m_statusDiskLabel->setToolTip(QString());
+    return;
+  }
+  const int usedPct = static_cast<int>(((total - free) * 100) / total);
+  // バイト単位は英語固定 (SPEC.md「バイトサイズの表記」と整合)。
+  const QLocale en(QLocale::English);
+  const QString freeStr  = en.formattedDataSize(free,  1,
+                              QLocale::DataSizeTraditionalFormat);
+  const QString totalStr = en.formattedDataSize(total, 0,
+                              QLocale::DataSizeTraditionalFormat);
+  m_statusDiskLabel->setText(
+    tr("%1 free / %2 (%3%% used)").arg(freeStr, totalStr).arg(usedPct));
+  // tooltip にボリューム名 / マウントポイント / ファイルシステム種別
+  m_statusDiskLabel->setToolTip(
+    tr("Volume: %1\nMount point: %2\nFile system: %3")
+      .arg(storage.displayName(),
+           storage.rootPath(),
+           QString::fromUtf8(storage.fileSystemType())));
 }
 
 void MainWindow::showFileManager() {

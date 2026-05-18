@@ -53,6 +53,10 @@ private:
   // どちらのパネルがアクティブかでステータスバーの表示元を切り替えるため、
   // それぞれの最新ステータスをキャッシュしておく
   void updateStatusBar();
+  // ステータスバー右側のディスク使用量表示を更新する。
+  // アクティブペインのカレントパスから QStorageInfo を引いて
+  // 「N GB free / M GB (P% used)」を表示。5 秒タイマーでも自動再計算。
+  void updateDiskStatus();
   QString m_fmStatusPath;
   QString m_fmStatusSummary;
   QString m_viewerStatusPath;
@@ -69,6 +73,12 @@ private:
   // ディレクトリ比較モード中のインジケータ ("Compare: SizeMtime" 等)。
   // OFF 時は空文字列 (= 何も出ない)。
   QLabel*      m_statusCompareLabel     = nullptr;
+  // アクティブペインのカレントが属するボリュームの使用量
+  // (例: "245 GB free / 500 GB (51% used)")。ビュアー表示中は隠す。
+  QLabel*      m_statusDiskLabel        = nullptr;
+  // 5 秒ごとに disk 情報を再計算するためのポーリングタイマー
+  // (コピー / 移動 / 削除後の空き容量変化に追従する)。
+  QTimer*      m_diskUpdateTimer        = nullptr;
 
   // View メニューの Sync Browse トグル項目 (FileManagerPanel 状態と同期)。
   QAction*     m_syncBrowseAction = nullptr;
