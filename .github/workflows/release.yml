@@ -283,25 +283,53 @@ jobs:
           PKG=deb-pkg
           rm -rf "$PKG"
 
-          # AppDir/usr/* の階層をそのまま /opt/farman/ に保存する。
-          # 実行ファイルの rpath が `$ORIGIN/../lib` のように相対参照になって
-          # いる (linuxdeploy-plugin-qt のデフォルト) ため、bin / lib /
-          # plugins の親子関係を崩すと共有ライブラリが解決できなくなる。
-          #   /opt/farman/bin/farman         ← 実行ファイル
-          #   /opt/farman/lib/libQt6*.so.6  ← Qt frameworks 等 (../lib で参照)
-          #   /opt/farman/plugins/...       ← Qt プラグイン (../plugins で参照)
-          mkdir -p "$PKG/opt/farman"
-          if [ -d AppDir/usr/bin ]; then
-            cp -R AppDir/usr/bin         "$PKG/opt/farman/"
+          # 実行ファイルの rpath が `$ORIGIN/../lib` (linuxdeploy-plugin-qt の
+          # デフォルト) なので、必ず /opt/farman/bin/farman の位置に置く必要
+          # がある。/opt/farman/farman 直下に置くと ../lib = /opt/lib となり
+          # libQt6Widgets.so.6 が見つからず起動失敗する。
+          #
+          # AppDir 内の実行ファイル / qt.conf の正確なパスは linuxdeploy の
+          # バージョンや plugin の組み合わせで揺れるので、find で実体を探して
+          # 明示的に /opt/farman/bin/ に配置する。lib / plugins / translations
+          # /qml は AppDir/usr/<name> をそのまま /opt/farman/<name> にコピー。
+          mkdir -p "$PKG/opt/farman/bin"
+
+          # AppDir 構造を CI ログに出して将来のデバッグを容易にする
+          echo "=== AppDir layout ==="
+          find AppDir -maxdepth 3 -mindepth 1 | sort | head -40
+          echo "=== AppDir/usr/bin contents (if any) ==="
+          ls -la AppDir/usr/bin/ 2>&1 || echo "(no AppDir/usr/bin)"
+
+          # 実行ファイル: AppDir 配下で executable な farman を最初の 1 件
+          FARMAN_BIN=$(find AppDir -type f -name farman -executable 2>/dev/null | head -1)
+          if [ -z "$FARMAN_BIN" ]; then
+            echo "::error::farman executable not found in AppDir"
+            find AppDir -type f -name farman
+            exit 1
           fi
+          echo "Found farman binary at: $FARMAN_BIN"
+          cp "$FARMAN_BIN" "$PKG/opt/farman/bin/farman"
+
+          # qt.conf: 実行ファイルと同じディレクトリに置く必要がある。
+          # 中身は通常 `Plugins=../plugins` 等の相対参照なので、bin/ から
+          # 見て ../plugins = /opt/farman/plugins が解決される。
+          FARMAN_QTCONF=$(find AppDir -type f -name qt.conf 2>/dev/null | head -1)
+          if [ -n "$FARMAN_QTCONF" ]; then
+            cp "$FARMAN_QTCONF" "$PKG/opt/farman/bin/qt.conf"
+            echo "Copied qt.conf from $FARMAN_QTCONF:"
+            cat "$PKG/opt/farman/bin/qt.conf"
+          fi
+
+          # lib / plugins / translations / qml は AppDir/usr/<name> 構造を
+          # /opt/farman/ に複製する。
           if [ -d AppDir/usr/lib ]; then
-            cp -R AppDir/usr/lib         "$PKG/opt/farman/"
+            cp -R AppDir/usr/lib          "$PKG/opt/farman/"
           fi
           if [ -d AppDir/usr/plugins ]; then
-            cp -R AppDir/usr/plugins     "$PKG/opt/farman/"
+            cp -R AppDir/usr/plugins      "$PKG/opt/farman/"
           fi
           if [ -d AppDir/usr/qml ]; then
-            cp -R AppDir/usr/qml         "$PKG/opt/farman/"
+            cp -R AppDir/usr/qml          "$PKG/opt/farman/"
           fi
           if [ -d AppDir/usr/translations ]; then
             cp -R AppDir/usr/translations "$PKG/opt/farman/"
@@ -342,6 +370,10 @@ jobs:
           find "$PKG" -type d -exec chmod 755 {} +
           chmod 755 "$PKG/opt/farman/bin/farman"
           chmod 644 "$PKG/DEBIAN/control"
+
+          # 最終構造をログ出力 (将来の調査用)
+          echo "=== final deb layout ==="
+          find "$PKG/opt/farman" -maxdepth 2 | sort | head -30
 
           DEB_NAME="farman_${VERSION}_amd64.deb"
           dpkg-deb --build --root-owner-group "$PKG" "$DEB_NAME"
