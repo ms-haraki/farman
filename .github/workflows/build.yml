@@ -246,10 +246,12 @@ jobs:
           if (-not (Test-Path $iscc)) {
             choco install innosetup --no-progress --yes
           }
+          # /DSrcDir には絶対パスを渡す ([Files] Source: の相対パスは .iss の
+          # 場所から解決されるため、相対で渡すと windows\build\Release を探す)。
           & "$iscc" `
             "/DAppVersion=$version" `
-            "/DSrcDir=build\Release" `
-            "/O$(Resolve-Path windows-dist)" `
+            "/DSrcDir=$((Resolve-Path build\Release).Path)" `
+            "/O$((Resolve-Path windows-dist).Path)" `
             "windows\farman.iss"
 
           Get-ChildItem windows-dist
