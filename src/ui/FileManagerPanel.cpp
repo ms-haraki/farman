@@ -148,7 +148,11 @@ void FileManagerPanel::setupUi() {
 
 void FileManagerPanel::setLogPaneVisible(bool visible) {
   if (!m_logPane) return;
-  const bool was = m_logPane->isVisible();
+  // QWidget::isVisible() は祖先が show されていない段階だと false を返すため、
+  // 起動シーケンス中の判定がブレる。`!isHidden()` は自身の visibility 設定
+  // だけを見るので、親が show される前でも setVisible(true) 直後に true を
+  // 返す。setupToolbar 等が show() 前に状態を読むケースで重要。
+  const bool was = !m_logPane->isHidden();
   m_logPane->setVisible(visible);
   if (was != visible) {
     emit logPaneVisibleChanged(visible);
@@ -156,7 +160,7 @@ void FileManagerPanel::setLogPaneVisible(bool visible) {
 }
 
 bool FileManagerPanel::isLogPaneVisible() const {
-  return m_logPane && m_logPane->isVisible();
+  return m_logPane && !m_logPane->isHidden();
 }
 
 void FileManagerPanel::setLogPaneHeight(int px) {
