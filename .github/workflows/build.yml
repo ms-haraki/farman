@@ -97,7 +97,12 @@ jobs:
           host: ${{ matrix.qt_host }}
           target: desktop
           arch: ${{ matrix.qt_arch }}
-          modules: 'qt5compat'
+          # qt5compat: Core5Compat (QTextCodec 経由のエンコード判定で使う)
+          # qtimageformats: WebP / TIFF / JP2 / MNG / TGA / WBMP プラグイン。
+          #   essential add-ons には含まれず明示が必要。これを入れないと
+          #   imageformats プラグインは GIF / ICO / JPEG / SVG だけになり、
+          #   開発機 (Homebrew Qt の全部入り) との挙動差が出る。
+          modules: 'qt5compat qtimageformats'
           cache: true
 
       # ──────── 依存ライブラリ ────────
