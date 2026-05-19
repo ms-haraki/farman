@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QCommandLineParser>
 #include <QDir>
 #include <QIcon>
 #include <QLibraryInfo>
@@ -30,6 +31,17 @@ int main(int argc, char *argv[]) {
 
   app.setOrganizationName("Farman");
   app.setApplicationName("farman");
+  app.setApplicationVersion(QStringLiteral(QT_STRINGIFY(FARMAN_VERSION)));
+
+  // --version / --help を処理して即終了する (GUI を立ち上げない)。
+  // process() は該当オプションが付いていたら stdout に出力して exit() する。
+  // それ以外 (引数なし通常起動) はそのまま返ってきて GUI 初期化へ進む。
+  QCommandLineParser parser;
+  parser.setApplicationDescription(
+    QStringLiteral("Qt6-based dual-pane file manager"));
+  parser.addHelpOption();
+  parser.addVersionOption();
+  parser.process(app);
 
   // macOS では既定で Tab がテキスト系ウィジェットしかフォーカスしない
   // (TabFocusTextControls)。farman ではツールバーのトグルボタン / コンボなど

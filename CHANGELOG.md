@@ -58,6 +58,8 @@ All notable changes to **farman** are documented in this file.
   - Linux は **AppImage** に加えて **`.deb`** (Debian / Ubuntu / Mint 系)
     も同時配布。AppDir を `/opt/farman/` に詰める self-contained 方式で、
     OS 標準の Qt バージョン差に依存しない
+  - `farman --version` / `--help` をコマンドラインで利用可能 (GUI を立ち上げず
+    stdout 出力 + 即終了)
 
 ### Security
 
