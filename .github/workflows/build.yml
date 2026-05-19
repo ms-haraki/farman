@@ -76,8 +76,10 @@ jobs:
             os: windows-latest
             qt_host: windows
             qt_arch: win64_msvc2022_64
-            # windeployqt + vcpkg DLL コピー後の build/Release/ ディレクトリ全体
-            artifact_path: build/Release
+            # windows-dist/ に zip と Inno Setup インストーラの両方を入れる
+            # (release.yml と同じレイアウトに揃え、PR 段階でインストーラ生成
+            #  まで含めて動作確認する)
+            artifact_path: windows-dist
             artifact_name: farman-windows
 
     steps:
@@ -224,6 +226,28 @@ jobs:
           # コピー。include 関係 / debug 用 .pdb は不要なので .dll だけ。
           Copy-Item "$env:VCPKG_ROOT/installed/x64-windows/bin/*.dll" `
             -Destination build/Release/
+
+          # CMakeLists.txt の project(farman VERSION X.Y.Z) を抽出
+          $version = (Select-String -Path CMakeLists.txt -Pattern 'project\(farman VERSION ([0-9.]+)').Matches[0].Groups[1].Value
+
+          New-Item -ItemType Directory -Path windows-dist -Force | Out-Null
+
+          # ポータブル用 zip
+          Compress-Archive -Path build/Release/* `
+            -DestinationPath "windows-dist/farman-windows-x64.zip"
+
+          # Inno Setup インストーラ (.exe)。release.yml と同じ呼び出し方。
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress --yes
+          }
+          & "$iscc" `
+            "/DAppVersion=$version" `
+            "/DSrcDir=build\Release" `
+            "/O$(Resolve-Path windows-dist)" `
+            "windows\farman.iss"
+
+          Get-ChildItem windows-dist
 
       - name: Deploy (Linux)
         if: runner.os == 'Linux'

@@ -63,6 +63,10 @@ All notable changes to **farman** are documented in this file.
   - macOS DMG を典型 Mac インストーラレイアウトに整備 — 左に `/Applications`
     シンボリックリンク、右に `farman.app` を並べ、`create-dmg` でアイコン位置
     とウィンドウサイズを固定。ユーザーは Drag & Drop でインストール可能
+  - Windows `.exe` インストーラ生成 (Inno Setup 6、`windows/farman.iss`)。
+    スタートメニュー / デスクトップショートカット / アンインストーラを
+    自動登録、Program Files / LocalAppData の両方の install 経路を
+    サポート。ポータブル用 zip も併売
 
 ### Security
 

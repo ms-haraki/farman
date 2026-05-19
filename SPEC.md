@@ -1678,10 +1678,13 @@ OS 別の現状:
   将来課題。
 - **Linux**: `linuxdeploy` で AppImage と、AppDir を `/opt/farman/` に
   詰めた `.deb` の両方を生成。
-- **Windows**: `windeployqt` + vcpkg DLL コピー後に `.zip` 化のみ。
-  **Inno Setup 等の `.exe` インストーラ化は未対応**。スタートメニュー /
-  デスクトップショートカット / 関連付け / アンインストーラの登録もこれが
-  入ってから着手する。
+- **Windows**: `windeployqt` + vcpkg DLL コピー後、Inno Setup 6 で
+  `.exe` インストーラを生成 (`windows/farman.iss`)。`{autopf}\farman`
+  既定 (Program Files 配下、または lowest 権限で LocalAppData)、起動時
+  ダイアログで「すべてのユーザー / 自分のみ」を選択可能。スタートメニュー
+  ショートカット必須 + デスクトップショートカット任意 (Tasks)、アンインス
+  トーラ自動登録、64-bit 限定。ポータブル用途の `.zip` も同時生成して併売。
+  関連付けの登録は未対応 (将来課題)。
 - **コード署名**: macOS は Developer ID + Notarization まで CI 内で動く
   状態 (Secrets が揃っているとき)。Windows Authenticode 署名は未対応。
 - **`farman --version`**: 実装済み。`QCommandLineParser::addVersionOption()`
