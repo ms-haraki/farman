@@ -15,7 +15,7 @@ set(CMAKE_AUTOUIC ON)
 # (Qt 側はその結果を見て該当機能を無効化するだけで実害はない)。
 set(CMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders TRUE)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Core5Compat Concurrent Network LinguistTools)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Core5Compat Concurrent Network Svg LinguistTools)
 
 # Homebrew の libarchive は keg-only なので明示的にパスを通す。
 # Apple Silicon は /opt/homebrew、Intel Mac は /usr/local が Homebrew prefix。
@@ -192,6 +192,7 @@ target_link_libraries(farman PRIVATE
   Qt6::Core5Compat
   Qt6::Concurrent
   Qt6::Network
+  Qt6::Svg
   LibArchive::LibArchive
 )
 
