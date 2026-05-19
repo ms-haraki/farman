@@ -242,9 +242,9 @@ jobs:
             --window-pos 200 120 \
             --window-size 600 400 \
             --icon-size 100 \
-            --icon "farman.app" 175 190 \
+            --app-drop-link 175 190 \
+            --icon "farman.app" 425 190 \
             --hide-extension "farman.app" \
-            --app-drop-link 425 190 \
             --no-internet-enable \
             build/farman.dmg \
             build/dmg-staging
