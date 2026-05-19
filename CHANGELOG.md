@@ -60,6 +60,9 @@ All notable changes to **farman** are documented in this file.
     OS 標準の Qt バージョン差に依存しない
   - `farman --version` / `--help` をコマンドラインで利用可能 (GUI を立ち上げず
     stdout 出力 + 即終了)
+  - macOS DMG を典型 Mac インストーラレイアウトに整備 — 左に `farman.app`、
+    右に `/Applications` シンボリックリンクを並べ、`create-dmg` でアイコン
+    位置とウィンドウサイズを固定。ユーザーは Drag & Drop でインストール可能
 
 ### Security
 

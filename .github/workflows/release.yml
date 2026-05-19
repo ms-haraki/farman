@@ -92,7 +92,7 @@ jobs:
       # ──────── 依存ライブラリ ────────
       - name: Install deps (macOS)
         if: runner.os == 'macOS'
-        run: brew install libarchive uchardet pkg-config
+        run: brew install libarchive uchardet pkg-config create-dmg
 
       - name: Install deps (Linux)
         if: runner.os == 'Linux'
@@ -223,10 +223,31 @@ jobs:
           fi
           codesign --verify --deep --strict build/farman.app
 
-          hdiutil create -volname farman \
-            -srcfolder build/farman.app \
-            -ov -format UDZO \
-            build/farman.dmg
+          # DMG レイアウト: 左に farman.app、右に /Applications シンボリックリンク
+          # を並べた典型的な Mac インストーラ配置。create-dmg は内部で hdiutil
+          # と AppleScript (Finder ウィンドウ操作) を組み合わせて .DS_Store に
+          # アイコン位置を書き込む。
+          #
+          # create-dmg の <source_folder> 引数はそのディレクトリの「中身」を
+          # DMG 直下に展開するので、farman.app を含むステージングディレクトリ
+          # を別途用意してから渡す。build/farman.app を直接渡すと Contents/
+          # 配下が DMG 直下に展開されてしまう。
+          rm -rf build/dmg-staging
+          mkdir -p build/dmg-staging
+          cp -R build/farman.app build/dmg-staging/
+
+          rm -f build/farman.dmg
+          create-dmg \
+            --volname "farman" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "farman.app" 175 190 \
+            --hide-extension "farman.app" \
+            --app-drop-link 425 190 \
+            --no-internet-enable \
+            build/farman.dmg \
+            build/dmg-staging
 
       - name: Notarize and staple (macOS, signed runs only)
         if: runner.os == 'macOS' && steps.sign-check.outputs.available == 'true'
